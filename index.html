@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Perle Swimwear | Boutique Edition 2.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="description"
+    content="Perle Swimwear - Trajes de baño de autor, ediciones limitadas, reversibles y eco-friendly. Envíos a Colombia, Panamá y USA."
+  />
+
+  <!-- Fuentes & Iconos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
+    rel="stylesheet"
+  />
+
+  <!-- CSS separado -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <i class="ri-checkbox-circle-line"></i>
+    <span id="toast-text">Acción realizada</span>
+  </div>
+
+  <!-- Overlay genérico -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Scroll top -->
+  <button class="scroll-top" id="scroll-top" aria-label="Volver arriba">
+    <i class="ri-arrow-up-line"></i>
+  </button>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <span class="topbar__pill">
+      <i class="ri-truck-line"></i>
+      <span>Envío gratis desde <span class="topbar__highlight">$250.000</span> COP</span>
+    </span>
+    <span class="topbar__pill">
+      <i class="ri-gift-line"></i>
+      <span>Usa código <strong>PERLE10</strong> en tu primera compra</span>
+    </span>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <nav class="nav container">
+      <a href="#home" class="nav__logo">
+        PERLE
+        <span>swimwear</span>
+      </a>
+
+      <div class="nav__menu" id="nav-menu">
+        <ul class="nav__list">
+          <li><a href="#home" class="nav__link">Inicio</a></li>
+          <li><a href="#products" class="nav__link">Colección</a></li>
+          <li><a href="#fit" class="nav__link">Fit & Tallas</a></li>
+          <li><a href="#club" class="nav__link">Club</a></li>
+        </ul>
+        <button class="nav__close" id="nav-close">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+
+      <div class="nav__actions">
+        <select id="currency-select" class="nav__currency" aria-label="Cambiar moneda">
+          <option value="COP">COP $</option>
+          <option value="USD">USD $</option>
+        </select>
+        <i class="ri-moon-line nav__icon" id="theme-button" aria-label="Cambiar tema"></i>
+        <div class="nav__icon nav__cart" id="cart-btn" aria-label="Abrir bolsa">
+          <i class="ri-shopping-bag-3-line"></i>
+          <span class="nav__cart-count" id="cart-count">0</span>
+        </div>
+        <button class="nav__toggle nav__icon" id="nav-toggle" aria-label="Abrir menú">
+          <i class="ri-menu-3-line"></i>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Cart -->
+  <aside class="cart" id="cart">
+    <div class="cart__header">
+      <h2 class="cart__title">Tu bolsa</h2>
+      <button id="cart-close" aria-label="Cerrar bolsa">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="cart__items" id="cart-items"></div>
+
+    <div class="cart__footer">
+      <div class="cart__total-row">
+        <span>Total</span>
+        <span id="cart-total">$0</span>
+      </div>
+
+      <div class="cart__progress-wrap">
+        <span id="cart-progress-text">Te faltan $250.000 COP para envío gratis</span>
+        <div class="cart__progress-bar">
+          <div class="cart__progress-fill" id="cart-progress-fill"></div>
+        </div>
+      </div>
+
+      <button class="btn btn--full" id="checkout-btn">
+        Finalizar por WhatsApp
+        <i class="ri-whatsapp-line"></i>
+      </button>
+
+      <button class="btn btn--ghost btn--full" id="cart-clear-btn" style="margin-top: .4rem;">
+        Vaciar bolsa
+      </button>
+    </div>
+  </aside>
+
+  <!-- Quickview Modal -->
+  <div class="modal" id="quickview-modal" aria-hidden="true">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3 class="modal__title" id="quickview-title">Producto</h3>
+        <button id="quickview-close" aria-label="Cerrar detalle">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="modal__body" id="quickview-body"></div>
+    </div>
+  </div>
+
+  <!-- Newsletter Modal -->
+  <div class="modal" id="newsletter-modal" aria-hidden="true">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3 class="modal__title">Bienvenida al Perle Club ✨</h3>
+        <button id="newsletter-close" aria-label="Cerrar anuncio">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="modal__body">
+        <p class="newsletter-modal__note">
+          Obtén <strong>10% OFF</strong> en tu primera compra y acceso anticipado a nuestras ediciones limitadas
+          registrando tu correo.
+        </p>
+        <form class="newsletter-modal__form" id="newsletter-modal-form">
+          <input type="email" id="newsletter-modal-email" placeholder="Tu correo" required />
+          <button type="submit" class="btn btn--sm">Quiero mi código</button>
+        </form>
+        <p style="font-size: .75rem; opacity: .75;">
+          Solo te escribiremos para lanzamientos, descuentos y contenido de valor. Sin spam, lo prometemos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- HOME -->
+    <section class="home section" id="home">
+      <div class="home__container container grid">
+        <div>
+          <p class="home__eyebrow">Edición Boutique · Hecho en Colombia</p>
+          <h1 class="home__title">
+            Elegancia Solar
+            <span>que te protege y abraza</span>
+          </h1>
+          <p class="home__description">
+            Trajes de baño pensados para curvas latinas, telas suaves, soporte real y detalles artesanales.
+            Diseñados para que te sientas segura en la playa, la piscina o el rooftop.
+          </p>
+          <ul class="home__bullets">
+            <li><i class="ri-sparkling-line"></i> Ediciones limitadas</li>
+            <li><i class="ri-recycle-line"></i> Piezas eco-friendly</li>
+            <li><i class="ri-heart-3-line"></i> Fit probado en mujeres reales</li>
+          </ul>
+          <div class="home__cta">
+            <a href="#products" class="btn">
+              Ver colección 2024
+              <i class="ri-arrow-right-line"></i>
+            </a>
+            <a
+              href="https://wa.me/573001234567?text=Hola%20Perle!%20Quiero%20asesor%C3%ADa%20personalizada%20👙"
+              target="_blank"
+              class="btn btn--ghost"
+            >
+              Asesoría por WhatsApp
+              <i class="ri-whatsapp-line"></i>
+            </a>
+          </div>
+          <p class="home__cta-note">
+            Envíos a Colombia, Panamá y USA · Cambios fáciles si no te enamoras del fit.
+          </p>
+        </div>
+
+        <div class="home__visual" aria-hidden="true">
+          <div class="home__shape"></div>
+          <img
+            src="https://images.unsplash.com/photo-1544376798-89aa6b82c6cd?q=80&w=800&auto=format&fit=crop"
+            alt="Modelo con traje de baño rosa en la playa"
+            class="home__img"
+            loading="lazy"
+          />
+          <div class="home__badge">
+            <span class="home__badge-title">+1.200 Perle Lovers</span>
+            <span>4.9 ★ promedio en fit y calidad</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="section" id="products">
+      <div class="container">
+        <div class="section__header">
+          <div>
+            <p class="section__subtitle">Colección 2024</p>
+            <h2 class="section__title">Nuestros favoritos</h2>
+          </div>
+          <div class="filters">
+            <div>
+              <span class="filters__label">Categoría</span>
+              <div class="filters__group" id="filter-category">
+                <button class="chip chip--active" data-value="all">Todas</button>
+                <button class="chip" data-value="bikini">Bikinis</button>
+                <button class="chip" data-value="enterizo">Enterizos</button>
+                <button class="chip" data-value="salida">Salidas</button>
+              </div>
+            </div>
+            <div>
+              <span class="filters__label">Especiales</span>
+              <div class="filters__group" id="filter-special">
+                <button class="chip" data-value="reversible">Reversibles</button>
+                <button class="chip" data-value="eco">Eco</button>
+                <button class="chip" data-value="family">Family Match</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid products__container" id="products-grid"></div>
+      </div>
+    </section>
+
+    <!-- FIT GUIDE + QUIZ -->
+    <section class="section" id="fit">
+      <div class="container grid" style="gap: 2.3rem;">
+        <div>
+          <div class="section__header" style="margin-bottom: 1.8rem;">
+            <div>
+              <p class="section__subtitle">Fit & tallas</p>
+              <h2 class="section__title">Encuentra tu ajuste perfecto</h2>
+            </div>
+          </div>
+
+          <div class="grid fit-guide__grid">
+            <article class="fit-card">
+              <h3 class="fit-card__title">Cobertura & Soporte</h3>
+              <p>
+                Pensado para bustos pequeños, medianos y grandes. Nuestros tops van desde cobertura
+                minimal hasta full soporte para que puedas bailar, nadar o jugar con tu familia sin preocuparte.
+              </p>
+              <div class="fit-card__pill-row">
+                <span class="fit-card__pill">Cobertura media-alta</span>
+                <span class="fit-card__pill">Tops con varilla</span>
+                <span class="fit-card__pill">Tirantes ajustables</span>
+              </div>
+            </article>
+
+            <article class="fit-card">
+              <h3 class="fit-card__title">Guía de tallas</h3>
+              <p>
+                Mide tu busto, cintura y cadera con una cinta suave. Si dudas entre dos tallas,
+                te recomendamos escoger la mayor para mayor comodidad.
+              </p>
+              <div class="fit-card__pill-row">
+                <span class="fit-card__pill">XS: 32–34 busto</span>
+                <span class="fit-card__pill">S: 34–36 busto</span>
+                <span class="fit-card__pill">M: 36–38 busto</span>
+                <span class="fit-card__pill">L–XL: 38+ busto</span>
+              </div>
+              <button class="fit-card__link" id="fit-whatsapp">
+                <i class="ri-whatsapp-line"></i>
+                Enviar mis medidas por WhatsApp
+              </button>
+            </article>
+
+            <article class="fit-card">
+              <h3 class="fit-card__title">Texturas & telas</h3>
+              <p>
+                Telas suaves con tecnología de secado rápido, protección UV y resistencia al cloro. Varios modelos
+                son reversibles para que tengas dos looks en uno.
+              </p>
+              <div class="fit-card__pill-row">
+                <span class="fit-card__pill">Secado rápido</span>
+                <span class="fit-card__pill">Protección UV</span>
+                <span class="fit-card__pill">Reversibles</span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <aside class="quiz">
+          <div class="quiz__steps" id="quiz-steps"></div>
+          <h3 class="quiz__question" id="quiz-question">¿Cómo te gusta la cobertura del top?</h3>
+          <div class="quiz__options" id="quiz-options"></div>
+          <div class="quiz__footer">
+            <button class="btn btn--ghost btn--sm" id="quiz-prev">Atrás</button>
+            <button class="btn btn--sm" id="quiz-next">
+              Siguiente
+              <i class="ri-arrow-right-line"></i>
+            </button>
+          </div>
+          <div class="quiz__summary" id="quiz-summary"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- CLUB -->
+    <section class="section" id="club">
+      <div class="container">
+        <div class="club">
+          <div>
+            <h2 class="club__title">Únete al Perle Club</h2>
+            <p class="club__text">
+              Recibe drops secretos, acceso anticipado a ediciones limitadas y contenido sobre cómo cuidar tus
+              trajes de baño para que te duren muchos veranos.
+            </p>
+            <ul class="club__perks">
+              <li><i class="ri-sparkles-line"></i> 10% OFF en tu primera compra</li>
+              <li><i class="ri-sun-foggy-line"></i> Guías de estilo para viajes</li>
+              <li><i class="ri-gift-line"></i> Sorpresas en tu cumpleaños</li>
+            </ul>
+          </div>
+          <form class="club__form" id="newsletter-form">
+            <input
+              type="email"
+              class="club__input"
+              id="newsletter-email"
+              placeholder="Tu correo electrónico"
+              required
+            />
+            <button type="submit" class="btn btn--sm">Quiero unirme</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer__container container">
+      <div>
+        <span class="footer__logo">PERLE</span>
+        <p>Diseñado con amor en Colombia, enviado al mundo.</p>
+      </div>
+      <div class="footer__social">
+        <a href="#" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
+        <a href="#" aria-label="WhatsApp"><i class="ri-whatsapp-line"></i></a>
+        <a href="#" aria-label="Facebook"><i class="ri-facebook-circle-line"></i></a>
+      </div>
+      <span class="footer__copy">
+        © 2024 Perle Swimwear. Todos los derechos reservados.
+      </span>
+    </div>
+  </footer>
+
+  <!-- JS separado -->
+  <script src="javascript.js"></script>
+</body>
+</html>
+
