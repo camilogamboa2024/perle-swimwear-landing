@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Perle | Home{% endblock %}
+{% block content %}
+<section class="hero"><h1>Colección Perle</h1><p>Boutique premium, tallas reales y stock en vivo.</p></section>
+<section class="container">
+  <h2>Productos</h2>
+  <div id="products-grid" class="grid">
+    {% for product in products %}
+    <article class="card">
+      {% with img=product.images.first %}
+      {% if img %}
+      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" style="width:100%;border-radius:12px;aspect-ratio:4/5;object-fit:cover;">
+      {% else %}
+      <div style="width:100%;border-radius:12px;aspect-ratio:4/5;background:#f7edf1;display:grid;place-items:center;">Perle</div>
+      {% endif %}
+      {% endwith %}
+      <h3><a href="/product/{{ product.slug }}/">{{ product.name }}</a></h3>
+      <p>{{ product.description|default:'Sin descripción'|truncatechars:120 }}</p>
+      {% with v=product.variants.first %}
+      {% if v %}
+      <p><strong>${{ v.price_cop }}</strong> COP</p>
+      <button class="btn" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
+      {% endif %}
+      {% endwith %}
+    </article>
+    {% empty %}
+    <p>No hay productos aún.</p>
+    {% endfor %}
+  </div>
+</section>
+{{ products_payload|json_script:'products-data' }}
+<script id="fx-data" type="application/json">{"usdRate": {{ exchange_rate }}}</script>
+{% endblock %}

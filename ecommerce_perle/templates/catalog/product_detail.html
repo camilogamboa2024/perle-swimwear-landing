@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container">
+  <h1>{{ product.name }}</h1>
+  <p>{{ product.description }}</p>
+  <h3>Variantes</h3>
+  <ul>
+    {% for v in product.variants.all %}
+    <li>{{ v.size }} / {{ v.color }} - ${{ v.price_cop }} COP - Stock: {{ v.stock_level.available }}
+      <button class="btn" data-add-cart="{{ v.id }}">Añadir</button>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
