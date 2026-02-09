@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: perle-ecommerce
+    env: python
+    plan: free
+    rootDir: ecommerce_perle
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput"
+    startCommand: "gunicorn core.wsgi:application"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: ALLOWED_HOSTS
+        value: "perle-ecommerce.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://perle-ecommerce.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: perle-db
+          property: connectionString
+      - key: DB_CONN_MAX_AGE
+        value: "600"
+      - key: DB_SSL_REQUIRE
+        value: "1"
+      - key: WHATSAPP_PHONE
+        sync: false
+      - key: CURRENCY_USD_RATE
+        value: "0.00026"
+databases:
+  - name: perle-db
+    plan: free
