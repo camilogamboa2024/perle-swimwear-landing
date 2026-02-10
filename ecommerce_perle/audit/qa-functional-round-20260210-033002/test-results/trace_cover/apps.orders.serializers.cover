@@ -1,0 +1,37 @@
+    1: from rest_framework import serializers
+       
+    1: from apps.catalog.models import ProductVariant
+    1: from .models import Cart, CartItem
+    1: from .services import calculate_cart_totals
+       
+       
+    2: class CartItemSerializer(serializers.ModelSerializer):
+    1:     product_name = serializers.CharField(source='variant.product.name', read_only=True)
+    1:     size = serializers.CharField(source='variant.size', read_only=True)
+    1:     color = serializers.CharField(source='variant.color', read_only=True)
+    1:     unit_price = serializers.IntegerField(source='variant.price_cop', read_only=True)
+       
+    2:     class Meta:
+    1:         model = CartItem
+    1:         fields = ['id', 'variant', 'quantity', 'product_name', 'size', 'color', 'unit_price']
+       
+       
+    2: class AddCartItemSerializer(serializers.Serializer):
+    1:     variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.filter(is_active=True), source='variant')
+    1:     quantity = serializers.IntegerField(min_value=1)
+       
+       
+    2: class UpdateCartItemSerializer(serializers.Serializer):
+    1:     quantity = serializers.IntegerField(min_value=1)
+       
+       
+    2: class CartSerializer(serializers.ModelSerializer):
+    1:     items = CartItemSerializer(many=True)
+    1:     totals = serializers.SerializerMethodField()
+       
+    2:     class Meta:
+    1:         model = Cart
+    1:         fields = ['id', 'currency', 'items', 'totals']
+       
+    1:     def get_totals(self, obj):
+   13:         return calculate_cart_totals(obj, None)

@@ -1,0 +1,81 @@
+    1: import warnings
+       
+    1: from django.core import checks
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+    1: from django.utils.functional import cached_property
+       
+    1: NOT_PROVIDED = object()
+       
+       
+    2: class FieldCacheMixin:
+    1:     """
+           An API for working with the model's fields value cache.
+       
+           Subclasses must set self.cache_name to a unique entry for the cache -
+           typically the field’s name.
+           """
+       
+           # RemovedInDjango60Warning.
+    1:     def get_cache_name(self):
+               raise NotImplementedError
+       
+    2:     @cached_property
+    2:     def cache_name(self):
+               # RemovedInDjango60Warning: when the deprecation ends, replace with:
+               # raise NotImplementedError
+               cache_name = self.get_cache_name()
+               warnings.warn(
+                   f"Override {self.__class__.__qualname__}.cache_name instead of "
+                   "get_cache_name().",
+                   RemovedInDjango60Warning,
+                   stacklevel=3,
+               )
+               return cache_name
+       
+    1:     def get_cached_value(self, instance, default=NOT_PROVIDED):
+  423:         try:
+  423:             return instance._state.fields_cache[self.cache_name]
+   37:         except KeyError:
+   37:             if default is NOT_PROVIDED:
+   30:                 raise
+    7:             return default
+       
+    1:     def is_cached(self, instance):
+  797:         return self.cache_name in instance._state.fields_cache
+       
+    1:     def set_cached_value(self, instance, value):
+  419:         instance._state.fields_cache[self.cache_name] = value
+       
+    1:     def delete_cached_value(self, instance):
+    1:         del instance._state.fields_cache[self.cache_name]
+       
+       
+    2: class CheckFieldDefaultMixin:
+    1:     _default_hint = ("<valid default>", "<invalid default>")
+       
+    1:     def _check_default(self):
+               if (
+                   self.has_default()
+                   and self.default is not None
+                   and not callable(self.default)
+               ):
+                   return [
+                       checks.Warning(
+                           "%s default should be a callable instead of an instance "
+                           "so that it's not shared between all field instances."
+                           % (self.__class__.__name__,),
+                           hint=(
+                               "Use a callable instead, e.g., use `%s` instead of "
+                               "`%s`." % self._default_hint
+                           ),
+                           obj=self,
+                           id="fields.E010",
+                       )
+                   ]
+               else:
+                   return []
+       
+    1:     def check(self, **kwargs):
+               errors = super().check(**kwargs)
+               errors.extend(self._check_default())
+               return errors

@@ -1,0 +1,13 @@
+DJANGO_SECRET_KEY=<redacted>
+DEBUG=<redacted>
+ALLOWED_HOSTS=<redacted>
+CSRF_TRUSTED_ORIGINS=<redacted>
+DATABASE_URL=<redacted>
+WHATSAPP_PHONE=<redacted>
+SECURE_SSL_REDIRECT=<redacted>
+SECURE_HSTS_SECONDS=<redacted>
+SECURE_HSTS_INCLUDE_SUBDOMAINS=<redacted>
+SECURE_HSTS_PRELOAD=<redacted>
+DB_CONN_MAX_AGE=<redacted>
+DB_SSL_REQUIRE=<redacted>
+CURRENCY_USD_RATE=<redacted>

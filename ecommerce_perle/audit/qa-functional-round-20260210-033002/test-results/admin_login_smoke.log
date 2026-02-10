@@ -1,0 +1,7 @@
+20 objects imported automatically (use -v 2 for details).
+
+admin_login_page_status= 200
+admin_invalid_login_status= 200
+admin_invalid_contains_error= False
+admin_valid_login_status= 302
+admin_valid_redirect= /admin/

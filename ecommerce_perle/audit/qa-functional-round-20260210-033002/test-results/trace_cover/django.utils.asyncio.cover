@@ -1,0 +1,39 @@
+    1: import os
+    1: from asyncio import get_running_loop
+    1: from functools import wraps
+       
+    1: from django.core.exceptions import SynchronousOnlyOperation
+       
+       
+    1: def async_unsafe(message):
+           """
+           Decorator to mark functions as async-unsafe. Someone trying to access
+           the function while in an async context will get an error message.
+           """
+       
+   12:     def decorator(func):
+   24:         @wraps(func)
+   24:         def inner(*args, **kwargs):
+                   # Detect a running event loop in this thread.
+ 2831:             try:
+ 2831:                 get_running_loop()
+ 2831:             except RuntimeError:
+ 2831:                 pass
+                   else:
+                       if not os.environ.get("DJANGO_ALLOW_ASYNC_UNSAFE"):
+                           raise SynchronousOnlyOperation(message)
+                   # Pass onward.
+ 2831:             return func(*args, **kwargs)
+       
+   12:         return inner
+       
+           # If the message is actually a function, then be a no-arguments decorator.
+   12:     if callable(message):
+   12:         func = message
+   12:         message = (
+   12:             "You cannot call this from an async context - use a thread or "
+                   "sync_to_async."
+               )
+   12:         return decorator(func)
+           else:
+               return decorator

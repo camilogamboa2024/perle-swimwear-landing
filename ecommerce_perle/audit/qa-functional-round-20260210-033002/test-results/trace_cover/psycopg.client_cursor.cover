@@ -1,0 +1,93 @@
+    1: """
+       psycopg client-side binding cursors
+       """
+       
+       # Copyright (C) 2022 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from typing import TYPE_CHECKING
+    1: from functools import partial
+       
+    1: from . import adapt
+    1: from . import errors as e
+    1: from . import pq
+    1: from .abc import ConnectionType, Params, Query
+    1: from .rows import Row
+    1: from .cursor import Cursor
+    1: from ._queries import PostgresClientQuery, PostgresQuery
+    1: from ._preparing import Prepare
+    1: from ._cursor_base import BaseCursor
+    1: from .cursor_async import AsyncCursor
+       
+    1: if TYPE_CHECKING:
+           from typing import Any  # noqa: F401
+       
+           from .connection import Connection  # noqa: F401
+           from .connection_async import AsyncConnection  # noqa: F401
+       
+    1: TEXT = pq.Format.TEXT
+    1: BINARY = pq.Format.BINARY
+       
+       
+    2: class ClientCursorMixin(BaseCursor[ConnectionType, Row]):
+    1:     _query_cls = PostgresClientQuery
+       
+    1:     def mogrify(self, query: Query, params: Params | None = None) -> str:
+               """
+               Return the query and parameters merged.
+       
+               Parameters are adapted and merged to the query the same way that
+               `!execute()` would do.
+       
+               """
+               self._tx = adapt.Transformer(self)
+               pgq = self._convert_query(query, params)
+               return pgq.query.decode(self._tx.encoding)
+       
+    1:     def _execute_send(
+               self,
+               query: PostgresQuery,
+               *,
+    1:         force_extended: bool = False,
+    1:         binary: bool | None = None,
+           ) -> None:
+               if binary is None:
+                   fmt = self.format
+               else:
+                   fmt = BINARY if binary else TEXT
+       
+               if fmt == BINARY:
+                   raise e.NotSupportedError(
+                       "client-side cursors don't support binary results"
+                   )
+       
+               self._query = query
+       
+               if self._conn._pipeline:
+                   # In pipeline mode always use PQsendQueryParams - see #314
+                   # Multiple statements in the same query are not allowed anyway.
+                   self._conn._pipeline.command_queue.append(
+                       partial(self._pgconn.send_query_params, query.query, None)
+                   )
+               elif force_extended:
+                   self._pgconn.send_query_params(query.query, None)
+               else:
+                   # If we can, let's use simple query protocol,
+                   # as it can execute more than one statement in a single query.
+                   self._pgconn.send_query(query.query)
+       
+    1:     def _get_prepared(
+    1:         self, pgq: PostgresQuery, prepare: bool | None = None
+           ) -> tuple[Prepare, bytes]:
+               return (Prepare.NO, b"")
+       
+       
+    2: class ClientCursor(ClientCursorMixin["Connection[Any]", Row], Cursor[Row]):
+    1:     __module__ = "psycopg"
+       
+       
+    3: class AsyncClientCursor(
+    1:     ClientCursorMixin["AsyncConnection[Any]", Row], AsyncCursor[Row]
+       ):
+    1:     __module__ = "psycopg"

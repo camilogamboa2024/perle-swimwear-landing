@@ -1,0 +1,8 @@
+coverage=MISSING
+bandit=MISSING
+semgrep=MISSING
+pip-audit=MISSING
+safety=MISSING
+gitleaks=MISSING
+trufflehog=MISSING
+detect-secrets=MISSING

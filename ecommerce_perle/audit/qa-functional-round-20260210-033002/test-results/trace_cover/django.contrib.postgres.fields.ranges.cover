@@ -1,0 +1,383 @@
+    1: import datetime
+    1: import json
+       
+    1: from django.contrib.postgres import forms, lookups
+    1: from django.db import models
+    1: from django.db.backends.postgresql.psycopg_any import (
+           DateRange,
+           DateTimeTZRange,
+           NumericRange,
+           Range,
+       )
+    1: from django.db.models.functions import Cast
+    1: from django.db.models.lookups import PostgresOperatorLookup
+       
+    1: from .utils import AttributeSetter
+       
+    1: __all__ = [
+           "RangeField",
+           "IntegerRangeField",
+           "BigIntegerRangeField",
+           "DecimalRangeField",
+           "DateTimeRangeField",
+           "DateRangeField",
+           "RangeBoundary",
+           "RangeOperators",
+       ]
+       
+       
+    2: class RangeBoundary(models.Expression):
+    1:     """A class that represents range boundaries."""
+       
+    1:     def __init__(self, inclusive_lower=True, inclusive_upper=False):
+               self.lower = "[" if inclusive_lower else "("
+               self.upper = "]" if inclusive_upper else ")"
+       
+    1:     def as_sql(self, compiler, connection):
+               return "'%s%s'" % (self.lower, self.upper), []
+       
+       
+    2: class RangeOperators:
+           # https://www.postgresql.org/docs/current/functions-range.html#RANGE-OPERATORS-TABLE
+    1:     EQUAL = "="
+    1:     NOT_EQUAL = "<>"
+    1:     CONTAINS = "@>"
+    1:     CONTAINED_BY = "<@"
+    1:     OVERLAPS = "&&"
+    1:     FULLY_LT = "<<"
+    1:     FULLY_GT = ">>"
+    1:     NOT_LT = "&>"
+    1:     NOT_GT = "&<"
+    1:     ADJACENT_TO = "-|-"
+       
+       
+    2: class RangeField(models.Field):
+    1:     empty_strings_allowed = False
+       
+    1:     def __init__(self, *args, **kwargs):
+               if "default_bounds" in kwargs:
+                   raise TypeError(
+                       f"Cannot use 'default_bounds' with {self.__class__.__name__}."
+                   )
+               # Initializing base_field here ensures that its model matches the model
+               # for self.
+               if hasattr(self, "base_field"):
+                   self.base_field = self.base_field()
+               super().__init__(*args, **kwargs)
+       
+    2:     @property
+    2:     def model(self):
+               try:
+                   return self.__dict__["model"]
+               except KeyError:
+                   raise AttributeError(
+                       "'%s' object has no attribute 'model'" % self.__class__.__name__
+                   )
+       
+    2:     @model.setter
+    2:     def model(self, model):
+               self.__dict__["model"] = model
+               self.base_field.model = model
+       
+    2:     @classmethod
+    2:     def _choices_is_value(cls, value):
+               return isinstance(value, (list, tuple)) or super()._choices_is_value(value)
+       
+    1:     def get_placeholder(self, value, compiler, connection):
+               return "%s::{}".format(self.db_type(connection))
+       
+    1:     def get_prep_value(self, value):
+               if value is None:
+                   return None
+               elif isinstance(value, Range):
+                   return value
+               elif isinstance(value, (list, tuple)):
+                   return self.range_type(value[0], value[1])
+               return value
+       
+    1:     def to_python(self, value):
+               if isinstance(value, str):
+                   # Assume we're deserializing
+                   vals = json.loads(value)
+                   for end in ("lower", "upper"):
+                       if end in vals:
+                           vals[end] = self.base_field.to_python(vals[end])
+                   value = self.range_type(**vals)
+               elif isinstance(value, (list, tuple)):
+                   value = self.range_type(value[0], value[1])
+               return value
+       
+    1:     def set_attributes_from_name(self, name):
+               super().set_attributes_from_name(name)
+               self.base_field.set_attributes_from_name(name)
+       
+    1:     def value_to_string(self, obj):
+               value = self.value_from_object(obj)
+               if value is None:
+                   return None
+               if value.isempty:
+                   return json.dumps({"empty": True})
+               base_field = self.base_field
+               result = {"bounds": value._bounds}
+               for end in ("lower", "upper"):
+                   val = getattr(value, end)
+                   if val is None:
+                       result[end] = None
+                   else:
+                       obj = AttributeSetter(base_field.attname, val)
+                       result[end] = base_field.value_to_string(obj)
+               return json.dumps(result)
+       
+    1:     def formfield(self, **kwargs):
+               kwargs.setdefault("form_class", self.form_field)
+               return super().formfield(**kwargs)
+       
+       
+    1: CANONICAL_RANGE_BOUNDS = "[)"
+       
+       
+    2: class ContinuousRangeField(RangeField):
+    1:     """
+           Continuous range field. It allows specifying default bounds for list and
+           tuple inputs.
+           """
+       
+    1:     def __init__(self, *args, default_bounds=CANONICAL_RANGE_BOUNDS, **kwargs):
+               if default_bounds not in ("[)", "(]", "()", "[]"):
+                   raise ValueError("default_bounds must be one of '[)', '(]', '()', or '[]'.")
+               self.default_bounds = default_bounds
+               super().__init__(*args, **kwargs)
+       
+    1:     def get_prep_value(self, value):
+               if isinstance(value, (list, tuple)):
+                   return self.range_type(value[0], value[1], self.default_bounds)
+               return super().get_prep_value(value)
+       
+    1:     def formfield(self, **kwargs):
+               kwargs.setdefault("default_bounds", self.default_bounds)
+               return super().formfield(**kwargs)
+       
+    1:     def deconstruct(self):
+               name, path, args, kwargs = super().deconstruct()
+               if self.default_bounds and self.default_bounds != CANONICAL_RANGE_BOUNDS:
+                   kwargs["default_bounds"] = self.default_bounds
+               return name, path, args, kwargs
+       
+       
+    2: class IntegerRangeField(RangeField):
+    1:     base_field = models.IntegerField
+    1:     range_type = NumericRange
+    1:     form_field = forms.IntegerRangeField
+       
+    1:     def db_type(self, connection):
+               return "int4range"
+       
+       
+    2: class BigIntegerRangeField(RangeField):
+    1:     base_field = models.BigIntegerField
+    1:     range_type = NumericRange
+    1:     form_field = forms.IntegerRangeField
+       
+    1:     def db_type(self, connection):
+               return "int8range"
+       
+       
+    2: class DecimalRangeField(ContinuousRangeField):
+    1:     base_field = models.DecimalField
+    1:     range_type = NumericRange
+    1:     form_field = forms.DecimalRangeField
+       
+    1:     def db_type(self, connection):
+               return "numrange"
+       
+       
+    2: class DateTimeRangeField(ContinuousRangeField):
+    1:     base_field = models.DateTimeField
+    1:     range_type = DateTimeTZRange
+    1:     form_field = forms.DateTimeRangeField
+       
+    1:     def db_type(self, connection):
+               return "tstzrange"
+       
+       
+    2: class DateRangeField(RangeField):
+    1:     base_field = models.DateField
+    1:     range_type = DateRange
+    1:     form_field = forms.DateRangeField
+       
+    1:     def db_type(self, connection):
+               return "daterange"
+       
+       
+    2: class RangeContains(lookups.DataContains):
+    1:     def get_prep_lookup(self):
+               if not isinstance(self.rhs, (list, tuple, Range)):
+                   return Cast(self.rhs, self.lhs.field.base_field)
+               return super().get_prep_lookup()
+       
+       
+    1: RangeField.register_lookup(RangeContains)
+    1: RangeField.register_lookup(lookups.ContainedBy)
+    1: RangeField.register_lookup(lookups.Overlap)
+       
+       
+    2: class DateTimeRangeContains(PostgresOperatorLookup):
+    1:     """
+           Lookup for Date/DateTimeRange containment to cast the rhs to the correct
+           type.
+           """
+       
+    1:     lookup_name = "contains"
+    1:     postgres_operator = RangeOperators.CONTAINS
+       
+    1:     def process_rhs(self, compiler, connection):
+               # Transform rhs value for db lookup.
+               if isinstance(self.rhs, datetime.date):
+                   value = models.Value(self.rhs)
+                   self.rhs = value.resolve_expression(compiler.query)
+               return super().process_rhs(compiler, connection)
+       
+    1:     def as_postgresql(self, compiler, connection):
+               sql, params = super().as_postgresql(compiler, connection)
+               # Cast the rhs if needed.
+               cast_sql = ""
+               if (
+                   isinstance(self.rhs, models.Expression)
+                   and self.rhs._output_field_or_none
+                   and
+                   # Skip cast if rhs has a matching range type.
+                   not isinstance(
+                       self.rhs._output_field_or_none, self.lhs.output_field.__class__
+                   )
+               ):
+                   cast_internal_type = self.lhs.output_field.base_field.get_internal_type()
+                   cast_sql = "::{}".format(connection.data_types.get(cast_internal_type))
+               return "%s%s" % (sql, cast_sql), params
+       
+       
+    1: DateRangeField.register_lookup(DateTimeRangeContains)
+    1: DateTimeRangeField.register_lookup(DateTimeRangeContains)
+       
+       
+    2: class RangeContainedBy(PostgresOperatorLookup):
+    1:     lookup_name = "contained_by"
+    1:     type_mapping = {
+    1:         "smallint": "int4range",
+    1:         "integer": "int4range",
+    1:         "bigint": "int8range",
+    1:         "double precision": "numrange",
+    1:         "numeric": "numrange",
+    1:         "date": "daterange",
+    1:         "timestamp with time zone": "tstzrange",
+           }
+    1:     postgres_operator = RangeOperators.CONTAINED_BY
+       
+    1:     def process_rhs(self, compiler, connection):
+               rhs, rhs_params = super().process_rhs(compiler, connection)
+               # Ignore precision for DecimalFields.
+               db_type = self.lhs.output_field.cast_db_type(connection).split("(")[0]
+               cast_type = self.type_mapping[db_type]
+               return "%s::%s" % (rhs, cast_type), rhs_params
+       
+    1:     def process_lhs(self, compiler, connection):
+               lhs, lhs_params = super().process_lhs(compiler, connection)
+               if isinstance(self.lhs.output_field, models.FloatField):
+                   lhs = "%s::numeric" % lhs
+               elif isinstance(self.lhs.output_field, models.SmallIntegerField):
+                   lhs = "%s::integer" % lhs
+               return lhs, lhs_params
+       
+    1:     def get_prep_lookup(self):
+               return RangeField().get_prep_value(self.rhs)
+       
+       
+    1: models.DateField.register_lookup(RangeContainedBy)
+    1: models.DateTimeField.register_lookup(RangeContainedBy)
+    1: models.IntegerField.register_lookup(RangeContainedBy)
+    1: models.FloatField.register_lookup(RangeContainedBy)
+    1: models.DecimalField.register_lookup(RangeContainedBy)
+       
+       
+    3: @RangeField.register_lookup
+    2: class FullyLessThan(PostgresOperatorLookup):
+    1:     lookup_name = "fully_lt"
+    1:     postgres_operator = RangeOperators.FULLY_LT
+       
+       
+    3: @RangeField.register_lookup
+    2: class FullGreaterThan(PostgresOperatorLookup):
+    1:     lookup_name = "fully_gt"
+    1:     postgres_operator = RangeOperators.FULLY_GT
+       
+       
+    3: @RangeField.register_lookup
+    2: class NotLessThan(PostgresOperatorLookup):
+    1:     lookup_name = "not_lt"
+    1:     postgres_operator = RangeOperators.NOT_LT
+       
+       
+    3: @RangeField.register_lookup
+    2: class NotGreaterThan(PostgresOperatorLookup):
+    1:     lookup_name = "not_gt"
+    1:     postgres_operator = RangeOperators.NOT_GT
+       
+       
+    3: @RangeField.register_lookup
+    2: class AdjacentToLookup(PostgresOperatorLookup):
+    1:     lookup_name = "adjacent_to"
+    1:     postgres_operator = RangeOperators.ADJACENT_TO
+       
+       
+    3: @RangeField.register_lookup
+    2: class RangeStartsWith(models.Transform):
+    1:     lookup_name = "startswith"
+    1:     function = "lower"
+       
+    2:     @property
+    2:     def output_field(self):
+               return self.lhs.output_field.base_field
+       
+       
+    3: @RangeField.register_lookup
+    2: class RangeEndsWith(models.Transform):
+    1:     lookup_name = "endswith"
+    1:     function = "upper"
+       
+    2:     @property
+    2:     def output_field(self):
+               return self.lhs.output_field.base_field
+       
+       
+    3: @RangeField.register_lookup
+    2: class IsEmpty(models.Transform):
+    1:     lookup_name = "isempty"
+    1:     function = "isempty"
+    1:     output_field = models.BooleanField()
+       
+       
+    3: @RangeField.register_lookup
+    2: class LowerInclusive(models.Transform):
+    1:     lookup_name = "lower_inc"
+    1:     function = "LOWER_INC"
+    1:     output_field = models.BooleanField()
+       
+       
+    3: @RangeField.register_lookup
+    2: class LowerInfinite(models.Transform):
+    1:     lookup_name = "lower_inf"
+    1:     function = "LOWER_INF"
+    1:     output_field = models.BooleanField()
+       
+       
+    3: @RangeField.register_lookup
+    2: class UpperInclusive(models.Transform):
+    1:     lookup_name = "upper_inc"
+    1:     function = "UPPER_INC"
+    1:     output_field = models.BooleanField()
+       
+       
+    3: @RangeField.register_lookup
+    2: class UpperInfinite(models.Transform):
+    1:     lookup_name = "upper_inf"
+    1:     function = "UPPER_INF"
+    1:     output_field = models.BooleanField()

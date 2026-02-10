@@ -1,0 +1,129 @@
+    1: """
+       Compatibility objects with DBAPI 2.0
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import datetime as dt
+    1: from typing import Any
+    1: from collections.abc import Sequence
+       
+    1: from . import _oids
+    1: from .abc import AdaptContext, Buffer
+    1: from .types.string import BytesBinaryDumper, BytesDumper
+       
+    1: EPOCH = dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc)
+       
+       
+    2: class DBAPITypeObject:
+    1:     def __init__(self, name: str, oids: Sequence[int]):
+    5:         self.name = name
+    5:         self.values = tuple(oids)
+       
+    1:     def __repr__(self) -> str:
+               return f"psycopg.{self.name}"
+       
+    1:     def __eq__(self, other: Any) -> bool:
+               if isinstance(other, int):
+                   return other in self.values
+               else:
+                   return NotImplemented
+       
+    1:     def __ne__(self, other: Any) -> bool:
+               if isinstance(other, int):
+                   return other not in self.values
+               else:
+                   return NotImplemented
+       
+       
+    1: BINARY = DBAPITypeObject("BINARY", (_oids.BYTEA_OID,))
+    2: DATETIME = DBAPITypeObject(
+    1:     "DATETIME",
+    1:     (
+    1:         _oids.TIMESTAMP_OID,
+    1:         _oids.TIMESTAMPTZ_OID,
+    1:         _oids.DATE_OID,
+    1:         _oids.TIME_OID,
+    1:         _oids.TIMETZ_OID,
+    1:         _oids.INTERVAL_OID,
+           ),
+       )
+    2: NUMBER = DBAPITypeObject(
+    1:     "NUMBER",
+    1:     (
+    1:         _oids.INT2_OID,
+    1:         _oids.INT4_OID,
+    1:         _oids.INT8_OID,
+    1:         _oids.FLOAT4_OID,
+    1:         _oids.FLOAT8_OID,
+    1:         _oids.NUMERIC_OID,
+           ),
+       )
+    1: ROWID = DBAPITypeObject("ROWID", (_oids.OID_OID,))
+    2: STRING = DBAPITypeObject(
+    1:     "STRING", (_oids.TEXT_OID, _oids.VARCHAR_OID, _oids.BPCHAR_OID)
+       )
+       
+       
+    2: class Binary:
+    1:     def __init__(self, obj: Any):
+               self.obj = obj
+       
+    1:     def __repr__(self) -> str:
+               if len(sobj := repr(self.obj)) > 40:
+                   sobj = f"{sobj[:35]} ... ({len(sobj)} byteschars)"
+               return f"{self.__class__.__name__}({sobj})"
+       
+       
+    2: class BinaryBinaryDumper(BytesBinaryDumper):
+    1:     def dump(self, obj: Buffer | Binary) -> Buffer | None:
+               if isinstance(obj, Binary):
+                   return super().dump(obj.obj)
+               else:
+                   return super().dump(obj)
+       
+       
+    2: class BinaryTextDumper(BytesDumper):
+    1:     def dump(self, obj: Buffer | Binary) -> Buffer | None:
+               if isinstance(obj, Binary):
+                   return super().dump(obj.obj)
+               else:
+                   return super().dump(obj)
+       
+       
+    1: def Date(year: int, month: int, day: int) -> dt.date:
+           return dt.date(year, month, day)
+       
+       
+    1: def DateFromTicks(ticks: float) -> dt.date:
+           return TimestampFromTicks(ticks).date()
+       
+       
+    1: def Time(hour: int, minute: int, second: int) -> dt.time:
+           return dt.time(hour, minute, second)
+       
+       
+    1: def TimeFromTicks(ticks: float) -> dt.time:
+           return TimestampFromTicks(ticks).time()
+       
+       
+    1: def Timestamp(
+           year: int, month: int, day: int, hour: int, minute: int, second: int
+       ) -> dt.datetime:
+           return dt.datetime(year, month, day, hour, minute, second)
+       
+       
+    1: def TimestampFromTicks(ticks: float) -> dt.datetime:
+           return EPOCH + dt.timedelta(seconds=ticks)
+       
+       
+    1: def register_dbapi20_adapters(context: AdaptContext) -> None:
+    1:     adapters = context.adapters
+    1:     adapters.register_dumper(Binary, BinaryTextDumper)
+    1:     adapters.register_dumper(Binary, BinaryBinaryDumper)
+       
+           # Make them also the default dumpers when dumping by bytea oid
+    1:     adapters.register_dumper(None, BinaryTextDumper)
+    1:     adapters.register_dumper(None, BinaryBinaryDumper)

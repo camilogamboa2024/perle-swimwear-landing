@@ -1,0 +1,2 @@
+    1: from .migration import Migration, swappable_dependency  # NOQA
+    1: from .operations import *  # NOQA

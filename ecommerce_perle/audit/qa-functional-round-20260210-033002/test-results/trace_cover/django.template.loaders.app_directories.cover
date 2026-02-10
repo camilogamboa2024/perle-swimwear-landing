@@ -1,0 +1,13 @@
+    1: """
+       Wrapper for loading templates from "templates" directories in INSTALLED_APPS
+       packages.
+       """
+       
+    1: from django.template.utils import get_app_template_dirs
+       
+    1: from .filesystem import Loader as FilesystemLoader
+       
+       
+    2: class Loader(FilesystemLoader):
+    1:     def get_dirs(self):
+               return get_app_template_dirs("templates")

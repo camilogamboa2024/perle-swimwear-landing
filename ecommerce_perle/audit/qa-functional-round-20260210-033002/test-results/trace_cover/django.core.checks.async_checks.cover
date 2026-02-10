@@ -1,0 +1,16 @@
+    1: import os
+       
+    1: from . import Error, Tags, register
+       
+    2: E001 = Error(
+    1:     "You should not set the DJANGO_ALLOW_ASYNC_UNSAFE environment variable in "
+           "deployment. This disables async safety protection.",
+    1:     id="async.E001",
+       )
+       
+       
+    2: @register(Tags.async_support, deploy=True)
+    2: def check_async_unsafe(app_configs, **kwargs):
+           if os.environ.get("DJANGO_ALLOW_ASYNC_UNSAFE"):
+               return [E001]
+           return []

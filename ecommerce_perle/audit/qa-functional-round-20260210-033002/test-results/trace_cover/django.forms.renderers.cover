@@ -1,0 +1,114 @@
+    1: import functools
+    1: import warnings
+    1: from pathlib import Path
+       
+    1: from django.conf import settings
+    1: from django.template.backends.django import DjangoTemplates
+    1: from django.template.loader import get_template
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+    1: from django.utils.functional import cached_property
+    1: from django.utils.module_loading import import_string
+       
+       
+    2: @functools.lru_cache
+    2: def get_default_renderer():
+           renderer_class = import_string(settings.FORM_RENDERER)
+           return renderer_class()
+       
+       
+    2: class BaseRenderer:
+    1:     form_template_name = "django/forms/div.html"
+    1:     formset_template_name = "django/forms/formsets/div.html"
+    1:     field_template_name = "django/forms/field.html"
+       
+    1:     bound_field_class = None
+       
+    1:     def get_template(self, template_name):
+               raise NotImplementedError("subclasses must implement get_template()")
+       
+    1:     def render(self, template_name, context, request=None):
+               template = self.get_template(template_name)
+               return template.render(context, request=request).strip()
+       
+       
+    2: class EngineMixin:
+    1:     def get_template(self, template_name):
+               return self.engine.get_template(template_name)
+       
+    2:     @cached_property
+    2:     def engine(self):
+               return self.backend(
+                   {
+                       "APP_DIRS": True,
+                       "DIRS": [Path(__file__).parent / self.backend.app_dirname],
+                       "NAME": "djangoforms",
+                       "OPTIONS": {},
+                   }
+               )
+       
+       
+    2: class DjangoTemplates(EngineMixin, BaseRenderer):
+    1:     """
+           Load Django templates from the built-in widget templates in
+           django/forms/templates and from apps' 'templates' directory.
+           """
+       
+    1:     backend = DjangoTemplates
+       
+       
+    2: class Jinja2(EngineMixin, BaseRenderer):
+    1:     """
+           Load Jinja2 templates from the built-in widget templates in
+           django/forms/jinja2 and from apps' 'jinja2' directory.
+           """
+       
+    2:     @cached_property
+    2:     def backend(self):
+               from django.template.backends.jinja2 import Jinja2
+       
+               return Jinja2
+       
+       
+       # RemovedInDjango60Warning.
+    2: class DjangoDivFormRenderer(DjangoTemplates):
+    1:     """
+           Load Django templates from django/forms/templates and from apps'
+           'templates' directory and use the 'div.html' template to render forms and
+           formsets.
+           """
+       
+    1:     def __init__(self, *args, **kwargs):
+               warnings.warn(
+                   "The DjangoDivFormRenderer transitional form renderer is deprecated. Use "
+                   "DjangoTemplates instead.",
+                   RemovedInDjango60Warning,
+                   stacklevel=2,
+               )
+               super().__init__(*args, **kwargs)
+       
+       
+       # RemovedInDjango60Warning.
+    2: class Jinja2DivFormRenderer(Jinja2):
+    1:     """
+           Load Jinja2 templates from the built-in widget templates in
+           django/forms/jinja2 and from apps' 'jinja2' directory.
+           """
+       
+    1:     def __init__(self, *args, **kwargs):
+               warnings.warn(
+                   "The Jinja2DivFormRenderer transitional form renderer is deprecated. Use "
+                   "Jinja2 instead.",
+                   RemovedInDjango60Warning,
+                   stacklevel=2,
+               )
+               super().__init__(*args, **kwargs)
+       
+       
+    2: class TemplatesSetting(BaseRenderer):
+    1:     """
+           Load templates using template.loader.get_template() which is configured
+           based on settings.TEMPLATES.
+           """
+       
+    1:     def get_template(self, template_name):
+               return get_template(template_name)

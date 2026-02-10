@@ -1,0 +1,2 @@
+Python 3.11.2
+pip 23.0.1 from /home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/.venv/lib/python3.11/site-packages/pip (python 3.11)

@@ -1,0 +1,7 @@
+invalid_status 200
+invalid_has_form True
+valid_status 302
+valid_location /admin/
+dest_status 200
+contains_admin False
+exit_code=0

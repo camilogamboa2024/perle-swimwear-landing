@@ -1,0 +1,264 @@
+    1: """
+       Handled exceptions raised by REST framework.
+       
+       In addition, Django's built in 403 and 404 exceptions are handled.
+       (`django.http.Http404` and `django.core.exceptions.PermissionDenied`)
+       """
+    1: import math
+       
+    1: from django.http import JsonResponse
+    1: from django.utils.encoding import force_str
+    1: from django.utils.translation import gettext_lazy as _
+    1: from django.utils.translation import ngettext
+       
+    1: from rest_framework import status
+    1: from rest_framework.utils.serializer_helpers import ReturnDict, ReturnList
+       
+       
+    1: def _get_error_details(data, default_code=None):
+           """
+           Descend into a nested data structure, forcing any
+           lazy translation strings or strings into `ErrorDetail`.
+           """
+    4:     if isinstance(data, (list, tuple)):
+               ret = [
+                   _get_error_details(item, default_code) for item in data
+               ]
+               if isinstance(data, ReturnList):
+                   return ReturnList(ret, serializer=data.serializer)
+               return ret
+    4:     elif isinstance(data, dict):
+               ret = {
+                   key: _get_error_details(value, default_code)
+                   for key, value in data.items()
+               }
+               if isinstance(data, ReturnDict):
+                   return ReturnDict(ret, serializer=data.serializer)
+               return ret
+       
+    4:     text = force_str(data)
+    4:     code = getattr(data, 'code', default_code)
+    4:     return ErrorDetail(text, code)
+       
+       
+    1: def _get_codes(detail):
+           if isinstance(detail, list):
+               return [_get_codes(item) for item in detail]
+           elif isinstance(detail, dict):
+               return {key: _get_codes(value) for key, value in detail.items()}
+           return detail.code
+       
+       
+    1: def _get_full_details(detail):
+           if isinstance(detail, list):
+               return [_get_full_details(item) for item in detail]
+           elif isinstance(detail, dict):
+               return {key: _get_full_details(value) for key, value in detail.items()}
+           return {
+               'message': detail,
+               'code': detail.code
+           }
+       
+       
+    2: class ErrorDetail(str):
+    1:     """
+           A string-like object that can additionally have a code.
+           """
+    1:     code = None
+       
+    1:     def __new__(cls, string, code=None):
+    4:         self = super().__new__(cls, string)
+    4:         self.code = code
+    4:         return self
+       
+    1:     def __eq__(self, other):
+               result = super().__eq__(other)
+               if result is NotImplemented:
+                   return NotImplemented
+               try:
+                   return result and self.code == other.code
+               except AttributeError:
+                   return result
+       
+    1:     def __ne__(self, other):
+               result = self.__eq__(other)
+               if result is NotImplemented:
+                   return NotImplemented
+               return not result
+       
+    1:     def __repr__(self):
+               return 'ErrorDetail(string=%r, code=%r)' % (
+                   str(self),
+                   self.code,
+               )
+       
+    1:     def __hash__(self):
+               return hash(str(self))
+       
+       
+    2: class APIException(Exception):
+    1:     """
+           Base class for REST framework exceptions.
+           Subclasses should provide `.status_code` and `.default_detail` properties.
+           """
+    1:     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    1:     default_detail = _('A server error occurred.')
+    1:     default_code = 'error'
+       
+    1:     def __init__(self, detail=None, code=None):
+    4:         if detail is None:
+                   detail = self.default_detail
+    4:         if code is None:
+    4:             code = self.default_code
+       
+    4:         self.detail = _get_error_details(detail, code)
+       
+    1:     def __str__(self):
+               return str(self.detail)
+       
+    1:     def get_codes(self):
+               """
+               Return only the code part of the error details.
+       
+               Eg. {"name": ["required"]}
+               """
+               return _get_codes(self.detail)
+       
+    1:     def get_full_details(self):
+               """
+               Return both the message & code parts of the error details.
+       
+               Eg. {"name": [{"message": "This field is required.", "code": "required"}]}
+               """
+               return _get_full_details(self.detail)
+       
+       
+       # The recommended style for using `ValidationError` is to keep it namespaced
+       # under `serializers`, in order to minimize potential confusion with Django's
+       # built in `ValidationError`. For example:
+       #
+       # from rest_framework import serializers
+       # raise serializers.ValidationError('Value was invalid')
+       
+    2: class ValidationError(APIException):
+    1:     status_code = status.HTTP_400_BAD_REQUEST
+    1:     default_detail = _('Invalid input.')
+    1:     default_code = 'invalid'
+       
+    1:     def __init__(self, detail=None, code=None):
+               if detail is None:
+                   detail = self.default_detail
+               if code is None:
+                   code = self.default_code
+       
+               # For validation failures, we may collect many errors together,
+               # so the details should always be coerced to a list if not already.
+               if isinstance(detail, tuple):
+                   detail = list(detail)
+               elif not isinstance(detail, dict) and not isinstance(detail, list):
+                   detail = [detail]
+       
+               self.detail = _get_error_details(detail, code)
+       
+       
+    2: class ParseError(APIException):
+    1:     status_code = status.HTTP_400_BAD_REQUEST
+    1:     default_detail = _('Malformed request.')
+    1:     default_code = 'parse_error'
+       
+       
+    2: class AuthenticationFailed(APIException):
+    1:     status_code = status.HTTP_401_UNAUTHORIZED
+    1:     default_detail = _('Incorrect authentication credentials.')
+    1:     default_code = 'authentication_failed'
+       
+       
+    2: class NotAuthenticated(APIException):
+    1:     status_code = status.HTTP_401_UNAUTHORIZED
+    1:     default_detail = _('Authentication credentials were not provided.')
+    1:     default_code = 'not_authenticated'
+       
+       
+    2: class PermissionDenied(APIException):
+    1:     status_code = status.HTTP_403_FORBIDDEN
+    1:     default_detail = _('You do not have permission to perform this action.')
+    1:     default_code = 'permission_denied'
+       
+       
+    2: class NotFound(APIException):
+    1:     status_code = status.HTTP_404_NOT_FOUND
+    1:     default_detail = _('Not found.')
+    1:     default_code = 'not_found'
+       
+       
+    2: class MethodNotAllowed(APIException):
+    1:     status_code = status.HTTP_405_METHOD_NOT_ALLOWED
+    1:     default_detail = _('Method "{method}" not allowed.')
+    1:     default_code = 'method_not_allowed'
+       
+    1:     def __init__(self, method, detail=None, code=None):
+               if detail is None:
+                   detail = force_str(self.default_detail).format(method=method)
+               super().__init__(detail, code)
+       
+       
+    2: class NotAcceptable(APIException):
+    1:     status_code = status.HTTP_406_NOT_ACCEPTABLE
+    1:     default_detail = _('Could not satisfy the request Accept header.')
+    1:     default_code = 'not_acceptable'
+       
+    1:     def __init__(self, detail=None, code=None, available_renderers=None):
+               self.available_renderers = available_renderers
+               super().__init__(detail, code)
+       
+       
+    2: class UnsupportedMediaType(APIException):
+    1:     status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+    1:     default_detail = _('Unsupported media type "{media_type}" in request.')
+    1:     default_code = 'unsupported_media_type'
+       
+    1:     def __init__(self, media_type, detail=None, code=None):
+               if detail is None:
+                   detail = force_str(self.default_detail).format(media_type=media_type)
+               super().__init__(detail, code)
+       
+       
+    2: class Throttled(APIException):
+    1:     status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    1:     default_detail = _('Request was throttled.')
+    1:     extra_detail_singular = _('Expected available in {wait} second.')
+    1:     extra_detail_plural = _('Expected available in {wait} seconds.')
+    1:     default_code = 'throttled'
+       
+    1:     def __init__(self, wait=None, detail=None, code=None):
+               if detail is None:
+                   detail = force_str(self.default_detail)
+               if wait is not None:
+                   wait = math.ceil(wait)
+                   detail = ' '.join((
+                       detail,
+                       force_str(ngettext(self.extra_detail_singular.format(wait=wait),
+                                          self.extra_detail_plural.format(wait=wait),
+                                          wait))))
+               self.wait = wait
+               super().__init__(detail, code)
+       
+       
+    1: def server_error(request, *args, **kwargs):
+           """
+           Generic 500 error handler.
+           """
+           data = {
+               'error': 'Server Error (500)'
+           }
+           return JsonResponse(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+       
+       
+    1: def bad_request(request, exception, *args, **kwargs):
+           """
+           Generic 400 error handler.
+           """
+           data = {
+               'error': 'Bad Request (400)'
+           }
+           return JsonResponse(data, status=status.HTTP_400_BAD_REQUEST)

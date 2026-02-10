@@ -1,0 +1,60 @@
+    1: from django.db import DatabaseError
+       
+       
+    2: class AmbiguityError(Exception):
+    1:     """More than one migration matches a name prefix."""
+       
+    1:     pass
+       
+       
+    2: class BadMigrationError(Exception):
+    1:     """There's a bad migration (unreadable/bad format/etc.)."""
+       
+    1:     pass
+       
+       
+    2: class CircularDependencyError(Exception):
+    1:     """There's an impossible-to-resolve circular dependency."""
+       
+    1:     pass
+       
+       
+    2: class InconsistentMigrationHistory(Exception):
+    1:     """An applied migration has some of its dependencies not applied."""
+       
+    1:     pass
+       
+       
+    2: class InvalidBasesError(ValueError):
+    1:     """A model's base classes can't be resolved."""
+       
+    1:     pass
+       
+       
+    2: class IrreversibleError(RuntimeError):
+    1:     """An irreversible migration is about to be reversed."""
+       
+    1:     pass
+       
+       
+    2: class NodeNotFoundError(LookupError):
+    1:     """An attempt on a node is made that is not available in the graph."""
+       
+    1:     def __init__(self, message, node, origin=None):
+               self.message = message
+               self.origin = origin
+               self.node = node
+       
+    1:     def __str__(self):
+               return self.message
+       
+    1:     def __repr__(self):
+               return "NodeNotFoundError(%r)" % (self.node,)
+       
+       
+    2: class MigrationSchemaMissing(DatabaseError):
+    1:     pass
+       
+       
+    2: class InvalidMigrationPlan(ValueError):
+    1:     pass

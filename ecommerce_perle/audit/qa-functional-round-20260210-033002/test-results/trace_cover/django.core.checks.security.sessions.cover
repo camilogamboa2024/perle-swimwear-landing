@@ -1,0 +1,99 @@
+    1: from django.conf import settings
+       
+    1: from .. import Tags, Warning, register
+       
+       
+    1: def add_session_cookie_message(message):
+    6:     return message + (
+    3:         " Using a secure-only session cookie makes it more difficult for "
+               "network traffic sniffers to hijack user sessions."
+           )
+       
+       
+    2: W010 = Warning(
+    2:     add_session_cookie_message(
+    1:         "You have 'django.contrib.sessions' in your INSTALLED_APPS, "
+               "but you have not set SESSION_COOKIE_SECURE to True."
+           ),
+    1:     id="security.W010",
+       )
+       
+    2: W011 = Warning(
+    2:     add_session_cookie_message(
+    1:         "You have 'django.contrib.sessions.middleware.SessionMiddleware' "
+               "in your MIDDLEWARE, but you have not set "
+               "SESSION_COOKIE_SECURE to True."
+           ),
+    1:     id="security.W011",
+       )
+       
+    2: W012 = Warning(
+    1:     add_session_cookie_message("SESSION_COOKIE_SECURE is not set to True."),
+    1:     id="security.W012",
+       )
+       
+       
+    1: def add_httponly_message(message):
+    6:     return message + (
+    3:         " Using an HttpOnly session cookie makes it more difficult for "
+               "cross-site scripting attacks to hijack user sessions."
+           )
+       
+       
+    2: W013 = Warning(
+    2:     add_httponly_message(
+    1:         "You have 'django.contrib.sessions' in your INSTALLED_APPS, "
+               "but you have not set SESSION_COOKIE_HTTPONLY to True.",
+           ),
+    1:     id="security.W013",
+       )
+       
+    2: W014 = Warning(
+    2:     add_httponly_message(
+    1:         "You have 'django.contrib.sessions.middleware.SessionMiddleware' "
+               "in your MIDDLEWARE, but you have not set "
+               "SESSION_COOKIE_HTTPONLY to True."
+           ),
+    1:     id="security.W014",
+       )
+       
+    2: W015 = Warning(
+    1:     add_httponly_message("SESSION_COOKIE_HTTPONLY is not set to True."),
+    1:     id="security.W015",
+       )
+       
+       
+    2: @register(Tags.security, deploy=True)
+    2: def check_session_cookie_secure(app_configs, **kwargs):
+           if settings.SESSION_COOKIE_SECURE is True:
+               return []
+           errors = []
+           if _session_app():
+               errors.append(W010)
+           if _session_middleware():
+               errors.append(W011)
+           if len(errors) > 1:
+               errors = [W012]
+           return errors
+       
+       
+    2: @register(Tags.security, deploy=True)
+    2: def check_session_cookie_httponly(app_configs, **kwargs):
+           if settings.SESSION_COOKIE_HTTPONLY is True:
+               return []
+           errors = []
+           if _session_app():
+               errors.append(W013)
+           if _session_middleware():
+               errors.append(W014)
+           if len(errors) > 1:
+               errors = [W015]
+           return errors
+       
+       
+    1: def _session_middleware():
+           return "django.contrib.sessions.middleware.SessionMiddleware" in settings.MIDDLEWARE
+       
+       
+    1: def _session_app():
+           return "django.contrib.sessions" in settings.INSTALLED_APPS

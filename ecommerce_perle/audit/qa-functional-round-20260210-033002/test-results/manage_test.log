@@ -1,0 +1,11 @@
+Creating test database for alias 'default'...
+/home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/.venv/lib/python3.11/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/staticfiles/
+  mw_instance = middleware(adapted_handler)
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 0.384s
+
+OK
+Destroying test database for alias 'default'...
+Found 19 test(s).
+System check identified no issues (0 silenced).

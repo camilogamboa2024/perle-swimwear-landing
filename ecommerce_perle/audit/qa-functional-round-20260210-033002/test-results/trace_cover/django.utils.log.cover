@@ -1,0 +1,262 @@
+    1: import logging
+    1: import logging.config  # needed when logging_config doesn't start with logging.config
+    1: from copy import copy
+       
+    1: from django.conf import settings
+    1: from django.core import mail
+    1: from django.core.mail import get_connection
+    1: from django.core.management.color import color_style
+    1: from django.utils.module_loading import import_string
+       
+    1: request_logger = logging.getLogger("django.request")
+       
+       # Default logging for Django. This sends an email to the site admins on every
+       # HTTP 500 error. Depending on DEBUG, all other log records are either sent to
+       # the console (DEBUG=True) or discarded (DEBUG=False) by means of the
+       # require_debug_true filter. This configuration is quoted in
+       # docs/ref/logging.txt; please amend it there if edited here.
+    1: DEFAULT_LOGGING = {
+    1:     "version": 1,
+    1:     "disable_existing_loggers": False,
+    1:     "filters": {
+    1:         "require_debug_false": {
+    1:             "()": "django.utils.log.RequireDebugFalse",
+               },
+    1:         "require_debug_true": {
+    1:             "()": "django.utils.log.RequireDebugTrue",
+               },
+           },
+    1:     "formatters": {
+    2:         "django.server": {
+    1:             "()": "django.utils.log.ServerFormatter",
+    1:             "format": "[{server_time}] {message}",
+    1:             "style": "{",
+               }
+           },
+    1:     "handlers": {
+    1:         "console": {
+    1:             "level": "INFO",
+    1:             "filters": ["require_debug_true"],
+    1:             "class": "logging.StreamHandler",
+               },
+    1:         "django.server": {
+    1:             "level": "INFO",
+    1:             "class": "logging.StreamHandler",
+    1:             "formatter": "django.server",
+               },
+    1:         "mail_admins": {
+    1:             "level": "ERROR",
+    1:             "filters": ["require_debug_false"],
+    1:             "class": "django.utils.log.AdminEmailHandler",
+               },
+           },
+    1:     "loggers": {
+    1:         "django": {
+    1:             "handlers": ["console", "mail_admins"],
+    1:             "level": "INFO",
+               },
+    1:         "django.server": {
+    1:             "handlers": ["django.server"],
+    1:             "level": "INFO",
+    1:             "propagate": False,
+               },
+           },
+       }
+       
+       
+    1: def configure_logging(logging_config, logging_settings):
+    1:     if logging_config:
+               # First find the logging configuration function ...
+    1:         logging_config_func = import_string(logging_config)
+       
+    1:         logging.config.dictConfig(DEFAULT_LOGGING)
+       
+               # ... then invoke it with the logging settings
+    1:         if logging_settings:
+                   logging_config_func(logging_settings)
+       
+       
+    2: class AdminEmailHandler(logging.Handler):
+    1:     """An exception log handler that emails log entries to site admins.
+       
+           If the request is passed as the first argument to the log record,
+           request data will be provided in the email report.
+           """
+       
+    1:     def __init__(self, include_html=False, email_backend=None, reporter_class=None):
+    1:         super().__init__()
+    1:         self.include_html = include_html
+    1:         self.email_backend = email_backend
+    2:         self.reporter_class = import_string(
+    1:             reporter_class or settings.DEFAULT_EXCEPTION_REPORTER
+               )
+       
+    1:     def emit(self, record):
+               # Early return when no email will be sent.
+               if (
+                   not settings.ADMINS
+                   # Method not overridden.
+                   and self.send_mail.__func__ is AdminEmailHandler.send_mail
+               ):
+                   return
+               try:
+                   request = record.request
+                   subject = "%s (%s IP): %s" % (
+                       record.levelname,
+                       (
+                           "internal"
+                           if request.META.get("REMOTE_ADDR") in settings.INTERNAL_IPS
+                           else "EXTERNAL"
+                       ),
+                       record.getMessage(),
+                   )
+               except Exception:
+                   subject = "%s: %s" % (record.levelname, record.getMessage())
+                   request = None
+               subject = self.format_subject(subject)
+       
+               # Since we add a nicely formatted traceback on our own, create a copy
+               # of the log record without the exception data.
+               no_exc_record = copy(record)
+               no_exc_record.exc_info = None
+               no_exc_record.exc_text = None
+       
+               if record.exc_info:
+                   exc_info = record.exc_info
+               else:
+                   exc_info = (None, record.getMessage(), None)
+       
+               reporter = self.reporter_class(request, is_email=True, *exc_info)
+               message = "%s\n\n%s" % (
+                   self.format(no_exc_record),
+                   reporter.get_traceback_text(),
+               )
+               html_message = reporter.get_traceback_html() if self.include_html else None
+               self.send_mail(subject, message, fail_silently=True, html_message=html_message)
+       
+    1:     def send_mail(self, subject, message, *args, **kwargs):
+               mail.mail_admins(
+                   subject, message, *args, connection=self.connection(), **kwargs
+               )
+       
+    1:     def connection(self):
+               return get_connection(backend=self.email_backend, fail_silently=True)
+       
+    1:     def format_subject(self, subject):
+               """
+               Escape CR and LF characters.
+               """
+               return subject.replace("\n", "\\n").replace("\r", "\\r")
+       
+       
+    2: class CallbackFilter(logging.Filter):
+    1:     """
+           A logging filter that checks the return value of a given callable (which
+           takes the record-to-be-logged as its only parameter) to decide whether to
+           log a record.
+           """
+       
+    1:     def __init__(self, callback):
+               self.callback = callback
+       
+    1:     def filter(self, record):
+               if self.callback(record):
+                   return 1
+               return 0
+       
+       
+    2: class RequireDebugFalse(logging.Filter):
+    1:     def filter(self, record):
+               return not settings.DEBUG
+       
+       
+    2: class RequireDebugTrue(logging.Filter):
+    1:     def filter(self, record):
+   10:         return settings.DEBUG
+       
+       
+    2: class ServerFormatter(logging.Formatter):
+    1:     default_time_format = "%d/%b/%Y %H:%M:%S"
+       
+    1:     def __init__(self, *args, **kwargs):
+    2:         self.style = color_style()
+    2:         super().__init__(*args, **kwargs)
+       
+    1:     def format(self, record):
+               msg = record.msg
+               status_code = getattr(record, "status_code", None)
+       
+               if status_code:
+                   if 200 <= status_code < 300:
+                       # Put 2XX first, since it should be the common case
+                       msg = self.style.HTTP_SUCCESS(msg)
+                   elif 100 <= status_code < 200:
+                       msg = self.style.HTTP_INFO(msg)
+                   elif status_code == 304:
+                       msg = self.style.HTTP_NOT_MODIFIED(msg)
+                   elif 300 <= status_code < 400:
+                       msg = self.style.HTTP_REDIRECT(msg)
+                   elif status_code == 404:
+                       msg = self.style.HTTP_NOT_FOUND(msg)
+                   elif 400 <= status_code < 500:
+                       msg = self.style.HTTP_BAD_REQUEST(msg)
+                   else:
+                       # Any 5XX, or any other status code
+                       msg = self.style.HTTP_SERVER_ERROR(msg)
+       
+               if self.uses_server_time() and not hasattr(record, "server_time"):
+                   record.server_time = self.formatTime(record, self.datefmt)
+       
+               record.msg = msg
+               return super().format(record)
+       
+    1:     def uses_server_time(self):
+               return self._fmt.find("{server_time}") >= 0
+       
+       
+    1: def log_response(
+           message,
+           *args,
+    1:     response=None,
+    1:     request=None,
+    1:     logger=request_logger,
+    1:     level=None,
+    1:     exception=None,
+       ):
+           """
+           Log errors based on HttpResponse status.
+       
+           Log 5xx responses as errors and 4xx responses as warnings (unless a level
+           is given as a keyword argument). The HttpResponse status_code and the
+           request are passed to the logger's extra parameter.
+           """
+           # Check if the response has already been logged. Multiple requests to log
+           # the same response can be received in some cases, e.g., when the
+           # response is the result of an exception and is logged when the exception
+           # is caught, to record the exception.
+   10:     if getattr(response, "_has_been_logged", False):
+               return
+       
+   10:     if level is None:
+   10:         if response.status_code >= 500:
+                   level = "error"
+   10:         elif response.status_code >= 400:
+   10:             level = "warning"
+               else:
+                   level = "info"
+       
+   70:     escaped_args = tuple(
+   20:         a.encode("unicode_escape").decode("ascii") if isinstance(a, str) else a
+   30:         for a in args
+           )
+       
+   40:     getattr(logger, level)(
+   10:         message,
+   10:         *escaped_args,
+   10:         extra={
+   10:             "status_code": response.status_code,
+   10:             "request": request,
+               },
+   10:         exc_info=exception,
+           )
+   10:     response._has_been_logged = True

@@ -1,0 +1,214 @@
+    1: import functools
+       
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.utils.functional import cached_property
+    1: from django.utils.module_loading import import_string
+       
+    1: from .base import Template
+    1: from .context import Context, _builtin_context_processors
+    1: from .exceptions import TemplateDoesNotExist
+    1: from .library import import_library
+       
+       
+    2: class Engine:
+    1:     default_builtins = [
+               "django.template.defaulttags",
+               "django.template.defaultfilters",
+               "django.template.loader_tags",
+           ]
+       
+    1:     def __init__(
+               self,
+    1:         dirs=None,
+    1:         app_dirs=False,
+    1:         context_processors=None,
+    1:         debug=False,
+    1:         loaders=None,
+    1:         string_if_invalid="",
+    1:         file_charset="utf-8",
+    1:         libraries=None,
+    1:         builtins=None,
+    1:         autoescape=True,
+           ):
+    2:         if dirs is None:
+    1:             dirs = []
+    2:         if context_processors is None:
+    1:             context_processors = []
+    2:         if loaders is None:
+    2:             loaders = ["django.template.loaders.filesystem.Loader"]
+    2:             if app_dirs:
+    1:                 loaders += ["django.template.loaders.app_directories.Loader"]
+    2:             loaders = [("django.template.loaders.cached.Loader", loaders)]
+               else:
+                   if app_dirs:
+                       raise ImproperlyConfigured(
+                           "app_dirs must not be set when loaders is defined."
+                       )
+    2:         if libraries is None:
+                   libraries = {}
+    2:         if builtins is None:
+    2:             builtins = []
+       
+    2:         self.dirs = dirs
+    2:         self.app_dirs = app_dirs
+    2:         self.autoescape = autoescape
+    2:         self.context_processors = context_processors
+    2:         self.debug = debug
+    2:         self.loaders = loaders
+    2:         self.string_if_invalid = string_if_invalid
+    2:         self.file_charset = file_charset
+    2:         self.libraries = libraries
+    2:         self.template_libraries = self.get_template_libraries(libraries)
+    2:         self.builtins = self.default_builtins + builtins
+    2:         self.template_builtins = self.get_template_builtins(self.builtins)
+       
+    1:     def __repr__(self):
+               return (
+                   "<%s:%s app_dirs=%s%s debug=%s loaders=%s string_if_invalid=%s "
+                   "file_charset=%s%s%s autoescape=%s>"
+               ) % (
+                   self.__class__.__qualname__,
+                   "" if not self.dirs else " dirs=%s" % repr(self.dirs),
+                   self.app_dirs,
+                   (
+                       ""
+                       if not self.context_processors
+                       else " context_processors=%s" % repr(self.context_processors)
+                   ),
+                   self.debug,
+                   repr(self.loaders),
+                   repr(self.string_if_invalid),
+                   repr(self.file_charset),
+                   "" if not self.libraries else " libraries=%s" % repr(self.libraries),
+                   "" if not self.builtins else " builtins=%s" % repr(self.builtins),
+                   repr(self.autoescape),
+               )
+       
+    2:     @staticmethod
+    2:     @functools.lru_cache
+    2:     def get_default():
+               """
+               Return the first DjangoTemplates backend that's configured, or raise
+               ImproperlyConfigured if none are configured.
+       
+               This is required for preserving historical APIs that rely on a
+               globally available, implicitly configured engine such as:
+       
+               >>> from django.template import Context, Template
+               >>> template = Template("Hello {{ name }}!")
+               >>> context = Context({'name': "world"})
+               >>> template.render(context)
+               'Hello world!'
+               """
+               # Since Engine is imported in django.template and since
+               # DjangoTemplates is a wrapper around this Engine class,
+               # local imports are required to avoid import loops.
+               from django.template import engines
+               from django.template.backends.django import DjangoTemplates
+       
+               for engine in engines.all():
+                   if isinstance(engine, DjangoTemplates):
+                       return engine.engine
+               raise ImproperlyConfigured("No DjangoTemplates backend is configured.")
+       
+    2:     @cached_property
+    2:     def template_context_processors(self):
+    1:         context_processors = _builtin_context_processors
+    1:         context_processors += tuple(self.context_processors)
+    7:         return tuple(import_string(path) for path in context_processors)
+       
+    1:     def get_template_builtins(self, builtins):
+   10:         return [import_library(x) for x in builtins]
+       
+    1:     def get_template_libraries(self, libraries):
+    2:         loaded = {}
+   13:         for name, path in libraries.items():
+   11:             loaded[name] = import_library(path)
+    2:         return loaded
+       
+    2:     @cached_property
+    2:     def template_loaders(self):
+    1:         return self.get_template_loaders(self.loaders)
+       
+    1:     def get_template_loaders(self, template_loaders):
+    2:         loaders = []
+    5:         for template_loader in template_loaders:
+    3:             loader = self.find_template_loader(template_loader)
+    3:             if loader is not None:
+    3:                 loaders.append(loader)
+    2:         return loaders
+       
+    1:     def find_template_loader(self, loader):
+    3:         if isinstance(loader, (tuple, list)):
+    1:             loader, *args = loader
+               else:
+    2:             args = []
+       
+    3:         if isinstance(loader, str):
+    3:             loader_class = import_string(loader)
+    3:             return loader_class(self, *args)
+               else:
+                   raise ImproperlyConfigured(
+                       "Invalid value in template loaders configuration: %r" % loader
+                   )
+       
+    1:     def find_template(self, name, dirs=None, skip=None):
+   40:         tried = []
+   40:         for loader in self.template_loaders:
+   40:             try:
+   40:                 template = loader.get_template(name, skip=skip)
+   40:                 return template, template.origin
+                   except TemplateDoesNotExist as e:
+                       tried.extend(e.tried)
+               raise TemplateDoesNotExist(name, tried=tried)
+       
+    1:     def from_string(self, template_code):
+               """
+               Return a compiled Template object for the given template code,
+               handling template inheritance recursively.
+               """
+               return Template(template_code, engine=self)
+       
+    1:     def get_template(self, template_name):
+               """
+               Return a compiled Template object for the given template name,
+               handling template inheritance recursively.
+               """
+   20:         template, origin = self.find_template(template_name)
+   20:         if not hasattr(template, "render"):
+                   # template needs to be compiled
+                   template = Template(template, origin, template_name, engine=self)
+   20:         return template
+       
+    1:     def render_to_string(self, template_name, context=None):
+               """
+               Render the template specified by template_name with the given context.
+               For use in Django's test suite.
+               """
+               if isinstance(template_name, (list, tuple)):
+                   t = self.select_template(template_name)
+               else:
+                   t = self.get_template(template_name)
+               # Django < 1.8 accepted a Context in `context` even though that's
+               # unintended. Preserve this ability but don't rewrap `context`.
+               if isinstance(context, Context):
+                   return t.render(context)
+               else:
+                   return t.render(Context(context, autoescape=self.autoescape))
+       
+    1:     def select_template(self, template_name_list):
+               """
+               Given a list of template names, return the first that can be loaded.
+               """
+               if not template_name_list:
+                   raise TemplateDoesNotExist("No template names provided")
+               not_found = []
+               for template_name in template_name_list:
+                   try:
+                       return self.get_template(template_name)
+                   except TemplateDoesNotExist as exc:
+                       if exc.args[0] not in not_found:
+                           not_found.append(exc.args[0])
+                       continue
+               # If we get here, none of the templates could be loaded
+               raise TemplateDoesNotExist(", ".join(not_found))

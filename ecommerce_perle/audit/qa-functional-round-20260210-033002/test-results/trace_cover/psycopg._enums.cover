@@ -1,0 +1,80 @@
+    1: """
+       Enum values for psycopg
+       
+       These values are defined by us and are not necessarily dependent on
+       libpq-defined enums.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from enum import Enum, IntEnum
+    1: from selectors import EVENT_READ, EVENT_WRITE
+       
+    1: from . import pq
+       
+       
+    2: class Wait(IntEnum):
+    1:     R = EVENT_READ
+    1:     W = EVENT_WRITE
+    1:     RW = EVENT_READ | EVENT_WRITE
+       
+       
+    2: class Ready(IntEnum):
+    1:     NONE = 0
+    1:     R = EVENT_READ
+    1:     W = EVENT_WRITE
+    1:     RW = EVENT_READ | EVENT_WRITE
+       
+       
+    2: class PyFormat(str, Enum):
+    1:     """
+           Enum representing the format wanted for a query argument.
+       
+           The value `AUTO` allows psycopg to choose the best format for a certain
+           parameter.
+           """
+       
+    1:     __module__ = "psycopg.adapt"
+       
+    1:     AUTO = "s"
+    1:     """Automatically chosen (``%s`` placeholder)."""
+    1:     TEXT = "t"
+    1:     """Text parameter (``%t`` placeholder)."""
+    1:     BINARY = "b"
+    1:     """Binary parameter (``%b`` placeholder)."""
+       
+    2:     @classmethod
+    2:     def from_pq(cls, fmt: pq.Format) -> "PyFormat":
+  130:         return _pg2py[fmt]
+       
+    2:     @classmethod
+    2:     def as_pq(cls, fmt: "PyFormat") -> pq.Format:
+               return _py2pg[fmt]
+       
+       
+    2: class IsolationLevel(IntEnum):
+    1:     """
+           Enum representing the isolation level for a transaction.
+           """
+       
+    1:     __module__ = "psycopg"
+       
+    1:     READ_UNCOMMITTED = 1
+    1:     """:sql:`READ UNCOMMITTED` isolation level."""
+    1:     READ_COMMITTED = 2
+    1:     """:sql:`READ COMMITTED` isolation level."""
+    1:     REPEATABLE_READ = 3
+    1:     """:sql:`REPEATABLE READ` isolation level."""
+    1:     SERIALIZABLE = 4
+    1:     """:sql:`SERIALIZABLE` isolation level."""
+       
+       
+    1: _py2pg = {
+    1:     PyFormat.TEXT: pq.Format.TEXT,
+    1:     PyFormat.BINARY: pq.Format.BINARY,
+       }
+       
+    1: _pg2py = {
+    1:     pq.Format.TEXT: PyFormat.TEXT,
+    1:     pq.Format.BINARY: PyFormat.BINARY,
+       }

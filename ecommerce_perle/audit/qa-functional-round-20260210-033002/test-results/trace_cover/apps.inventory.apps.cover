@@ -1,0 +1,9 @@
+    1: from django.apps import AppConfig
+       
+       
+    2: class InventoryConfig(AppConfig):
+    1:     default_auto_field = 'django.db.models.BigAutoField'
+    1:     name = 'apps.inventory'
+       
+    1:     def ready(self):
+    1:         from . import signals  # noqa: F401

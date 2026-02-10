@@ -1,0 +1,129 @@
+    1: import datetime
+    1: import re
+    1: from collections import namedtuple
+       
+    1: from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
+       
+    1: FieldReference = namedtuple("FieldReference", "to through")
+       
+    1: COMPILED_REGEX_TYPE = type(re.compile(""))
+       
+       
+    2: class RegexObject:
+    1:     def __init__(self, obj):
+               self.pattern = obj.pattern
+               self.flags = obj.flags
+       
+    1:     def __eq__(self, other):
+               if not isinstance(other, RegexObject):
+                   return NotImplemented
+               return self.pattern == other.pattern and self.flags == other.flags
+       
+       
+    1: def get_migration_name_timestamp():
+           return datetime.datetime.now().strftime("%Y%m%d_%H%M")
+       
+       
+    1: def resolve_relation(model, app_label=None, model_name=None):
+           """
+           Turn a model class or model reference string and return a model tuple.
+       
+           app_label and model_name are used to resolve the scope of recursive and
+           unscoped model relationship.
+           """
+   65:     if isinstance(model, str):
+   65:         if model == RECURSIVE_RELATIONSHIP_CONSTANT:
+                   if app_label is None or model_name is None:
+                       raise TypeError(
+                           "app_label and model_name must be provided to resolve "
+                           "recursive relationships."
+                       )
+                   return app_label, model_name
+   65:         if "." in model:
+   65:             app_label, model_name = model.split(".", 1)
+   65:             return app_label, model_name.lower()
+               if app_label is None:
+                   raise TypeError(
+                       "app_label must be provided to resolve unscoped model relationships."
+                   )
+               return app_label, model.lower()
+           return model._meta.app_label, model._meta.model_name
+       
+       
+    1: def field_references(
+           model_tuple,
+           field,
+           reference_model_tuple,
+    1:     reference_field_name=None,
+    1:     reference_field=None,
+       ):
+           """
+           Return either False or a FieldReference if `field` references provided
+           context.
+       
+           False positives can be returned if `reference_field_name` is provided
+           without `reference_field` because of the introspection limitation it
+           incurs. This should not be an issue when this function is used to determine
+           whether or not an optimization can take place.
+           """
+  345:     remote_field = field.remote_field
+  345:     if not remote_field:
+  280:         return False
+   65:     references_to = None
+   65:     references_through = None
+   65:     if resolve_relation(remote_field.model, *model_tuple) == reference_model_tuple:
+   11:         to_fields = getattr(field, "to_fields", None)
+               if (
+   11:             reference_field_name is None
+                   or
+                   # Unspecified to_field(s).
+   11:             to_fields is None
+                   or
+                   # Reference to primary key.
+                   (
+    9:                 None in to_fields
+    9:                 and (reference_field is None or reference_field.primary_key)
+                   )
+                   or
+                   # Reference to field.
+    9:             reference_field_name in to_fields
+               ):
+    2:             references_to = (remote_field, to_fields)
+   65:     through = getattr(remote_field, "through", None)
+   65:     if through and resolve_relation(through, *model_tuple) == reference_model_tuple:
+               through_fields = remote_field.through_fields
+               if (
+                   reference_field_name is None
+                   or
+                   # Unspecified through_fields.
+                   through_fields is None
+                   or
+                   # Reference to field.
+                   reference_field_name in through_fields
+               ):
+                   references_through = (remote_field, through_fields)
+   65:     if not (references_to or references_through):
+   63:         return False
+    2:     return FieldReference(references_to, references_through)
+       
+       
+    1: def get_references(state, model_tuple, field_tuple=()):
+           """
+           Generator of (model_state, name, field, reference) referencing
+           provided context.
+       
+           If field_tuple is provided only references to this particular field of
+           model_tuple will be generated.
+           """
+   67:     for state_model_tuple, model_state in state.models.items():
+  400:         for name, field in model_state.fields.items():
+ 1035:             reference = field_references(
+  690:                 state_model_tuple, field, model_tuple, *field_tuple
+                   )
+  345:             if reference:
+    2:                 yield model_state, name, field, reference
+       
+       
+    1: def field_is_referenced(state, model_tuple, field_tuple):
+           """Return whether `field_tuple` is referenced by any state models."""
+   12:     return next(get_references(state, model_tuple, field_tuple), None) is not None

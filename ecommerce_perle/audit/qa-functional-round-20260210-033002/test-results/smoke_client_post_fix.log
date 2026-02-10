@@ -1,0 +1,18 @@
+Not Found: /orders/confirmation/ec6c2614-f1be-41eb-aa17-7a9984f17572/
+Forbidden: /api/cart/items/
+20 objects imported automatically (use -v 2 for details).
+
+SMOKE_POST_FIX_START
+/ 200
+/api/products/ 200
+/checkout/ 200
+/cart/ 200
+/legal/terms/ 200
+/legal/privacy/ 200
+/legal/shipping-returns/ 200
+/admin/login/ 200
+checkout_status 201
+confirmation_same_session 200
+confirmation_other_session 404
+cart_add_without_csrf 403
+SMOKE_POST_FIX_END

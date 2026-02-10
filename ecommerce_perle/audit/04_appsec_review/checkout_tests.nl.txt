@@ -1,0 +1,140 @@
+     1	import json
+     2	
+     3	from django.test import Client, TestCase
+     4	
+     5	from apps.catalog.models import Category, Product, ProductVariant
+     6	from apps.customers.models import Address, Customer
+     7	from apps.inventory.models import InventoryMovement, StockLevel
+     8	from apps.orders.models import Cart, CartItem, Coupon
+     9	from .services import create_order_from_cart
+    10	
+    11	
+    12	class CheckoutServiceTest(TestCase):
+    13	    def setUp(self):
+    14	        category = Category.objects.create(name='Bikinis', slug='bikinis')
+    15	        product = Product.objects.create(name='Test', slug='test', category=category, description='x')
+    16	        self.variant = ProductVariant.objects.create(
+    17	            product=product, sku='SKU-1', size='S', color='Negro', price_cop=100000
+    18	        )
+    19	        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
+    20	        self.customer = Customer.objects.create(email='test@example.com', full_name='Cliente')
+    21	        self.address = Address.objects.create(customer=self.customer, line1='Calle 1', city='Bogotá', state='DC')
+    22	
+    23	    def test_stock_cannot_go_negative(self):
+    24	        cart = Cart.objects.create(customer=self.customer)
+    25	        CartItem.objects.create(cart=cart, variant=self.variant, quantity=10)
+    26	        with self.assertRaisesMessage(ValueError, 'Sin stock'):
+    27	            create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+    28	
+    29	    def test_checkout_decreases_stock_and_calculates_total(self):
+    30	        cart = Cart.objects.create(customer=self.customer)
+    31	        CartItem.objects.create(cart=cart, variant=self.variant, quantity=2)
+    32	        order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+    33	        self.assertEqual(order.grand_total, 200000)
+    34	        self.variant.stock_level.refresh_from_db()
+    35	        self.assertEqual(self.variant.stock_level.available, 3)
+    36	
+    37	    def test_coupon_applies_discount(self):
+    38	        cart = Cart.objects.create(customer=self.customer)
+    39	        CartItem.objects.create(cart=cart, variant=self.variant, quantity=2)
+    40	        coupon = Coupon.objects.create(code='PERLE10', percentage=10, is_active=True)
+    41	        order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart, coupon=coupon)
+    42	        self.assertEqual(order.discount_total, 20000)
+    43	        self.assertEqual(order.grand_total, 180000)
+    44	
+    45	    def test_empty_cart_raises_error(self):
+    46	        cart = Cart.objects.create(customer=self.customer)
+    47	        with self.assertRaisesMessage(ValueError, 'vacío'):
+    48	            create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+    49	
+    50	    def test_inventory_movement_created(self):
+    51	        cart = Cart.objects.create(customer=self.customer)
+    52	        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+    53	        order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+    54	        self.assertTrue(InventoryMovement.objects.filter(reason=f'Order #{order.id}').exists())
+    55	
+    56	    def test_missing_stock_level_raises_error(self):
+    57	        self.variant.stock_level.delete()
+    58	        cart = Cart.objects.create(customer=self.customer)
+    59	        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+    60	        with self.assertRaisesMessage(ValueError, 'Sin stock configurado'):
+    61	            create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+    62	
+    63	
+    64	class CheckoutConfirmApiViewTest(TestCase):
+    65	    def setUp(self):
+    66	        self.client = Client(enforce_csrf_checks=True)
+    67	        category = Category.objects.create(name='One Piece', slug='one-piece')
+    68	        product = Product.objects.create(name='Model', slug='model', category=category, description='x')
+    69	        self.variant = ProductVariant.objects.create(
+    70	            product=product, sku='SKU-API-1', size='M', color='Negro', price_cop=150000
+    71	        )
+    72	        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 1})
+    73	
+    74	    def _csrf_headers(self, path='/'):
+    75	        response = self.client.get(path)
+    76	        token = response.cookies.get('csrftoken').value
+    77	        return {'HTTP_X_CSRFTOKEN': token}
+    78	
+    79	    def _payload(self, email):
+    80	        return {
+    81	            'full_name': 'Cliente API',
+    82	            'email': email,
+    83	            'phone': '',
+    84	            'line1': 'Calle 123',
+    85	            'city': 'Bogotá',
+    86	            'state': 'DC',
+    87	            'coupon_code': '',
+    88	            'payment_method': 'whatsapp',
+    89	        }
+    90	
+    91	    def _add_to_cart(self, quantity):
+    92	        headers = self._csrf_headers('/')
+    93	        return self.client.post(
+    94	            '/api/cart/items/',
+    95	            data=json.dumps({'variant_id': self.variant.id, 'quantity': quantity}),
+    96	            content_type='application/json',
+    97	            **headers,
+    98	        )
+    99	
+   100	    def _confirm_checkout(self, email, with_csrf=True):
+   101	        headers = self._csrf_headers('/checkout/') if with_csrf else {}
+   102	        return self.client.post(
+   103	            '/checkout/api/checkout/confirm/',
+   104	            data=json.dumps(self._payload(email)),
+   105	            content_type='application/json',
+   106	            **headers,
+   107	        )
+   108	
+   109	    def test_empty_cart_returns_400_and_rolls_back_customer_data(self):
+   110	        response = self._confirm_checkout('empty-cart@example.com')
+   111	        self.assertEqual(response.status_code, 400)
+   112	        self.assertIn('vacío', response.json().get('error', '').lower())
+   113	        self.assertFalse(Customer.objects.filter(email='empty-cart@example.com').exists())
+   114	        self.assertFalse(Address.objects.exists())
+   115	
+   116	    def test_out_of_stock_returns_400_and_rolls_back_customer_data(self):
+   117	        add_response = self._add_to_cart(quantity=1)
+   118	        self.assertEqual(add_response.status_code, 201)
+   119	        StockLevel.objects.filter(variant=self.variant).update(available=0)
+   120	
+   121	        response = self._confirm_checkout('out-of-stock@example.com')
+   122	        self.assertEqual(response.status_code, 400)
+   123	        self.assertIn('sin stock', response.json().get('error', '').lower())
+   124	        self.assertFalse(Customer.objects.filter(email='out-of-stock@example.com').exists())
+   125	        self.assertFalse(Address.objects.exists())
+   126	
+   127	    def test_missing_stock_level_returns_400(self):
+   128	        add_response = self._add_to_cart(quantity=1)
+   129	        self.assertEqual(add_response.status_code, 201)
+   130	        self.variant.stock_level.delete()
+   131	
+   132	        response = self._confirm_checkout('missing-stock@example.com')
+   133	        self.assertEqual(response.status_code, 400)
+   134	        self.assertIn('stock configurado', response.json().get('error', '').lower())
+   135	        self.assertFalse(Customer.objects.filter(email='missing-stock@example.com').exists())
+   136	        self.assertFalse(Address.objects.exists())
+   137	
+   138	    def test_checkout_confirm_requires_csrf_token(self):
+   139	        response = self._confirm_checkout('missing-csrf@example.com', with_csrf=False)
+   140	        self.assertEqual(response.status_code, 403)

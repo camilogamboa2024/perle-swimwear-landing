@@ -1,0 +1,62 @@
+    1: from django.test import TestCase, override_settings
+       
+    1: from apps.catalog.models import Category, Product, ProductVariant
+    1: from apps.inventory.models import StockLevel
+       
+       
+    2: class WhatsAppVisibilityTemplateTest(TestCase):
+    2:     @override_settings(WHATSAPP_PHONE='')
+    2:     def test_home_hides_wa_links_when_phone_empty(self):
+    1:         response = self.client.get('/')
+    1:         self.assertEqual(response.status_code, 200)
+    1:         self.assertNotContains(response, 'wa.me/')
+       
+    2:     @override_settings(WHATSAPP_PHONE='573001112233')
+    2:     def test_home_shows_wa_links_when_phone_set(self):
+    1:         response = self.client.get('/')
+    1:         self.assertEqual(response.status_code, 200)
+    1:         self.assertContains(response, 'wa.me/573001112233')
+       
+       
+    2: class ActiveVariantsVisibilityTest(TestCase):
+    1:     def setUp(self):
+    3:         category = Category.objects.create(name='Bikinis', slug='bikinis')
+    3:         self.product = Product.objects.create(name='Producto', slug='producto', category=category, description='Desc')
+    6:         self.active_variant = ProductVariant.objects.create(
+    3:             product=self.product,
+    3:             sku='SKU-ACTIVA',
+    3:             size='M',
+    3:             color='Negro',
+    3:             price_cop=100000,
+    3:             is_active=True,
+               )
+    6:         self.inactive_variant = ProductVariant.objects.create(
+    3:             product=self.product,
+    3:             sku='SKU-INACTIVA',
+    3:             size='L',
+    3:             color='Marfil',
+    3:             price_cop=120000,
+    3:             is_active=False,
+               )
+    3:         StockLevel.objects.update_or_create(variant=self.active_variant, defaults={'available': 3})
+    3:         StockLevel.objects.update_or_create(variant=self.inactive_variant, defaults={'available': 3})
+       
+    1:     def test_home_exposes_only_active_variant_for_add_to_cart(self):
+    1:         response = self.client.get('/')
+    1:         self.assertEqual(response.status_code, 200)
+    1:         self.assertContains(response, f'data-add-cart="{self.active_variant.id}"')
+    1:         self.assertNotContains(response, f'data-add-cart="{self.inactive_variant.id}"')
+       
+    1:     def test_product_detail_exposes_only_active_variants(self):
+    1:         response = self.client.get(f'/product/{self.product.slug}/')
+    1:         self.assertEqual(response.status_code, 200)
+    1:         self.assertContains(response, f'data-add-cart="{self.active_variant.id}"')
+    1:         self.assertNotContains(response, f'data-add-cart="{self.inactive_variant.id}"')
+       
+    1:     def test_product_detail_api_excludes_inactive_variants(self):
+    1:         response = self.client.get(f'/api/products/{self.product.slug}/')
+    1:         self.assertEqual(response.status_code, 200)
+    1:         payload = response.json()
+    3:         variant_ids = {variant['id'] for variant in payload['variants']}
+    1:         self.assertIn(self.active_variant.id, variant_ids)
+    1:         self.assertNotIn(self.inactive_variant.id, variant_ids)

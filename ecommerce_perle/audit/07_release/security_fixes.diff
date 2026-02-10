@@ -1,0 +1,282 @@
+diff --git a/ecommerce_perle/apps/checkout/tests.py b/ecommerce_perle/apps/checkout/tests.py
+index 4fdb85a..7eb28cc 100644
+--- a/ecommerce_perle/apps/checkout/tests.py
++++ b/ecommerce_perle/apps/checkout/tests.py
+@@ -1,4 +1,6 @@
+-from django.test import TestCase
++import json
++
++from django.test import Client, TestCase
+ 
+ from apps.catalog.models import Category, Product, ProductVariant
+ from apps.customers.models import Address, Customer
+@@ -50,3 +52,89 @@ class CheckoutServiceTest(TestCase):
+         CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+         order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+         self.assertTrue(InventoryMovement.objects.filter(reason=f'Order #{order.id}').exists())
++
++    def test_missing_stock_level_raises_error(self):
++        self.variant.stock_level.delete()
++        cart = Cart.objects.create(customer=self.customer)
++        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
++        with self.assertRaisesMessage(ValueError, 'Sin stock configurado'):
++            create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
++
++
++class CheckoutConfirmApiViewTest(TestCase):
++    def setUp(self):
++        self.client = Client(enforce_csrf_checks=True)
++        category = Category.objects.create(name='One Piece', slug='one-piece')
++        product = Product.objects.create(name='Model', slug='model', category=category, description='x')
++        self.variant = ProductVariant.objects.create(
++            product=product, sku='SKU-API-1', size='M', color='Negro', price_cop=150000
++        )
++        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 1})
++
++    def _csrf_headers(self, path='/'):
++        response = self.client.get(path)
++        token = response.cookies.get('csrftoken').value
++        return {'HTTP_X_CSRFTOKEN': token}
++
++    def _payload(self, email):
++        return {
++            'full_name': 'Cliente API',
++            'email': email,
++            'phone': '',
++            'line1': 'Calle 123',
++            'city': 'Bogotá',
++            'state': 'DC',
++            'coupon_code': '',
++            'payment_method': 'whatsapp',
++        }
++
++    def _add_to_cart(self, quantity):
++        headers = self._csrf_headers('/')
++        return self.client.post(
++            '/api/cart/items/',
++            data=json.dumps({'variant_id': self.variant.id, 'quantity': quantity}),
++            content_type='application/json',
++            **headers,
++        )
++
++    def _confirm_checkout(self, email, with_csrf=True):
++        headers = self._csrf_headers('/checkout/') if with_csrf else {}
++        return self.client.post(
++            '/checkout/api/checkout/confirm/',
++            data=json.dumps(self._payload(email)),
++            content_type='application/json',
++            **headers,
++        )
++
++    def test_empty_cart_returns_400_and_rolls_back_customer_data(self):
++        response = self._confirm_checkout('empty-cart@example.com')
++        self.assertEqual(response.status_code, 400)
++        self.assertIn('vacío', response.json().get('error', '').lower())
++        self.assertFalse(Customer.objects.filter(email='empty-cart@example.com').exists())
++        self.assertFalse(Address.objects.exists())
++
++    def test_out_of_stock_returns_400_and_rolls_back_customer_data(self):
++        add_response = self._add_to_cart(quantity=1)
++        self.assertEqual(add_response.status_code, 201)
++        StockLevel.objects.filter(variant=self.variant).update(available=0)
++
++        response = self._confirm_checkout('out-of-stock@example.com')
++        self.assertEqual(response.status_code, 400)
++        self.assertIn('sin stock', response.json().get('error', '').lower())
++        self.assertFalse(Customer.objects.filter(email='out-of-stock@example.com').exists())
++        self.assertFalse(Address.objects.exists())
++
++    def test_missing_stock_level_returns_400(self):
++        add_response = self._add_to_cart(quantity=1)
++        self.assertEqual(add_response.status_code, 201)
++        self.variant.stock_level.delete()
++
++        response = self._confirm_checkout('missing-stock@example.com')
++        self.assertEqual(response.status_code, 400)
++        self.assertIn('stock configurado', response.json().get('error', '').lower())
++        self.assertFalse(Customer.objects.filter(email='missing-stock@example.com').exists())
++        self.assertFalse(Address.objects.exists())
++
++    def test_checkout_confirm_requires_csrf_token(self):
++        response = self._confirm_checkout('missing-csrf@example.com', with_csrf=False)
++        self.assertEqual(response.status_code, 403)
+diff --git a/ecommerce_perle/apps/checkout/views.py b/ecommerce_perle/apps/checkout/views.py
+index c336215..3d22a6a 100644
+--- a/ecommerce_perle/apps/checkout/views.py
++++ b/ecommerce_perle/apps/checkout/views.py
+@@ -1,4 +1,5 @@
+ from django.conf import settings
++from django.db import transaction
+ from django.shortcuts import redirect, render
+ from django.urls import reverse
+ from django.views.decorators.csrf import ensure_csrf_cookie
+@@ -10,8 +11,9 @@ from rest_framework.views import APIView
+ from apps.customers.models import Address, Customer
+ from apps.orders.models import Coupon
+ from apps.orders.views import _get_or_create_cart
++from core.authentication import EnforcedCsrfSessionAuthentication
+ from .serializers import CheckoutConfirmSerializer
+-from .services import create_order_from_cart
++from .services import CheckoutError, create_order_from_cart
+ from .whatsapp import build_whatsapp_url
+ 
+ 
+@@ -21,6 +23,7 @@ def checkout_page(request):
+ 
+ 
+ class CheckoutConfirmApiView(APIView):
++    authentication_classes = [EnforcedCsrfSessionAuthentication]
+     throttle_classes = [ScopedRateThrottle]
+     throttle_scope = 'checkout'
+ 
+@@ -29,33 +32,39 @@ class CheckoutConfirmApiView(APIView):
+         serializer.is_valid(raise_exception=True)
+         data = serializer.validated_data
+ 
+-        customer, _ = Customer.objects.get_or_create(
+-            email=data['email'], defaults={'full_name': data['full_name'], 'phone': data.get('phone', '')}
+-        )
+-        customer.full_name = data['full_name']
+-        customer.phone = data.get('phone', '')
+-        customer.save(update_fields=['full_name', 'phone'])
+-        address = Address.objects.create(
+-            customer=customer,
+-            line1=data['line1'],
+-            city=data['city'],
+-            state=data['state'],
+-            country='Colombia',
+-            label='Checkout',
+-        )
+         cart = _get_or_create_cart(request)
+         coupon = None
+         if data.get('coupon_code'):
+             coupon = Coupon.objects.filter(code=data['coupon_code'], is_active=True).first()
+ 
+-        order = create_order_from_cart(
+-            customer=customer,
+-            address=address,
+-            cart=cart,
+-            coupon=coupon,
+-            payment_method=data['payment_method'],
+-            session_key=request.session.session_key or '',
+-        )
++        try:
++            with transaction.atomic():
++                customer, _ = Customer.objects.get_or_create(
++                    email=data['email'],
++                    defaults={'full_name': data['full_name'], 'phone': data.get('phone', '')},
++                )
++                customer.full_name = data['full_name']
++                customer.phone = data.get('phone', '')
++                customer.save(update_fields=['full_name', 'phone'])
++                address = Address.objects.create(
++                    customer=customer,
++                    line1=data['line1'],
++                    city=data['city'],
++                    state=data['state'],
++                    country='Colombia',
++                    label='Checkout',
++                )
++                order = create_order_from_cart(
++                    customer=customer,
++                    address=address,
++                    cart=cart,
++                    coupon=coupon,
++                    payment_method=data['payment_method'],
++                    session_key=request.session.session_key or '',
++                )
++        except CheckoutError as exc:
++            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
++
+         whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
+         return Response(
+             {
+diff --git a/ecommerce_perle/apps/orders/views.py b/ecommerce_perle/apps/orders/views.py
+index 85c4f47..c0896a8 100644
+--- a/ecommerce_perle/apps/orders/views.py
++++ b/ecommerce_perle/apps/orders/views.py
+@@ -1,4 +1,5 @@
+ from django.conf import settings
++from django.core.exceptions import ObjectDoesNotExist
+ from django.http import Http404
+ from django.shortcuts import get_object_or_404, render
+ from django.views.decorators.csrf import ensure_csrf_cookie
+@@ -8,6 +9,7 @@ from rest_framework.views import APIView
+ 
+ from apps.customers.models import Customer
+ from apps.checkout.whatsapp import build_whatsapp_url
++from core.authentication import EnforcedCsrfSessionAuthentication
+ from .models import Cart, CartItem, Order
+ from .serializers import AddCartItemSerializer, CartSerializer, UpdateCartItemSerializer
+ 
+@@ -30,6 +32,18 @@ def _get_or_create_cart(request):
+     return cart
+ 
+ 
++def _validate_stock_for_quantity(variant, quantity):
++    if not variant.is_active:
++        return f'La variante {variant.sku} no está disponible.'
++    try:
++        available = variant.stock_level.available
++    except ObjectDoesNotExist:
++        return f'Sin stock configurado para SKU {variant.sku}.'
++    if quantity > available:
++        return f'Stock insuficiente para SKU {variant.sku}. Disponible: {available}.'
++    return ''
++
++
+ class CartApiView(APIView):
+     def get(self, request):
+         cart = _get_or_create_cart(request)
+@@ -37,6 +51,8 @@ class CartApiView(APIView):
+ 
+ 
+ class CartItemsApiView(APIView):
++    authentication_classes = [EnforcedCsrfSessionAuthentication]
++
+     def post(self, request):
+         cart = _get_or_create_cart(request)
+         serializer = AddCartItemSerializer(data=request.data)
+@@ -44,19 +60,31 @@ class CartItemsApiView(APIView):
+         variant = serializer.validated_data['variant']
+         quantity = serializer.validated_data['quantity']
+         item, created = CartItem.objects.get_or_create(cart=cart, variant=variant, defaults={'quantity': quantity})
++        target_quantity = quantity if created else item.quantity + quantity
++        stock_error = _validate_stock_for_quantity(variant, target_quantity)
++        if stock_error:
++            if created:
++                item.delete()
++            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+         if not created:
+-            item.quantity += quantity
++            item.quantity = target_quantity
+             item.save(update_fields=['quantity'])
+         return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
+ 
+ 
+ class CartItemDetailApiView(APIView):
++    authentication_classes = [EnforcedCsrfSessionAuthentication]
++
+     def patch(self, request, item_id):
+         cart = _get_or_create_cart(request)
+         item = get_object_or_404(CartItem, id=item_id, cart=cart)
+         serializer = UpdateCartItemSerializer(data=request.data)
+         serializer.is_valid(raise_exception=True)
+-        item.quantity = serializer.validated_data['quantity']
++        new_quantity = serializer.validated_data['quantity']
++        stock_error = _validate_stock_for_quantity(item.variant, new_quantity)
++        if stock_error:
++            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
++        item.quantity = new_quantity
+         item.save(update_fields=['quantity'])
+         return Response(CartSerializer(cart).data)
+ 
+@@ -68,6 +96,8 @@ class CartItemDetailApiView(APIView):
+ 
+ 
+ class CartClearApiView(APIView):
++    authentication_classes = [EnforcedCsrfSessionAuthentication]
++
+     def post(self, request):
+         cart = _get_or_create_cart(request)
+         cart.items.all().delete()

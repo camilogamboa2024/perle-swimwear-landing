@@ -1,0 +1,145 @@
+    1: from django.apps import apps as global_apps
+    1: from django.db import DEFAULT_DB_ALIAS, IntegrityError, migrations, router, transaction
+       
+       
+    2: class RenameContentType(migrations.RunPython):
+    1:     def __init__(self, app_label, old_model, new_model):
+               self.app_label = app_label
+               self.old_model = old_model
+               self.new_model = new_model
+               super().__init__(self.rename_forward, self.rename_backward)
+       
+    1:     def _rename(self, apps, schema_editor, old_model, new_model):
+               ContentType = apps.get_model("contenttypes", "ContentType")
+               db = schema_editor.connection.alias
+               if not router.allow_migrate_model(db, ContentType):
+                   return
+       
+               try:
+                   content_type = ContentType.objects.db_manager(db).get_by_natural_key(
+                       self.app_label, old_model
+                   )
+               except ContentType.DoesNotExist:
+                   pass
+               else:
+                   content_type.model = new_model
+                   try:
+                       with transaction.atomic(using=db):
+                           content_type.save(using=db, update_fields={"model"})
+                   except IntegrityError:
+                       # Gracefully fallback if a stale content type causes a
+                       # conflict as remove_stale_contenttypes will take care of
+                       # asking the user what should be done next.
+                       content_type.model = old_model
+                   else:
+                       # Clear the cache as the `get_by_natural_key()` call will cache
+                       # the renamed ContentType instance by its old model name.
+                       ContentType.objects.clear_cache()
+       
+    1:     def rename_forward(self, apps, schema_editor):
+               self._rename(apps, schema_editor, self.old_model, self.new_model)
+       
+    1:     def rename_backward(self, apps, schema_editor):
+               self._rename(apps, schema_editor, self.new_model, self.old_model)
+       
+       
+    1: def inject_rename_contenttypes_operations(
+    1:     plan=None, apps=global_apps, using=DEFAULT_DB_ALIAS, **kwargs
+       ):
+           """
+           Insert a `RenameContentType` operation after every planned `RenameModel`
+           operation.
+           """
+    1:     if plan is None:
+               return
+       
+           # Determine whether or not the ContentType model is available.
+    1:     try:
+    1:         ContentType = apps.get_model("contenttypes", "ContentType")
+    1:     except LookupError:
+    1:         available = False
+           else:
+               if not router.allow_migrate_model(using, ContentType):
+                   return
+               available = True
+       
+   26:     for migration, backward in plan:
+   25:         if (migration.app_label, migration.name) == ("contenttypes", "0001_initial"):
+                   # There's no point in going forward if the initial contenttypes
+                   # migration is unapplied as the ContentType model will be
+                   # unavailable from this point.
+    1:             if backward:
+                       break
+                   else:
+    1:                 available = True
+    1:                 continue
+               # The ContentType model is not available yet.
+   24:         if not available:
+                   continue
+   24:         inserts = []
+   64:         for index, operation in enumerate(migration.operations):
+   40:             if isinstance(operation, migrations.RenameModel):
+                       operation = RenameContentType(
+                           migration.app_label,
+                           operation.old_name_lower,
+                           operation.new_name_lower,
+                       )
+                       inserts.append((index + 1, operation))
+   24:         for inserted, (index, operation) in enumerate(inserts):
+                   migration.operations.insert(inserted + index, operation)
+       
+       
+    1: def get_contenttypes_and_models(app_config, using, ContentType):
+   16:     if not router.allow_migrate_model(using, ContentType):
+               return None, None
+       
+   16:     ContentType.objects.clear_cache()
+       
+   88:     content_types = {
+   20:         ct.model: ct
+   36:         for ct in ContentType.objects.using(using).filter(app_label=app_config.label)
+           }
+   72:     app_models = {model._meta.model_name: model for model in app_config.get_models()}
+   16:     return content_types, app_models
+       
+       
+    1: def create_contenttypes(
+           app_config,
+    1:     verbosity=2,
+    1:     interactive=True,
+    1:     using=DEFAULT_DB_ALIAS,
+    1:     apps=global_apps,
+           **kwargs,
+       ):
+           """
+           Create content types for models in the given app.
+           """
+   16:     if not app_config.models_module:
+               return
+       
+   16:     app_label = app_config.label
+   16:     try:
+   16:         app_config = apps.get_app_config(app_label)
+   16:         ContentType = apps.get_model("contenttypes", "ContentType")
+           except LookupError:
+               return
+       
+   32:     content_types, app_models = get_contenttypes_and_models(
+   16:         app_config, using, ContentType
+           )
+       
+   16:     if not app_models:
+               return
+       
+   88:     cts = [
+   40:         ContentType(
+   20:             app_label=app_label,
+   20:             model=model_name,
+               )
+   56:         for (model_name, model) in app_models.items()
+   76:         if model_name not in content_types
+           ]
+   16:     ContentType.objects.using(using).bulk_create(cts)
+   16:     if verbosity >= 2:
+               for ct in cts:
+                   print("Adding content type '%s | %s'" % (ct.app_label, ct.model))

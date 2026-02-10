@@ -1,0 +1,8 @@
+System check identified some issues:
+
+WARNINGS:
+?: (security.W009) Your SECRET_KEY has less than 50 characters, less than 5 unique characters, or it's prefixed with 'django-insecure-' indicating that it was generated automatically by Django. Please generate a long and random value, otherwise many of Django's security-critical features will be vulnerable to attack.
+?: (security.W021) You have not set the SECURE_HSTS_PRELOAD setting to True. Without this, your site cannot be submitted to the browser preload list.
+
+System check identified 2 issues (0 silenced).
+exit_code=0

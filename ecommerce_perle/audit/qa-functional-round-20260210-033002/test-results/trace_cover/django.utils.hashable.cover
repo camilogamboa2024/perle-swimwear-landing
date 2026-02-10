@@ -1,0 +1,26 @@
+    1: from collections.abc import Iterable
+       
+       
+    1: def make_hashable(value):
+           """
+           Attempt to make value hashable or raise a TypeError if it fails.
+       
+           The returned value should generate the same hash for equal values.
+           """
+  104:     if isinstance(value, dict):
+   24:         return tuple(
+   36:             [
+                       (key, make_hashable(nested_value))
+   12:                 for key, nested_value in sorted(value.items())
+                   ]
+               )
+           # Try hash to avoid converting a hashable iterable (e.g. string, frozenset)
+           # to a tuple.
+   92:     try:
+   92:         hash(value)
+   32:     except TypeError:
+   32:         if isinstance(value, Iterable):
+   32:             return tuple(map(make_hashable, value))
+               # Non-hashable, non-iterable.
+               raise
+   60:     return value

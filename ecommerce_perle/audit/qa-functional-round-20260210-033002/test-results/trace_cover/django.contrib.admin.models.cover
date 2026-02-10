@@ -1,0 +1,248 @@
+    1: import json
+    1: import warnings
+       
+    1: from django.conf import settings
+    1: from django.contrib.admin.utils import quote
+    1: from django.contrib.contenttypes.models import ContentType
+    1: from django.db import models
+    1: from django.urls import NoReverseMatch, reverse
+    1: from django.utils import timezone
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+    1: from django.utils.text import get_text_list
+    1: from django.utils.translation import gettext
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: ADDITION = 1
+    1: CHANGE = 2
+    1: DELETION = 3
+       
+    1: ACTION_FLAG_CHOICES = [
+    1:     (ADDITION, _("Addition")),
+    1:     (CHANGE, _("Change")),
+    1:     (DELETION, _("Deletion")),
+       ]
+       
+       
+    2: class LogEntryManager(models.Manager):
+    1:     use_in_migrations = True
+       
+    1:     def log_action(
+               self,
+               user_id,
+               content_type_id,
+               object_id,
+               object_repr,
+               action_flag,
+    1:         change_message="",
+           ):
+               warnings.warn(
+                   "LogEntryManager.log_action() is deprecated. Use log_actions() instead.",
+                   RemovedInDjango60Warning,
+                   stacklevel=2,
+               )
+               if isinstance(change_message, list):
+                   change_message = json.dumps(change_message)
+               return self.model.objects.create(
+                   user_id=user_id,
+                   content_type_id=content_type_id,
+                   object_id=str(object_id),
+                   object_repr=object_repr[:200],
+                   action_flag=action_flag,
+                   change_message=change_message,
+               )
+       
+    2:     def log_actions(
+    2:         self, user_id, queryset, action_flag, change_message="", *, single_object=False
+           ):
+               # RemovedInDjango60Warning.
+               if type(self).log_action != LogEntryManager.log_action:
+                   warnings.warn(
+                       "The usage of log_action() is deprecated. Implement log_actions() "
+                       "instead.",
+                       RemovedInDjango60Warning,
+                       stacklevel=2,
+                   )
+                   return [
+                       self.log_action(
+                           user_id=user_id,
+                           content_type_id=ContentType.objects.get_for_model(
+                               obj, for_concrete_model=False
+                           ).id,
+                           object_id=obj.pk,
+                           object_repr=str(obj),
+                           action_flag=action_flag,
+                           change_message=change_message,
+                       )
+                       for obj in queryset
+                   ]
+       
+               if isinstance(change_message, list):
+                   change_message = json.dumps(change_message)
+       
+               log_entry_list = [
+                   self.model(
+                       user_id=user_id,
+                       content_type_id=ContentType.objects.get_for_model(
+                           obj, for_concrete_model=False
+                       ).id,
+                       object_id=obj.pk,
+                       object_repr=str(obj)[:200],
+                       action_flag=action_flag,
+                       change_message=change_message,
+                   )
+                   for obj in queryset
+               ]
+       
+               if len(log_entry_list) == 1:
+                   instance = log_entry_list[0]
+                   instance.save()
+                   if single_object:
+                       return instance
+                   return [instance]
+       
+               return self.model.objects.bulk_create(log_entry_list)
+       
+       
+    2: class LogEntry(models.Model):
+    2:     action_time = models.DateTimeField(
+    1:         _("action time"),
+    1:         default=timezone.now,
+    1:         editable=False,
+           )
+    2:     user = models.ForeignKey(
+    1:         settings.AUTH_USER_MODEL,
+    1:         models.CASCADE,
+    1:         verbose_name=_("user"),
+           )
+    2:     content_type = models.ForeignKey(
+    1:         ContentType,
+    1:         models.SET_NULL,
+    1:         verbose_name=_("content type"),
+    1:         blank=True,
+    1:         null=True,
+           )
+    1:     object_id = models.TextField(_("object id"), blank=True, null=True)
+           # Translators: 'repr' means representation
+           # (https://docs.python.org/library/functions.html#repr)
+    1:     object_repr = models.CharField(_("object repr"), max_length=200)
+    2:     action_flag = models.PositiveSmallIntegerField(
+    1:         _("action flag"), choices=ACTION_FLAG_CHOICES
+           )
+           # change_message is either a string or a JSON structure
+    1:     change_message = models.TextField(_("change message"), blank=True)
+       
+    1:     objects = LogEntryManager()
+       
+    2:     class Meta:
+    1:         verbose_name = _("log entry")
+    1:         verbose_name_plural = _("log entries")
+    1:         db_table = "django_admin_log"
+    1:         ordering = ["-action_time"]
+       
+    1:     def __repr__(self):
+               return str(self.action_time)
+       
+    1:     def __str__(self):
+               if self.is_addition():
+                   return gettext("Added “%(object)s”.") % {"object": self.object_repr}
+               elif self.is_change():
+                   return gettext("Changed “%(object)s” — %(changes)s") % {
+                       "object": self.object_repr,
+                       "changes": self.get_change_message(),
+                   }
+               elif self.is_deletion():
+                   return gettext("Deleted “%(object)s.”") % {"object": self.object_repr}
+       
+               return gettext("LogEntry Object")
+       
+    1:     def is_addition(self):
+               return self.action_flag == ADDITION
+       
+    1:     def is_change(self):
+               return self.action_flag == CHANGE
+       
+    1:     def is_deletion(self):
+               return self.action_flag == DELETION
+       
+    1:     def get_change_message(self):
+               """
+               If self.change_message is a JSON structure, interpret it as a change
+               string, properly translated.
+               """
+               if self.change_message and self.change_message[0] == "[":
+                   try:
+                       change_message = json.loads(self.change_message)
+                   except json.JSONDecodeError:
+                       return self.change_message
+                   messages = []
+                   for sub_message in change_message:
+                       if "added" in sub_message:
+                           if sub_message["added"]:
+                               sub_message["added"]["name"] = gettext(
+                                   sub_message["added"]["name"]
+                               )
+                               messages.append(
+                                   gettext("Added {name} “{object}”.").format(
+                                       **sub_message["added"]
+                                   )
+                               )
+                           else:
+                               messages.append(gettext("Added."))
+       
+                       elif "changed" in sub_message:
+                           sub_message["changed"]["fields"] = get_text_list(
+                               [
+                                   gettext(field_name)
+                                   for field_name in sub_message["changed"]["fields"]
+                               ],
+                               gettext("and"),
+                           )
+                           if "name" in sub_message["changed"]:
+                               sub_message["changed"]["name"] = gettext(
+                                   sub_message["changed"]["name"]
+                               )
+                               messages.append(
+                                   gettext("Changed {fields} for {name} “{object}”.").format(
+                                       **sub_message["changed"]
+                                   )
+                               )
+                           else:
+                               messages.append(
+                                   gettext("Changed {fields}.").format(
+                                       **sub_message["changed"]
+                                   )
+                               )
+       
+                       elif "deleted" in sub_message:
+                           sub_message["deleted"]["name"] = gettext(
+                               sub_message["deleted"]["name"]
+                           )
+                           messages.append(
+                               gettext("Deleted {name} “{object}”.").format(
+                                   **sub_message["deleted"]
+                               )
+                           )
+       
+                   change_message = " ".join(msg[0].upper() + msg[1:] for msg in messages)
+                   return change_message or gettext("No fields changed.")
+               else:
+                   return self.change_message
+       
+    1:     def get_edited_object(self):
+               """Return the edited object represented by this log entry."""
+               return self.content_type.get_object_for_this_type(pk=self.object_id)
+       
+    1:     def get_admin_url(self):
+               """
+               Return the admin URL to edit the object represented by this log entry.
+               """
+               if self.content_type and self.object_id:
+                   url_name = "admin:%s_%s_change" % (
+                       self.content_type.app_label,
+                       self.content_type.model,
+                   )
+                   try:
+                       return reverse(url_name, args=(quote(self.object_id),))
+                   except NoReverseMatch:
+                       pass
+               return None

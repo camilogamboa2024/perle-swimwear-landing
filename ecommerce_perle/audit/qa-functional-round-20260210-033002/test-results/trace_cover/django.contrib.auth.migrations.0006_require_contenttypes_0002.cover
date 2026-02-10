@@ -1,0 +1,13 @@
+    1: from django.db import migrations
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("auth", "0005_alter_user_last_login_null"),
+    1:         ("contenttypes", "0002_remove_content_type_name"),
+           ]
+       
+    1:     operations = [
+               # Ensure the contenttypes migration is applied before sending
+               # post_migrate signals (which create ContentTypes).
+           ]

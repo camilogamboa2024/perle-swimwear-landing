@@ -1,0 +1,133 @@
+    1: from django.contrib.contenttypes.models import ContentType
+    1: from django.db import models
+    1: from django.forms import ModelForm, modelformset_factory
+    1: from django.forms.models import BaseModelFormSet
+       
+       
+    2: class BaseGenericInlineFormSet(BaseModelFormSet):
+    1:     """
+           A formset for generic inline objects to a parent.
+           """
+       
+    1:     def __init__(
+               self,
+    1:         data=None,
+    1:         files=None,
+    1:         instance=None,
+    1:         save_as_new=False,
+    1:         prefix=None,
+    1:         queryset=None,
+               **kwargs,
+           ):
+               opts = self.model._meta
+               self.instance = instance
+               self.rel_name = (
+                   opts.app_label
+                   + "-"
+                   + opts.model_name
+                   + "-"
+                   + self.ct_field.name
+                   + "-"
+                   + self.ct_fk_field.name
+               )
+               self.save_as_new = save_as_new
+               if self.instance is None or not self.instance._is_pk_set():
+                   qs = self.model._default_manager.none()
+               else:
+                   if queryset is None:
+                       queryset = self.model._default_manager
+                   qs = queryset.filter(
+                       **{
+                           self.ct_field.name: ContentType.objects.get_for_model(
+                               self.instance, for_concrete_model=self.for_concrete_model
+                           ),
+                           self.ct_fk_field.name: self.instance.pk,
+                       }
+                   )
+               super().__init__(queryset=qs, data=data, files=files, prefix=prefix, **kwargs)
+       
+    1:     def initial_form_count(self):
+               if self.save_as_new:
+                   return 0
+               return super().initial_form_count()
+       
+    2:     @classmethod
+    2:     def get_default_prefix(cls):
+               opts = cls.model._meta
+               return (
+                   opts.app_label
+                   + "-"
+                   + opts.model_name
+                   + "-"
+                   + cls.ct_field.name
+                   + "-"
+                   + cls.ct_fk_field.name
+               )
+       
+    1:     def save_new(self, form, commit=True):
+               setattr(
+                   form.instance,
+                   self.ct_field.attname,
+                   ContentType.objects.get_for_model(self.instance).pk,
+               )
+               setattr(form.instance, self.ct_fk_field.attname, self.instance.pk)
+               return form.save(commit=commit)
+       
+       
+    1: def generic_inlineformset_factory(
+           model,
+    1:     form=ModelForm,
+    1:     formset=BaseGenericInlineFormSet,
+    1:     ct_field="content_type",
+    1:     fk_field="object_id",
+    1:     fields=None,
+    1:     exclude=None,
+    1:     extra=3,
+    1:     can_order=False,
+    1:     can_delete=True,
+    1:     max_num=None,
+    1:     formfield_callback=None,
+    1:     validate_max=False,
+    1:     for_concrete_model=True,
+    1:     min_num=None,
+    1:     validate_min=False,
+    1:     absolute_max=None,
+    1:     can_delete_extra=True,
+       ):
+           """
+           Return a ``GenericInlineFormSet`` for the given kwargs.
+       
+           You must provide ``ct_field`` and ``fk_field`` if they are different from
+           the defaults ``content_type`` and ``object_id`` respectively.
+           """
+           opts = model._meta
+           # if there is no field called `ct_field` let the exception propagate
+           ct_field = opts.get_field(ct_field)
+           if (
+               not isinstance(ct_field, models.ForeignKey)
+               or ct_field.remote_field.model != ContentType
+           ):
+               raise Exception("fk_name '%s' is not a ForeignKey to ContentType" % ct_field)
+           fk_field = opts.get_field(fk_field)  # let the exception propagate
+           exclude = [*(exclude or []), ct_field.name, fk_field.name]
+           FormSet = modelformset_factory(
+               model,
+               form=form,
+               formfield_callback=formfield_callback,
+               formset=formset,
+               extra=extra,
+               can_delete=can_delete,
+               can_order=can_order,
+               fields=fields,
+               exclude=exclude,
+               max_num=max_num,
+               validate_max=validate_max,
+               min_num=min_num,
+               validate_min=validate_min,
+               absolute_max=absolute_max,
+               can_delete_extra=can_delete_extra,
+           )
+           FormSet.ct_field = ct_field
+           FormSet.ct_fk_field = fk_field
+           FormSet.for_concrete_model = for_concrete_model
+           return FormSet

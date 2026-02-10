@@ -1,0 +1,669 @@
+    1: """
+       Default Django settings. Override these with settings in the module pointed to
+       by the DJANGO_SETTINGS_MODULE environment variable.
+       """
+       
+       
+       # This is defined here as a do-nothing function because we can't import
+       # django.utils.translation -- that module depends on the settings.
+    1: def gettext_noop(s):
+   99:     return s
+       
+       
+       ####################
+       # CORE             #
+       ####################
+       
+    1: DEBUG = False
+       
+       # Whether the framework should propagate raw exceptions rather than catching
+       # them. This is useful under some testing situations and should never be used
+       # on a live site.
+    1: DEBUG_PROPAGATE_EXCEPTIONS = False
+       
+       # People who get code error notifications. In the format
+       # [('Full Name', 'email@example.com'), ('Full Name', 'anotheremail@example.com')]
+    1: ADMINS = []
+       
+       # List of IP addresses, as strings, that:
+       #   * See debug comments, when DEBUG is true
+       #   * Receive x-headers
+    1: INTERNAL_IPS = []
+       
+       # Hosts/domain names that are valid for this site.
+       # "*" matches anything, ".example.com" matches example.com and all subdomains
+    1: ALLOWED_HOSTS = []
+       
+       # Local time zone for this installation. All choices can be found here:
+       # https://en.wikipedia.org/wiki/List_of_tz_zones_by_name (although not all
+       # systems may support all possibilities). When USE_TZ is True, this is
+       # interpreted as the default user time zone.
+    1: TIME_ZONE = "America/Chicago"
+       
+       # If you set this to True, Django will use timezone-aware datetimes.
+    1: USE_TZ = True
+       
+       # Language code for this installation. Valid choices can be found here:
+       # https://www.iana.org/assignments/language-subtag-registry/
+       # If LANGUAGE_CODE is not listed in LANGUAGES (below), the project must
+       # provide the necessary translations and locale definitions.
+    1: LANGUAGE_CODE = "en-us"
+       
+       # Languages we provide translations for, out of the box.
+  100: LANGUAGES = [
+    1:     ("af", gettext_noop("Afrikaans")),
+    1:     ("ar", gettext_noop("Arabic")),
+    1:     ("ar-dz", gettext_noop("Algerian Arabic")),
+    1:     ("ast", gettext_noop("Asturian")),
+    1:     ("az", gettext_noop("Azerbaijani")),
+    1:     ("bg", gettext_noop("Bulgarian")),
+    1:     ("be", gettext_noop("Belarusian")),
+    1:     ("bn", gettext_noop("Bengali")),
+    1:     ("br", gettext_noop("Breton")),
+    1:     ("bs", gettext_noop("Bosnian")),
+    1:     ("ca", gettext_noop("Catalan")),
+    1:     ("ckb", gettext_noop("Central Kurdish (Sorani)")),
+    1:     ("cs", gettext_noop("Czech")),
+    1:     ("cy", gettext_noop("Welsh")),
+    1:     ("da", gettext_noop("Danish")),
+    1:     ("de", gettext_noop("German")),
+    1:     ("dsb", gettext_noop("Lower Sorbian")),
+    1:     ("el", gettext_noop("Greek")),
+    1:     ("en", gettext_noop("English")),
+    1:     ("en-au", gettext_noop("Australian English")),
+    1:     ("en-gb", gettext_noop("British English")),
+    1:     ("eo", gettext_noop("Esperanto")),
+    1:     ("es", gettext_noop("Spanish")),
+    1:     ("es-ar", gettext_noop("Argentinian Spanish")),
+    1:     ("es-co", gettext_noop("Colombian Spanish")),
+    1:     ("es-mx", gettext_noop("Mexican Spanish")),
+    1:     ("es-ni", gettext_noop("Nicaraguan Spanish")),
+    1:     ("es-ve", gettext_noop("Venezuelan Spanish")),
+    1:     ("et", gettext_noop("Estonian")),
+    1:     ("eu", gettext_noop("Basque")),
+    1:     ("fa", gettext_noop("Persian")),
+    1:     ("fi", gettext_noop("Finnish")),
+    1:     ("fr", gettext_noop("French")),
+    1:     ("fy", gettext_noop("Frisian")),
+    1:     ("ga", gettext_noop("Irish")),
+    1:     ("gd", gettext_noop("Scottish Gaelic")),
+    1:     ("gl", gettext_noop("Galician")),
+    1:     ("he", gettext_noop("Hebrew")),
+    1:     ("hi", gettext_noop("Hindi")),
+    1:     ("hr", gettext_noop("Croatian")),
+    1:     ("hsb", gettext_noop("Upper Sorbian")),
+    1:     ("hu", gettext_noop("Hungarian")),
+    1:     ("hy", gettext_noop("Armenian")),
+    1:     ("ia", gettext_noop("Interlingua")),
+    1:     ("id", gettext_noop("Indonesian")),
+    1:     ("ig", gettext_noop("Igbo")),
+    1:     ("io", gettext_noop("Ido")),
+    1:     ("is", gettext_noop("Icelandic")),
+    1:     ("it", gettext_noop("Italian")),
+    1:     ("ja", gettext_noop("Japanese")),
+    1:     ("ka", gettext_noop("Georgian")),
+    1:     ("kab", gettext_noop("Kabyle")),
+    1:     ("kk", gettext_noop("Kazakh")),
+    1:     ("km", gettext_noop("Khmer")),
+    1:     ("kn", gettext_noop("Kannada")),
+    1:     ("ko", gettext_noop("Korean")),
+    1:     ("ky", gettext_noop("Kyrgyz")),
+    1:     ("lb", gettext_noop("Luxembourgish")),
+    1:     ("lt", gettext_noop("Lithuanian")),
+    1:     ("lv", gettext_noop("Latvian")),
+    1:     ("mk", gettext_noop("Macedonian")),
+    1:     ("ml", gettext_noop("Malayalam")),
+    1:     ("mn", gettext_noop("Mongolian")),
+    1:     ("mr", gettext_noop("Marathi")),
+    1:     ("ms", gettext_noop("Malay")),
+    1:     ("my", gettext_noop("Burmese")),
+    1:     ("nb", gettext_noop("Norwegian Bokmål")),
+    1:     ("ne", gettext_noop("Nepali")),
+    1:     ("nl", gettext_noop("Dutch")),
+    1:     ("nn", gettext_noop("Norwegian Nynorsk")),
+    1:     ("os", gettext_noop("Ossetic")),
+    1:     ("pa", gettext_noop("Punjabi")),
+    1:     ("pl", gettext_noop("Polish")),
+    1:     ("pt", gettext_noop("Portuguese")),
+    1:     ("pt-br", gettext_noop("Brazilian Portuguese")),
+    1:     ("ro", gettext_noop("Romanian")),
+    1:     ("ru", gettext_noop("Russian")),
+    1:     ("sk", gettext_noop("Slovak")),
+    1:     ("sl", gettext_noop("Slovenian")),
+    1:     ("sq", gettext_noop("Albanian")),
+    1:     ("sr", gettext_noop("Serbian")),
+    1:     ("sr-latn", gettext_noop("Serbian Latin")),
+    1:     ("sv", gettext_noop("Swedish")),
+    1:     ("sw", gettext_noop("Swahili")),
+    1:     ("ta", gettext_noop("Tamil")),
+    1:     ("te", gettext_noop("Telugu")),
+    1:     ("tg", gettext_noop("Tajik")),
+    1:     ("th", gettext_noop("Thai")),
+    1:     ("tk", gettext_noop("Turkmen")),
+    1:     ("tr", gettext_noop("Turkish")),
+    1:     ("tt", gettext_noop("Tatar")),
+    1:     ("udm", gettext_noop("Udmurt")),
+    1:     ("ug", gettext_noop("Uyghur")),
+    1:     ("uk", gettext_noop("Ukrainian")),
+    1:     ("ur", gettext_noop("Urdu")),
+    1:     ("uz", gettext_noop("Uzbek")),
+    1:     ("vi", gettext_noop("Vietnamese")),
+    1:     ("zh-hans", gettext_noop("Simplified Chinese")),
+    1:     ("zh-hant", gettext_noop("Traditional Chinese")),
+       ]
+       
+       # Languages using BiDi (right-to-left) layout
+    1: LANGUAGES_BIDI = ["he", "ar", "ar-dz", "ckb", "fa", "ug", "ur"]
+       
+       # If you set this to False, Django will make some optimizations so as not
+       # to load the internationalization machinery.
+    1: USE_I18N = True
+    1: LOCALE_PATHS = []
+       
+       # Settings for language cookie
+    1: LANGUAGE_COOKIE_NAME = "django_language"
+    1: LANGUAGE_COOKIE_AGE = None
+    1: LANGUAGE_COOKIE_DOMAIN = None
+    1: LANGUAGE_COOKIE_PATH = "/"
+    1: LANGUAGE_COOKIE_SECURE = False
+    1: LANGUAGE_COOKIE_HTTPONLY = False
+    1: LANGUAGE_COOKIE_SAMESITE = None
+       
+       # Not-necessarily-technical managers of the site. They get broken link
+       # notifications and other various emails.
+    1: MANAGERS = ADMINS
+       
+       # Default charset to use for all HttpResponse objects, if a MIME type isn't
+       # manually specified. It's used to construct the Content-Type header.
+    1: DEFAULT_CHARSET = "utf-8"
+       
+       # Email address that error messages come from.
+    1: SERVER_EMAIL = "root@localhost"
+       
+       # Database connection info. If left empty, will default to the dummy backend.
+    1: DATABASES = {}
+       
+       # Classes used to implement DB routing behavior.
+    1: DATABASE_ROUTERS = []
+       
+       # The email backend to use. For possible shortcuts see django.core.mail.
+       # The default is to use the SMTP backend.
+       # Third-party backends can be specified by providing a Python path
+       # to a module that defines an EmailBackend class.
+    1: EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+       
+       # Host for sending email.
+    1: EMAIL_HOST = "localhost"
+       
+       # Port for sending email.
+    1: EMAIL_PORT = 25
+       
+       # Whether to send SMTP 'Date' header in the local time zone or in UTC.
+    1: EMAIL_USE_LOCALTIME = False
+       
+       # Optional SMTP authentication information for EMAIL_HOST.
+    1: EMAIL_HOST_USER = ""
+    1: EMAIL_HOST_PASSWORD = ""
+    1: EMAIL_USE_TLS = False
+    1: EMAIL_USE_SSL = False
+    1: EMAIL_SSL_CERTFILE = None
+    1: EMAIL_SSL_KEYFILE = None
+    1: EMAIL_TIMEOUT = None
+       
+       # List of strings representing installed apps.
+    1: INSTALLED_APPS = []
+       
+    1: TEMPLATES = []
+       
+       # Default form rendering class.
+    1: FORM_RENDERER = "django.forms.renderers.DjangoTemplates"
+       
+       # RemovedInDjango60Warning: It's a transitional setting helpful in early
+       # adoption of "https" as the new default value of forms.URLField.assume_scheme.
+       # Set to True to assume "https" during the Django 5.x release cycle.
+    1: FORMS_URLFIELD_ASSUME_HTTPS = False
+       
+       # Default email address to use for various automated correspondence from
+       # the site managers.
+    1: DEFAULT_FROM_EMAIL = "webmaster@localhost"
+       
+       # Subject-line prefix for email messages send with django.core.mail.mail_admins
+       # or ...mail_managers.  Make sure to include the trailing space.
+    1: EMAIL_SUBJECT_PREFIX = "[Django] "
+       
+       # Whether to append trailing slashes to URLs.
+    1: APPEND_SLASH = True
+       
+       # Whether to prepend the "www." subdomain to URLs that don't have it.
+    1: PREPEND_WWW = False
+       
+       # Override the server-derived value of SCRIPT_NAME
+    1: FORCE_SCRIPT_NAME = None
+       
+       # List of compiled regular expression objects representing User-Agent strings
+       # that are not allowed to visit any page, systemwide. Use this for bad
+       # robots/crawlers. Here are a few examples:
+       #     import re
+       #     DISALLOWED_USER_AGENTS = [
+       #         re.compile(r'^NaverBot.*'),
+       #         re.compile(r'^EmailSiphon.*'),
+       #         re.compile(r'^SiteSucker.*'),
+       #         re.compile(r'^sohu-search'),
+       #     ]
+    1: DISALLOWED_USER_AGENTS = []
+       
+    1: ABSOLUTE_URL_OVERRIDES = {}
+       
+       # List of compiled regular expression objects representing URLs that need not
+       # be reported by BrokenLinkEmailsMiddleware. Here are a few examples:
+       #    import re
+       #    IGNORABLE_404_URLS = [
+       #        re.compile(r'^/apple-touch-icon.*\.png$'),
+       #        re.compile(r'^/favicon.ico$'),
+       #        re.compile(r'^/robots.txt$'),
+       #        re.compile(r'^/phpmyadmin/'),
+       #        re.compile(r'\.(cgi|php|pl)$'),
+       #    ]
+    1: IGNORABLE_404_URLS = []
+       
+       # A secret key for this particular Django installation. Used in secret-key
+       # hashing algorithms. Set this in your settings, or Django will complain
+       # loudly.
+    1: SECRET_KEY = ""
+       
+       # List of secret keys used to verify the validity of signatures. This allows
+       # secret key rotation.
+    1: SECRET_KEY_FALLBACKS = []
+       
+    1: STORAGES = {
+    1:     "default": {
+    1:         "BACKEND": "django.core.files.storage.FileSystemStorage",
+           },
+    1:     "staticfiles": {
+    1:         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+           },
+       }
+       
+       # Absolute filesystem path to the directory that will hold user-uploaded files.
+       # Example: "/var/www/example.com/media/"
+    1: MEDIA_ROOT = ""
+       
+       # URL that handles the media served from MEDIA_ROOT.
+       # Examples: "http://example.com/media/", "http://media.example.com/"
+    1: MEDIA_URL = ""
+       
+       # Absolute path to the directory static files should be collected to.
+       # Example: "/var/www/example.com/static/"
+    1: STATIC_ROOT = None
+       
+       # URL that handles the static files served from STATIC_ROOT.
+       # Example: "http://example.com/static/", "http://static.example.com/"
+    1: STATIC_URL = None
+       
+       # List of upload handler classes to be applied in order.
+    1: FILE_UPLOAD_HANDLERS = [
+    1:     "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    1:     "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+       ]
+       
+       # Maximum size, in bytes, of a request before it will be streamed to the
+       # file system instead of into memory.
+    1: FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # i.e. 2.5 MB
+       
+       # Maximum size in bytes of request data (excluding file uploads) that will be
+       # read before a SuspiciousOperation (RequestDataTooBig) is raised.
+    1: DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # i.e. 2.5 MB
+       
+       # Maximum number of GET/POST parameters that will be read before a
+       # SuspiciousOperation (TooManyFieldsSent) is raised.
+    1: DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+       
+       # Maximum number of files encoded in a multipart upload that will be read
+       # before a SuspiciousOperation (TooManyFilesSent) is raised.
+    1: DATA_UPLOAD_MAX_NUMBER_FILES = 100
+       
+       # Directory in which upload streamed files will be temporarily saved. A value of
+       # `None` will make Django use the operating system's default temporary directory
+       # (i.e. "/tmp" on *nix systems).
+    1: FILE_UPLOAD_TEMP_DIR = None
+       
+       # The numeric mode to set newly-uploaded files to. The value should be a mode
+       # you'd pass directly to os.chmod; see
+       # https://docs.python.org/library/os.html#files-and-directories.
+    1: FILE_UPLOAD_PERMISSIONS = 0o644
+       
+       # The numeric mode to assign to newly-created directories, when uploading files.
+       # The value should be a mode as you'd pass to os.chmod;
+       # see https://docs.python.org/library/os.html#files-and-directories.
+    1: FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
+       
+       # Python module path where user will place custom format definition.
+       # The directory where this setting is pointing should contain subdirectories
+       # named as the locales, containing a formats.py file
+       # (i.e. "myproject.locale" for myproject/locale/en/formats.py etc. use)
+    1: FORMAT_MODULE_PATH = None
+       
+       # Default formatting for date objects. See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: DATE_FORMAT = "N j, Y"
+       
+       # Default formatting for datetime objects. See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: DATETIME_FORMAT = "N j, Y, P"
+       
+       # Default formatting for time objects. See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: TIME_FORMAT = "P"
+       
+       # Default formatting for date objects when only the year and month are relevant.
+       # See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: YEAR_MONTH_FORMAT = "F Y"
+       
+       # Default formatting for date objects when only the month and day are relevant.
+       # See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: MONTH_DAY_FORMAT = "F j"
+       
+       # Default short formatting for date objects. See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: SHORT_DATE_FORMAT = "m/d/Y"
+       
+       # Default short formatting for datetime objects.
+       # See all available format strings here:
+       # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: SHORT_DATETIME_FORMAT = "m/d/Y P"
+       
+       # Default formats to be used when parsing dates from input boxes, in order
+       # See all available format string here:
+       # https://docs.python.org/library/datetime.html#strftime-behavior
+       # * Note that these format strings are different from the ones to display dates
+    1: DATE_INPUT_FORMATS = [
+           "%Y-%m-%d",  # '2006-10-25'
+           "%m/%d/%Y",  # '10/25/2006'
+           "%m/%d/%y",  # '10/25/06'
+           "%b %d %Y",  # 'Oct 25 2006'
+           "%b %d, %Y",  # 'Oct 25, 2006'
+           "%d %b %Y",  # '25 Oct 2006'
+           "%d %b, %Y",  # '25 Oct, 2006'
+           "%B %d %Y",  # 'October 25 2006'
+           "%B %d, %Y",  # 'October 25, 2006'
+           "%d %B %Y",  # '25 October 2006'
+           "%d %B, %Y",  # '25 October, 2006'
+       ]
+       
+       # Default formats to be used when parsing times from input boxes, in order
+       # See all available format string here:
+       # https://docs.python.org/library/datetime.html#strftime-behavior
+       # * Note that these format strings are different from the ones to display dates
+    1: TIME_INPUT_FORMATS = [
+           "%H:%M:%S",  # '14:30:59'
+           "%H:%M:%S.%f",  # '14:30:59.000200'
+           "%H:%M",  # '14:30'
+       ]
+       
+       # Default formats to be used when parsing dates and times from input boxes,
+       # in order
+       # See all available format string here:
+       # https://docs.python.org/library/datetime.html#strftime-behavior
+       # * Note that these format strings are different from the ones to display dates
+    1: DATETIME_INPUT_FORMATS = [
+           "%Y-%m-%d %H:%M:%S",  # '2006-10-25 14:30:59'
+           "%Y-%m-%d %H:%M:%S.%f",  # '2006-10-25 14:30:59.000200'
+           "%Y-%m-%d %H:%M",  # '2006-10-25 14:30'
+           "%m/%d/%Y %H:%M:%S",  # '10/25/2006 14:30:59'
+           "%m/%d/%Y %H:%M:%S.%f",  # '10/25/2006 14:30:59.000200'
+           "%m/%d/%Y %H:%M",  # '10/25/2006 14:30'
+           "%m/%d/%y %H:%M:%S",  # '10/25/06 14:30:59'
+           "%m/%d/%y %H:%M:%S.%f",  # '10/25/06 14:30:59.000200'
+           "%m/%d/%y %H:%M",  # '10/25/06 14:30'
+       ]
+       
+       # First day of week, to be used on calendars
+       # 0 means Sunday, 1 means Monday...
+    1: FIRST_DAY_OF_WEEK = 0
+       
+       # Decimal separator symbol
+    1: DECIMAL_SEPARATOR = "."
+       
+       # Boolean that sets whether to add thousand separator when formatting numbers
+    1: USE_THOUSAND_SEPARATOR = False
+       
+       # Number of digits that will be together, when splitting them by
+       # THOUSAND_SEPARATOR. 0 means no grouping, 3 means splitting by thousands...
+    1: NUMBER_GROUPING = 0
+       
+       # Thousand separator symbol
+    1: THOUSAND_SEPARATOR = ","
+       
+       # The tablespaces to use for each model when not specified otherwise.
+    1: DEFAULT_TABLESPACE = ""
+    1: DEFAULT_INDEX_TABLESPACE = ""
+       
+       # Default primary key field type.
+    1: DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+       
+       # Default X-Frame-Options header value
+    1: X_FRAME_OPTIONS = "DENY"
+       
+    1: USE_X_FORWARDED_HOST = False
+    1: USE_X_FORWARDED_PORT = False
+       
+       # The Python dotted path to the WSGI application that Django's internal server
+       # (runserver) will use. If `None`, the return value of
+       # 'django.core.wsgi.get_wsgi_application' is used, thus preserving the same
+       # behavior as previous versions of Django. Otherwise this should point to an
+       # actual WSGI application object.
+    1: WSGI_APPLICATION = None
+       
+       # If your Django app is behind a proxy that sets a header to specify secure
+       # connections, AND that proxy ensures that user-submitted headers with the
+       # same name are ignored (so that people can't spoof it), set this value to
+       # a tuple of (header_name, header_value). For any requests that come in with
+       # that header/value, request.is_secure() will return True.
+       # WARNING! Only set this if you fully understand what you're doing. Otherwise,
+       # you may be opening yourself up to a security risk.
+    1: SECURE_PROXY_SSL_HEADER = None
+       
+       ##############
+       # MIDDLEWARE #
+       ##############
+       
+       # List of middleware to use. Order is important; in the request phase, these
+       # middleware will be applied in the order given, and in the response
+       # phase the middleware will be applied in reverse order.
+    1: MIDDLEWARE = []
+       
+       ############
+       # SESSIONS #
+       ############
+       
+       # Cache to store session data if using the cache session backend.
+    1: SESSION_CACHE_ALIAS = "default"
+       # Cookie name. This can be whatever you want.
+    1: SESSION_COOKIE_NAME = "sessionid"
+       # Age of cookie, in seconds (default: 2 weeks).
+    1: SESSION_COOKIE_AGE = 60 * 60 * 24 * 7 * 2
+       # A string like "example.com", or None for standard domain cookie.
+    1: SESSION_COOKIE_DOMAIN = None
+       # Whether the session cookie should be secure (https:// only).
+    1: SESSION_COOKIE_SECURE = False
+       # The path of the session cookie.
+    1: SESSION_COOKIE_PATH = "/"
+       # Whether to use the HttpOnly flag.
+    1: SESSION_COOKIE_HTTPONLY = True
+       # Whether to set the flag restricting cookie leaks on cross-site requests.
+       # This can be 'Lax', 'Strict', 'None', or False to disable the flag.
+    1: SESSION_COOKIE_SAMESITE = "Lax"
+       # Whether to save the session data on every request.
+    1: SESSION_SAVE_EVERY_REQUEST = False
+       # Whether a user's session cookie expires when the web browser is closed.
+    1: SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+       # The module to store session data
+    1: SESSION_ENGINE = "django.contrib.sessions.backends.db"
+       # Directory to store session files if using the file session module. If None,
+       # the backend will use a sensible default.
+    1: SESSION_FILE_PATH = None
+       # class to serialize session data
+    1: SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
+       
+       #########
+       # CACHE #
+       #########
+       
+       # The cache backends to use.
+    1: CACHES = {
+    2:     "default": {
+    1:         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+           }
+       }
+    1: CACHE_MIDDLEWARE_KEY_PREFIX = ""
+    1: CACHE_MIDDLEWARE_SECONDS = 600
+    1: CACHE_MIDDLEWARE_ALIAS = "default"
+       
+       ##################
+       # AUTHENTICATION #
+       ##################
+       
+    1: AUTH_USER_MODEL = "auth.User"
+       
+    1: AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+       
+    1: LOGIN_URL = "/accounts/login/"
+       
+    1: LOGIN_REDIRECT_URL = "/accounts/profile/"
+       
+    1: LOGOUT_REDIRECT_URL = None
+       
+       # The number of seconds a password reset link is valid for (default: 3 days).
+    1: PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3
+       
+       # the first hasher in this list is the preferred algorithm.  any
+       # password using different algorithms will be converted automatically
+       # upon login
+    1: PASSWORD_HASHERS = [
+           "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+           "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+           "django.contrib.auth.hashers.Argon2PasswordHasher",
+           "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+           "django.contrib.auth.hashers.ScryptPasswordHasher",
+       ]
+       
+    1: AUTH_PASSWORD_VALIDATORS = []
+       
+       ###########
+       # SIGNING #
+       ###########
+       
+    1: SIGNING_BACKEND = "django.core.signing.TimestampSigner"
+       
+       ########
+       # CSRF #
+       ########
+       
+       # Dotted path to callable to be used as view when a request is
+       # rejected by the CSRF middleware.
+    1: CSRF_FAILURE_VIEW = "django.views.csrf.csrf_failure"
+       
+       # Settings for CSRF cookie.
+    1: CSRF_COOKIE_NAME = "csrftoken"
+    1: CSRF_COOKIE_AGE = 60 * 60 * 24 * 7 * 52
+    1: CSRF_COOKIE_DOMAIN = None
+    1: CSRF_COOKIE_PATH = "/"
+    1: CSRF_COOKIE_SECURE = False
+    1: CSRF_COOKIE_HTTPONLY = False
+    1: CSRF_COOKIE_SAMESITE = "Lax"
+    1: CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+    1: CSRF_TRUSTED_ORIGINS = []
+    1: CSRF_USE_SESSIONS = False
+       
+       ############
+       # MESSAGES #
+       ############
+       
+       # Class to use as messages backend
+    1: MESSAGE_STORAGE = "django.contrib.messages.storage.fallback.FallbackStorage"
+       
+       # Default values of MESSAGE_LEVEL and MESSAGE_TAGS are defined within
+       # django.contrib.messages to avoid imports in this settings file.
+       
+       ###########
+       # LOGGING #
+       ###########
+       
+       # The callable to use to configure logging
+    1: LOGGING_CONFIG = "logging.config.dictConfig"
+       
+       # Custom logging configuration.
+    1: LOGGING = {}
+       
+       # Default exception reporter class used in case none has been
+       # specifically assigned to the HttpRequest instance.
+    1: DEFAULT_EXCEPTION_REPORTER = "django.views.debug.ExceptionReporter"
+       
+       # Default exception reporter filter class used in case none has been
+       # specifically assigned to the HttpRequest instance.
+    1: DEFAULT_EXCEPTION_REPORTER_FILTER = "django.views.debug.SafeExceptionReporterFilter"
+       
+       ###########
+       # TESTING #
+       ###########
+       
+       # The name of the class to use to run the test suite
+    1: TEST_RUNNER = "django.test.runner.DiscoverRunner"
+       
+       # Apps that don't need to be serialized at test database creation time
+       # (only apps with migrations are to start with)
+    1: TEST_NON_SERIALIZED_APPS = []
+       
+       ############
+       # FIXTURES #
+       ############
+       
+       # The list of directories to search for fixtures
+    1: FIXTURE_DIRS = []
+       
+       ###############
+       # STATICFILES #
+       ###############
+       
+       # A list of locations of additional static files
+    1: STATICFILES_DIRS = []
+       
+       # List of finder classes that know how to find static files in
+       # various locations.
+    1: STATICFILES_FINDERS = [
+    1:     "django.contrib.staticfiles.finders.FileSystemFinder",
+    1:     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+           # 'django.contrib.staticfiles.finders.DefaultStorageFinder',
+       ]
+       
+       ##############
+       # MIGRATIONS #
+       ##############
+       
+       # Migration module overrides for apps, by app label.
+    1: MIGRATION_MODULES = {}
+       
+       #################
+       # SYSTEM CHECKS #
+       #################
+       
+       # List of all issues generated by system checks that should be silenced. Light
+       # issues like warnings, infos or debugs will not generate a message. Silencing
+       # serious issues like errors and criticals does not result in hiding the
+       # message, but Django will not stop you from e.g. running server.
+    1: SILENCED_SYSTEM_CHECKS = []
+       
+       #######################
+       # SECURITY MIDDLEWARE #
+       #######################
+    1: SECURE_CONTENT_TYPE_NOSNIFF = True
+    1: SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+    1: SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    1: SECURE_HSTS_PRELOAD = False
+    1: SECURE_HSTS_SECONDS = 0
+    1: SECURE_REDIRECT_EXEMPT = []
+    1: SECURE_REFERRER_POLICY = "same-origin"
+    1: SECURE_SSL_HOST = None
+    1: SECURE_SSL_REDIRECT = False

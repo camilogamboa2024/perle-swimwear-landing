@@ -1,0 +1,12 @@
+    1: from . import Tags, register
+       
+       
+    2: @register(Tags.templates)
+    2: def check_templates(app_configs, **kwargs):
+           """Check all registered template engines."""
+    1:     from django.template import engines
+       
+    1:     errors = []
+    2:     for engine in engines.all():
+    1:         errors.extend(engine.check())
+    1:     return errors

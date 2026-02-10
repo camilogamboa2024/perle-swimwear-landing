@@ -1,0 +1,9 @@
+    1: from django.conf import settings
+       
+       
+    1: def brand_globals(request):
+   20:     return {
+   20:         'WHATSAPP_PHONE': getattr(settings, 'WHATSAPP_PHONE', ''),
+   20:         'BRAND_NAME': 'Perle Swimwear',
+   20:         'BRAND_IG': 'https://instagram.com/perle_swimwear',
+           }

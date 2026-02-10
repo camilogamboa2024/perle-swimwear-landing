@@ -1,0 +1,123 @@
+    1: import enum
+    1: import warnings
+       
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+    1: from django.utils.functional import Promise
+    1: from django.utils.version import PY311, PY312
+       
+    1: if PY311:
+    1:     from enum import EnumType, IntEnum, StrEnum
+    1:     from enum import property as enum_property
+       else:
+           from enum import EnumMeta as EnumType
+           from types import DynamicClassAttribute as enum_property
+       
+           class ReprEnum(enum.Enum):
+               def __str__(self):
+                   return str(self.value)
+       
+           class IntEnum(int, ReprEnum):
+               pass
+       
+           class StrEnum(str, ReprEnum):
+               pass
+       
+       
+    1: __all__ = ["Choices", "IntegerChoices", "TextChoices"]
+       
+       
+    2: class ChoicesType(EnumType):
+    1:     """A metaclass for creating a enum choices."""
+       
+    1:     def __new__(metacls, classname, bases, classdict, **kwds):
+    3:         labels = []
+    3:         for key in classdict._member_names:
+                   value = classdict[key]
+                   if (
+                       isinstance(value, (list, tuple))
+                       and len(value) > 1
+                       and isinstance(value[-1], (Promise, str))
+                   ):
+                       *value, label = value
+                       value = tuple(value)
+                   else:
+                       label = key.replace("_", " ").title()
+                   labels.append(label)
+                   # Use dict.__setitem__() to suppress defenses against double
+                   # assignment in enum's classdict.
+                   dict.__setitem__(classdict, key, value)
+    3:         cls = super().__new__(metacls, classname, bases, classdict, **kwds)
+    3:         for member, label in zip(cls.__members__.values(), labels):
+                   member._label_ = label
+    3:         return enum.unique(cls)
+       
+    1:     if not PY312:
+       
+    1:         def __contains__(cls, member):
+                   if not isinstance(member, enum.Enum):
+                       # Allow non-enums to match against member values.
+                       return any(x.value == member for x in cls)
+                   return super().__contains__(member)
+       
+    2:     @property
+    2:     def names(cls):
+               empty = ["__empty__"] if hasattr(cls, "__empty__") else []
+               return empty + [member.name for member in cls]
+       
+    2:     @property
+    2:     def choices(cls):
+               empty = [(None, cls.__empty__)] if hasattr(cls, "__empty__") else []
+               return empty + [(member.value, member.label) for member in cls]
+       
+    2:     @property
+    2:     def labels(cls):
+               return [label for _, label in cls.choices]
+       
+    2:     @property
+    2:     def values(cls):
+               return [value for value, _ in cls.choices]
+       
+       
+    2: class Choices(enum.Enum, metaclass=ChoicesType):
+    1:     """Class for creating enumerated choices."""
+       
+    1:     if PY311:
+    1:         do_not_call_in_templates = enum.nonmember(True)
+           else:
+       
+               @property
+               def do_not_call_in_templates(self):
+                   return True
+       
+    2:     @enum_property
+    2:     def label(self):
+               return self._label_
+       
+           # A similar format was proposed for Python 3.10.
+    1:     def __repr__(self):
+               return f"{self.__class__.__qualname__}.{self._name_}"
+       
+       
+    2: class IntegerChoices(Choices, IntEnum):
+    1:     """Class for creating enumerated integer choices."""
+       
+    1:     pass
+       
+       
+    2: class TextChoices(Choices, StrEnum):
+    1:     """Class for creating enumerated string choices."""
+       
+    2:     @staticmethod
+    2:     def _generate_next_value_(name, start, count, last_values):
+               return name
+       
+       
+    1: def __getattr__(name):
+ 2268:     if name == "ChoicesMeta":
+               warnings.warn(
+                   "ChoicesMeta is deprecated in favor of ChoicesType.",
+                   RemovedInDjango60Warning,
+                   stacklevel=2,
+               )
+               return ChoicesType
+ 2268:     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

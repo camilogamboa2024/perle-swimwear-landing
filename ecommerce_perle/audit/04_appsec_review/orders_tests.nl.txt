@@ -1,0 +1,78 @@
+     1	import json
+     2	
+     3	from django.test import Client, TestCase
+     4	
+     5	from apps.catalog.models import Category, Product, ProductVariant
+     6	from apps.inventory.models import StockLevel
+     7	
+     8	
+     9	class CartApiCsrfTest(TestCase):
+    10	    def setUp(self):
+    11	        self.client = Client(enforce_csrf_checks=True)
+    12	        category = Category.objects.create(name='CSRF', slug='csrf')
+    13	        product = Product.objects.create(name='CSRF Product', slug='csrf-product', category=category, description='x')
+    14	        self.variant = ProductVariant.objects.create(
+    15	            product=product,
+    16	            sku='SKU-CSRF-1',
+    17	            size='M',
+    18	            color='Negro',
+    19	            price_cop=100000,
+    20	            is_active=True,
+    21	        )
+    22	        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
+    23	
+    24	    def _csrf_headers(self):
+    25	        response = self.client.get('/')
+    26	        token = response.cookies.get('csrftoken').value
+    27	        return {'HTTP_X_CSRFTOKEN': token}
+    28	
+    29	    def _add_item(self):
+    30	        headers = self._csrf_headers()
+    31	        return self.client.post(
+    32	            '/api/cart/items/',
+    33	            data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+    34	            content_type='application/json',
+    35	            **headers,
+    36	        )
+    37	
+    38	    def test_add_cart_item_requires_csrf(self):
+    39	        response = self.client.post(
+    40	            '/api/cart/items/',
+    41	            data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+    42	            content_type='application/json',
+    43	        )
+    44	        self.assertEqual(response.status_code, 403)
+    45	
+    46	    def test_patch_cart_item_requires_csrf(self):
+    47	        add_response = self._add_item()
+    48	        self.assertEqual(add_response.status_code, 201)
+    49	        item_id = add_response.json()['items'][0]['id']
+    50	        response = self.client.patch(
+    51	            f'/api/cart/items/{item_id}/',
+    52	            data=json.dumps({'quantity': 2}),
+    53	            content_type='application/json',
+    54	        )
+    55	        self.assertEqual(response.status_code, 403)
+    56	
+    57	    def test_clear_cart_requires_csrf(self):
+    58	        add_response = self._add_item()
+    59	        self.assertEqual(add_response.status_code, 201)
+    60	        response = self.client.post('/api/cart/clear/', data='{}', content_type='application/json')
+    61	        self.assertEqual(response.status_code, 403)
+    62	
+    63	    def test_cart_mutations_succeed_with_csrf(self):
+    64	        add_response = self._add_item()
+    65	        self.assertEqual(add_response.status_code, 201)
+    66	        item_id = add_response.json()['items'][0]['id']
+    67	        headers = self._csrf_headers()
+    68	
+    69	        patch_response = self.client.patch(
+    70	            f'/api/cart/items/{item_id}/',
+    71	            data=json.dumps({'quantity': 2}),
+    72	            content_type='application/json',
+    73	            **headers,
+    74	        )
+    75	        self.assertEqual(patch_response.status_code, 200)
+    76	
+    77	        clear_response = self.client.post('/api/cart/clear/', data='{}', content_type='application/json', **headers)
+    78	        self.assertEqual(clear_response.status_code, 200)

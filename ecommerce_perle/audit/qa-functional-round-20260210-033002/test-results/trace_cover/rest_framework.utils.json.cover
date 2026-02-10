@@ -1,0 +1,37 @@
+    1: """
+       Wrapper for the builtin json module that ensures compliance with the JSON spec.
+       
+       REST framework should always import this wrapper module in order to maintain
+       spec-compliant encoding/decoding. Support for non-standard features should be
+       handled by users at the renderer and parser layer.
+       """
+    1: import functools
+    1: import json  # noqa
+       
+       
+    1: def strict_constant(o):
+           raise ValueError('Out of range float values are not JSON compliant: ' + repr(o))
+       
+       
+    2: @functools.wraps(json.dump)
+    2: def dump(*args, **kwargs):
+           kwargs.setdefault('allow_nan', False)
+           return json.dump(*args, **kwargs)
+       
+       
+    2: @functools.wraps(json.dumps)
+    2: def dumps(*args, **kwargs):
+   23:     kwargs.setdefault('allow_nan', False)
+   23:     return json.dumps(*args, **kwargs)
+       
+       
+    2: @functools.wraps(json.load)
+    2: def load(*args, **kwargs):
+   17:     kwargs.setdefault('parse_constant', strict_constant)
+   17:     return json.load(*args, **kwargs)
+       
+       
+    2: @functools.wraps(json.loads)
+    2: def loads(*args, **kwargs):
+           kwargs.setdefault('parse_constant', strict_constant)
+           return json.loads(*args, **kwargs)

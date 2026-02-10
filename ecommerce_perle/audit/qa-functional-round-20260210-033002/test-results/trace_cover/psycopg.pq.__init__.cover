@@ -1,0 +1,136 @@
+    1: """
+       psycopg libpq wrapper
+       
+       This package exposes the libpq functionalities as Python objects and functions.
+       
+       The real implementation (the binding to the C library) is
+       implementation-dependant but all the implementations share the same interface.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import os
+    1: import logging
+    1: from collections.abc import Callable
+       
+    1: from . import abc
+    1: from .misc import ConninfoOption, PGnotify, PGresAttDesc, error_message, version_pretty
+    1: from ._enums import ConnStatus, DiagnosticField, ExecStatus, Format, Ping
+    1: from ._enums import PipelineStatus, PollingStatus, Trace, TransactionStatus
+       
+    1: logger = logging.getLogger(__name__)
+       
+    1: __impl__: str
+    1: """The currently loaded implementation of the `!psycopg.pq` package.
+       
+       Possible values include ``python``, ``c``, ``binary``.
+       """
+       
+    1: __build_version__: int
+    1: """The libpq version the C package was built with.
+       
+       A number in the same format of `~psycopg.ConnectionInfo.server_version`
+       representing the libpq used to build the speedup module (``c``, ``binary``) if
+       available.
+       
+       Certain features might not be available if the built version is too old.
+       """
+       
+    1: version: Callable[[], int]
+    1: PGconn: type[abc.PGconn]
+    1: PGresult: type[abc.PGresult]
+    1: Conninfo: type[abc.Conninfo]
+    1: Escaping: type[abc.Escaping]
+    1: PGcancel: type[abc.PGcancel]
+    1: PGcancelConn: type[abc.PGcancelConn]
+       
+       
+    1: def import_from_libpq() -> None:
+           """
+           Import pq objects implementation from the best libpq wrapper available.
+       
+           If an implementation is requested try to import only it, otherwise
+           try to import the best implementation available.
+           """
+           # import these names into the module on success as side effect
+           global __impl__, version, __build_version__
+           global PGconn, PGresult, Conninfo, Escaping, PGcancel, PGcancelConn
+       
+    1:     impl = os.environ.get("PSYCOPG_IMPL", "").lower()
+    1:     module = None
+    1:     attempts: list[str] = []
+       
+    1:     def handle_error(name: str, e: Exception) -> None:
+    1:         if not impl:
+    1:             msg = f"couldn't import psycopg '{name}' implementation: {e}"
+    1:             attempts.append(msg)
+               else:
+                   msg = f"couldn't import requested psycopg '{name}' implementation: {e}"
+                   raise ImportError(msg) from e
+       
+           # The best implementation: fast but requires the system libpq installed
+    1:     if not impl or impl == "c":
+    1:         try:
+    1:             from psycopg_c import pq as module  # type: ignore
+    1:         except Exception as e:
+    1:             handle_error("c", e)
+       
+           # Second best implementation: fast and stand-alone
+    1:     if not module and (not impl or impl == "binary"):
+    1:         try:
+    1:             from psycopg_binary import pq as module  # type: ignore
+               except Exception as e:
+                   handle_error("binary", e)
+       
+           # Pure Python implementation, slow and requires the system libpq installed.
+    1:     if not module and (not impl or impl == "python"):
+               try:
+                   from . import pq_ctypes as module  # type: ignore[assignment]
+               except Exception as e:
+                   handle_error("python", e)
+       
+    1:     if module:
+    1:         __impl__ = module.__impl__
+    1:         version = module.version
+    1:         PGconn = module.PGconn
+    1:         PGresult = module.PGresult
+    1:         Conninfo = module.Conninfo
+    1:         Escaping = module.Escaping
+    1:         PGcancel = module.PGcancel
+    1:         PGcancelConn = module.PGcancelConn
+    1:         __build_version__ = module.__build_version__
+           elif impl:
+               raise ImportError(f"requested psycopg implementation '{impl}' unknown")
+           else:
+               sattempts = "\n".join(f"- {attempt}" for attempt in attempts)
+               raise ImportError(
+                   f"""\
+       no pq wrapper available.
+       Attempts made:
+       {sattempts}"""
+               )
+       
+       
+    1: import_from_libpq()
+       
+    1: __all__ = (
+           "ConnStatus",
+           "PipelineStatus",
+           "PollingStatus",
+           "TransactionStatus",
+           "ExecStatus",
+           "Ping",
+           "DiagnosticField",
+           "Format",
+           "Trace",
+           "PGconn",
+           "PGnotify",
+           "Conninfo",
+           "PGresAttDesc",
+           "error_message",
+           "ConninfoOption",
+           "version",
+           "version_pretty",
+       )

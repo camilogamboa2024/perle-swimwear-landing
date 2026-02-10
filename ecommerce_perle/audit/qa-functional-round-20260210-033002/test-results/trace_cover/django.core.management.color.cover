@@ -1,0 +1,120 @@
+    1: """
+       Sets up the terminal color scheme.
+       """
+       
+    1: import functools
+    1: import os
+    1: import sys
+       
+    1: from django.utils import termcolors
+       
+    1: try:
+    1:     import colorama
+       
+           # Avoid initializing colorama in non-Windows platforms.
+           colorama.just_fix_windows_console()
+    1: except (
+    1:     AttributeError,  # colorama <= 0.4.6.
+    1:     ImportError,  # colorama is not installed.
+           # If just_fix_windows_console() accesses sys.stdout with
+           # WSGIRestrictedStdout.
+    1:     OSError,
+       ):
+    1:     HAS_COLORAMA = False
+       else:
+           HAS_COLORAMA = True
+       
+       
+    1: def supports_color():
+           """
+           Return True if the running system's terminal supports color,
+           and False otherwise.
+           """
+       
+    9:     def vt_codes_enabled_in_windows_registry():
+               """
+               Check the Windows Registry to see if VT code handling has been enabled
+               by default, see https://superuser.com/a/1300251/447564.
+               """
+               try:
+                   # winreg is only available on Windows.
+                   import winreg
+               except ImportError:
+                   return False
+               else:
+                   try:
+                       reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Console")
+                       reg_key_value, _ = winreg.QueryValueEx(reg_key, "VirtualTerminalLevel")
+                   except FileNotFoundError:
+                       return False
+                   else:
+                       return reg_key_value == 1
+       
+           # isatty is not always implemented, #6223.
+    9:     is_a_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+       
+    9:     return is_a_tty and (
+               sys.platform != "win32"
+               or (HAS_COLORAMA and getattr(colorama, "fixed_windows_console", False))
+               or "ANSICON" in os.environ
+               or
+               # Windows Terminal supports VT codes.
+               "WT_SESSION" in os.environ
+               or
+               # Microsoft Visual Studio Code's built-in terminal supports colors.
+               os.environ.get("TERM_PROGRAM") == "vscode"
+               or vt_codes_enabled_in_windows_registry()
+           )
+       
+       
+    2: class Style:
+    1:     pass
+       
+       
+    1: def make_style(config_string=""):
+           """
+           Create a Style object from the given config_string.
+       
+           If config_string is empty django.utils.termcolors.DEFAULT_PALETTE is used.
+           """
+       
+    1:     style = Style()
+       
+    1:     color_settings = termcolors.parse_color_setting(config_string)
+       
+           # The nocolor palette has all available roles.
+           # Use that palette as the basis for populating
+           # the palette as defined in the environment.
+   18:     for role in termcolors.PALETTES[termcolors.NOCOLOR_PALETTE]:
+   17:         if color_settings:
+                   format = color_settings.get(role, {})
+                   style_func = termcolors.make_style(**format)
+               else:
+       
+   17:             def style_func(x):
+                       return x
+       
+   17:         setattr(style, role, style_func)
+       
+           # For backwards compatibility,
+           # set style for ERROR_OUTPUT == ERROR
+    1:     style.ERROR_OUTPUT = style.ERROR
+       
+    1:     return style
+       
+       
+    2: @functools.cache
+    2: def no_style():
+           """
+           Return a Style object with no color scheme.
+           """
+    1:     return make_style("nocolor")
+       
+       
+    1: def color_style(force_color=False):
+           """
+           Return a Style object from the Django color scheme.
+           """
+    9:     if not force_color and not supports_color():
+    9:         return no_style()
+           return make_style(os.environ.get("DJANGO_COLORS", ""))

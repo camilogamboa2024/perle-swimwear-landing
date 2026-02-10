@@ -1,0 +1,19 @@
+    1: from django.contrib.auth import REDIRECT_FIELD_NAME
+    1: from django.contrib.auth.decorators import user_passes_test
+       
+       
+    1: def staff_member_required(
+    1:     view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
+       ):
+           """
+           Decorator for views that checks that the user is logged in and is a staff
+           member, redirecting to the login page if necessary.
+           """
+    2:     actual_decorator = user_passes_test(
+    1:         lambda u: u.is_active and u.is_staff,
+    1:         login_url=login_url,
+    1:         redirect_field_name=redirect_field_name,
+           )
+    1:     if view_func:
+    1:         return actual_decorator(view_func)
+           return actual_decorator

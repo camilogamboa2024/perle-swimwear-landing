@@ -1,0 +1,81 @@
+    1: """
+       Handling of media types, as found in HTTP Content-Type and Accept headers.
+       
+       See https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.7
+       """
+    1: from django.utils.http import parse_header_parameters
+       
+       
+    1: def media_type_matches(lhs, rhs):
+           """
+           Returns ``True`` if the media type in the first argument <= the
+           media type in the second argument.  The media types are strings
+           as described by the HTTP spec.
+       
+           Valid media type strings include:
+       
+           'application/json; indent=4'
+           'application/json'
+           'text/*'
+           '*/*'
+           """
+   40:     lhs = _MediaType(lhs)
+   40:     rhs = _MediaType(rhs)
+   40:     return lhs.match(rhs)
+       
+       
+    1: def order_by_precedence(media_type_lst):
+           """
+           Returns a list of sets of media type strings, ordered by precedence.
+           Precedence is determined by how specific a media type is:
+       
+           3. 'type/subtype; param=val'
+           2. 'type/subtype'
+           1. 'type/*'
+           0. '*/*'
+           """
+   23:     ret = [set(), set(), set(), set()]
+   46:     for media_type in media_type_lst:
+   23:         precedence = _MediaType(media_type).precedence
+   23:         ret[3 - precedence].add(media_type)
+  138:     return [media_types for media_types in ret if media_types]
+       
+       
+    2: class _MediaType:
+    1:     def __init__(self, media_type_str):
+  149:         self.orig = '' if (media_type_str is None) else media_type_str
+  149:         self.full_type, self.params = parse_header_parameters(self.orig)
+  149:         self.main_type, sep, self.sub_type = self.full_type.partition('/')
+       
+    1:     def match(self, other):
+               """Return true if this MediaType satisfies the given MediaType."""
+   40:         for key in self.params:
+                   if key != 'q' and other.params.get(key, None) != self.params.get(key, None):
+                       return False
+       
+   40:         if self.sub_type != '*' and other.sub_type != '*' and other.sub_type != self.sub_type:
+                   return False
+       
+   40:         if self.main_type != '*' and other.main_type != '*' and other.main_type != self.main_type:
+                   return False
+       
+   40:         return True
+       
+    2:     @property
+    2:     def precedence(self):
+               """
+               Return a precedence level from 0-3 for the media type given how specific it is.
+               """
+   69:         if self.main_type == '*':
+   46:             return 0
+   23:         elif self.sub_type == '*':
+                   return 1
+   23:         elif not self.params or list(self.params) == ['q']:
+   23:             return 2
+               return 3
+       
+    1:     def __str__(self):
+               ret = "%s/%s" % (self.main_type, self.sub_type)
+               for key, val in self.params.items():
+                   ret += "; %s=%s" % (key, val)
+               return ret

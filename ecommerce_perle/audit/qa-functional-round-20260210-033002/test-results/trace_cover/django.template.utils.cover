@@ -1,0 +1,110 @@
+    1: import functools
+    1: from collections import Counter
+    1: from pathlib import Path
+       
+    1: from django.apps import apps
+    1: from django.conf import settings
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.utils.functional import cached_property
+    1: from django.utils.module_loading import import_string
+       
+       
+    2: class InvalidTemplateEngineError(ImproperlyConfigured):
+    1:     pass
+       
+       
+    2: class EngineHandler:
+    1:     def __init__(self, templates=None):
+               """
+               templates is an optional list of template engine definitions
+               (structured like settings.TEMPLATES).
+               """
+    1:         self._templates = templates
+    1:         self._engines = {}
+       
+    2:     @cached_property
+    2:     def templates(self):
+    1:         if self._templates is None:
+    1:             self._templates = settings.TEMPLATES
+       
+    1:         templates = {}
+    1:         backend_names = []
+    2:         for tpl in self._templates:
+    1:             try:
+                       # This will raise an exception if 'BACKEND' doesn't exist or
+                       # isn't a string containing at least one dot.
+    1:                 default_name = tpl["BACKEND"].rsplit(".", 2)[-2]
+                   except Exception:
+                       invalid_backend = tpl.get("BACKEND", "<not defined>")
+                       raise ImproperlyConfigured(
+                           "Invalid BACKEND for a template engine: {}. Check "
+                           "your TEMPLATES setting.".format(invalid_backend)
+                       )
+       
+    2:             tpl = {
+    1:                 "NAME": default_name,
+    1:                 "DIRS": [],
+    1:                 "APP_DIRS": False,
+    1:                 "OPTIONS": {},
+    1:                 **tpl,
+                   }
+       
+    1:             templates[tpl["NAME"]] = tpl
+    1:             backend_names.append(tpl["NAME"])
+       
+    1:         counts = Counter(backend_names)
+    3:         duplicates = [alias for alias, count in counts.most_common() if count > 1]
+    1:         if duplicates:
+                   raise ImproperlyConfigured(
+                       "Template engine aliases aren't unique, duplicates: {}. "
+                       "Set a unique NAME for each engine in settings.TEMPLATES.".format(
+                           ", ".join(duplicates)
+                       )
+                   )
+       
+    1:         return templates
+       
+    1:     def __getitem__(self, alias):
+   22:         try:
+   22:             return self._engines[alias]
+    1:         except KeyError:
+    1:             try:
+    1:                 params = self.templates[alias]
+                   except KeyError:
+                       raise InvalidTemplateEngineError(
+                           "Could not find config for '{}' "
+                           "in settings.TEMPLATES".format(alias)
+                       )
+       
+                   # If importing or initializing the backend raises an exception,
+                   # self._engines[alias] isn't set and this code may get executed
+                   # again, so we must preserve the original params. See #24265.
+    1:             params = params.copy()
+    1:             backend = params.pop("BACKEND")
+    1:             engine_cls = import_string(backend)
+    1:             engine = engine_cls(params)
+       
+    1:             self._engines[alias] = engine
+    1:             return engine
+       
+    1:     def __iter__(self):
+   22:         return iter(self.templates)
+       
+    1:     def all(self):
+   66:         return [self[alias] for alias in self]
+       
+       
+    2: @functools.lru_cache
+    2: def get_app_template_dirs(dirname):
+           """
+           Return an iterable of paths of directories to load app templates from.
+       
+           dirname is the name of the subdirectory containing templates inside
+           installed applications.
+           """
+           # Immutable return value because it will be cached and shared by callers.
+           return tuple(
+               path
+               for app_config in apps.get_app_configs()
+               if app_config.path and (path := Path(app_config.path) / dirname).is_dir()
+           )

@@ -1,0 +1,6 @@
+Forbidden: /api/cart/items/8/
+Forbidden: /api/cart/clear/
+add_with_csrf_status 201
+patch_without_csrf_status 403
+clear_without_csrf_status 403
+exit_code=0

@@ -1,0 +1,315 @@
+    1: """
+       Adapters for JSON types.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import json
+    1: import logging
+    1: from types import CodeType
+    1: from typing import Any, TypeAlias
+    1: from threading import Lock
+    1: from collections.abc import Callable
+       
+    1: from .. import _oids, abc
+    1: from .. import errors as e
+    1: from ..pq import Format
+    1: from ..adapt import AdaptersMap, Buffer, Dumper, Loader, PyFormat
+    1: from ..errors import DataError
+       
+    1: JsonDumpsFunction: TypeAlias = Callable[[Any], str | bytes]
+    1: JsonLoadsFunction: TypeAlias = Callable[[str | bytes], Any]
+    1: _AdapterKey: TypeAlias = tuple[type, Callable[..., Any] | CodeType]
+       
+    1: logger = logging.getLogger("psycopg")
+       
+       
+    1: def set_json_dumps(
+    1:     dumps: JsonDumpsFunction, context: abc.AdaptContext | None = None
+       ) -> None:
+           """
+           Set the JSON serialisation function to store JSON objects in the database.
+       
+           :param dumps: The dump function to use.
+           :type dumps: `!Callable[[Any], str]`
+           :param context: Where to use the `!dumps` function. If not specified, use it
+               globally.
+           :type context: `~psycopg.Connection` or `~psycopg.Cursor`
+       
+           By default dumping JSON uses the builtin `json.dumps`. You can override
+           it to use a different JSON library or to use customised arguments.
+       
+           If the `Json` wrapper specified a `!dumps` function, use it in precedence
+           of the one set by this function.
+           """
+           if context is None:
+               # If changing load function globally, just change the default on the
+               # global class
+               _JsonDumper._dumps = dumps
+           else:
+               adapters = context.adapters
+       
+               # If the scope is smaller than global, create subclassess and register
+               # them in the appropriate scope.
+               grid = [
+                   (Json, PyFormat.BINARY),
+                   (Json, PyFormat.TEXT),
+                   (Jsonb, PyFormat.BINARY),
+                   (Jsonb, PyFormat.TEXT),
+               ]
+               for wrapper, format in grid:
+                   base = _get_current_dumper(adapters, wrapper, format)
+                   dumper = _make_dumper(base, dumps)
+                   adapters.register_dumper(wrapper, dumper)
+       
+       
+    1: def set_json_loads(
+    1:     loads: JsonLoadsFunction, context: abc.AdaptContext | None = None
+       ) -> None:
+           """
+           Set the JSON parsing function to fetch JSON objects from the database.
+       
+           :param loads: The load function to use.
+           :type loads: `!Callable[[bytes], Any]`
+           :param context: Where to use the `!loads` function. If not specified, use
+               it globally.
+           :type context: `~psycopg.Connection` or `~psycopg.Cursor`
+       
+           By default loading JSON uses the builtin `json.loads`. You can override
+           it to use a different JSON library or to use customised arguments.
+           """
+           if context is None:
+               # If changing load function globally, just change the default on the
+               # global class
+               _JsonLoader._loads = loads
+           else:
+               # If the scope is smaller than global, create subclassess and register
+               # them in the appropriate scope.
+               grid = [
+                   ("json", JsonLoader),
+                   ("json", JsonBinaryLoader),
+                   ("jsonb", JsonbLoader),
+                   ("jsonb", JsonbBinaryLoader),
+               ]
+               for tname, base in grid:
+                   loader = _make_loader(base, loads)
+                   context.adapters.register_loader(tname, loader)
+       
+       
+       # Cache all dynamically-generated types to avoid leaks in case the types
+       # cannot be GC'd.
+       
+    1: _dumpers_cache: dict[_AdapterKey, type[abc.Dumper]] = {}
+    1: _loaders_cache: dict[_AdapterKey, type[abc.Loader]] = {}
+       
+       
+    1: def _make_dumper(
+    1:     base: type[abc.Dumper], dumps: JsonDumpsFunction, __lock: Lock = Lock()
+       ) -> type[abc.Dumper]:
+           with __lock:
+               if key := _get_adapter_key(base, dumps):
+                   try:
+                       return _dumpers_cache[key]
+                   except KeyError:
+                       pass
+       
+               if not (name := base.__name__).startswith("Custom"):
+                   name = f"Custom{name}"
+               rv = type(name, (base,), {"_dumps": dumps})
+       
+               if key:
+                   _dumpers_cache[key] = rv
+       
+               return rv
+       
+       
+    1: def _make_loader(
+    1:     base: type[Loader], loads: JsonLoadsFunction, __lock: Lock = Lock()
+       ) -> type[abc.Loader]:
+           with __lock:
+               if key := _get_adapter_key(base, loads):
+                   try:
+                       return _loaders_cache[key]
+                   except KeyError:
+                       pass
+       
+               if not (name := base.__name__).startswith("Custom"):
+                   name = f"Custom{name}"
+               rv = type(name, (base,), {"_loads": loads})
+       
+               if key:
+                   _loaders_cache[key] = rv
+       
+               return rv
+       
+       
+    1: def _get_adapter_key(t: type, f: Callable[..., Any]) -> _AdapterKey | None:
+           """
+           Return an adequate caching key for a dumps/loads function and a base type.
+       
+           We can't use just the function, even if it is hashable, because different
+           lambda expression will have a different hash. The code, instead, will be
+           the same if a lambda if defined in a function, so we can use it as a more
+           stable hash key.
+           """
+           # If this function has no code or closure, optimistically assume that it's
+           # an ok object and stable enough that will not cause a leak. for example it
+           # might be a C function (such as `orjson.loads()`).
+           try:
+               f.__code__
+               f.__closure__
+           except AttributeError:
+               return (t, f)
+       
+           # If there is a closure, the same code might have different effects
+           # according to the closure arguments. We could do something funny like
+           # using the closure values to build a cache key, but I am not 100% sure
+           # about whether the closure objects are always `cell` (the type says it's
+           # `cell | Any`) and the solution would be partial anyway because of
+           # non-hashable closure objects, therefore let's just give a warning (which
+           # can be detected via logging) and avoid to create a leak.
+           if f.__closure__:
+               logger.warning(
+                   "using a closure in a dumps/loads function may cause a resource leak"
+               )
+               return None
+       
+           return (t, f.__code__)
+       
+       
+    2: class _JsonWrapper:
+    1:     __slots__ = ("obj", "dumps")
+       
+    1:     def __init__(self, obj: Any, dumps: JsonDumpsFunction | None = None):
+               self.obj = obj
+               self.dumps = dumps
+       
+    1:     def __repr__(self) -> str:
+               if len(sobj := repr(self.obj)) > 40:
+                   sobj = f"{sobj[:35]} ... ({len(sobj)} chars)"
+               return f"{self.__class__.__name__}({sobj})"
+       
+       
+    2: class Json(_JsonWrapper):
+    1:     __slots__ = ()
+       
+       
+    2: class Jsonb(_JsonWrapper):
+    1:     __slots__ = ()
+       
+       
+    2: class _JsonDumper(Dumper):
+           # The globally used JSON dumps() function. It can be changed globally (by
+           # set_json_dumps) or by a subclass.
+    1:     _dumps: JsonDumpsFunction = json.dumps
+       
+    1:     def __init__(self, cls: type, context: abc.AdaptContext | None = None):
+               super().__init__(cls, context)
+               self.dumps = self.__class__._dumps
+       
+    1:     def dump(self, obj: Any) -> Buffer | None:
+               if isinstance(obj, _JsonWrapper):
+                   dumps = obj.dumps or self.dumps
+                   obj = obj.obj
+               else:
+                   dumps = self.dumps
+               if isinstance((data := dumps(obj)), str):
+                   return data.encode()
+               return data
+       
+       
+    2: class JsonDumper(_JsonDumper):
+    1:     oid = _oids.JSON_OID
+       
+       
+    2: class JsonBinaryDumper(_JsonDumper):
+    1:     format = Format.BINARY
+    1:     oid = _oids.JSON_OID
+       
+       
+    2: class JsonbDumper(_JsonDumper):
+    1:     oid = _oids.JSONB_OID
+       
+       
+    2: class JsonbBinaryDumper(_JsonDumper):
+    1:     format = Format.BINARY
+    1:     oid = _oids.JSONB_OID
+       
+    1:     def dump(self, obj: Any) -> Buffer | None:
+               if (obj_bytes := super().dump(obj)) is not None:
+                   return b"\x01" + obj_bytes
+               else:
+                   return None
+       
+       
+    2: class _JsonLoader(Loader):
+           # The globally used JSON loads() function. It can be changed globally (by
+           # set_json_loads) or by a subclass.
+    1:     _loads: JsonLoadsFunction = json.loads
+       
+    1:     def __init__(self, oid: int, context: abc.AdaptContext | None = None):
+               super().__init__(oid, context)
+               self.loads = self.__class__._loads
+       
+    1:     def load(self, data: Buffer) -> Any:
+               # json.loads() cannot work on memoryview.
+               if not isinstance(data, bytes):
+                   data = bytes(data)
+               return self.loads(data)
+       
+       
+    2: class JsonLoader(_JsonLoader):
+    1:     pass
+       
+       
+    2: class JsonbLoader(_JsonLoader):
+    1:     pass
+       
+       
+    2: class JsonBinaryLoader(_JsonLoader):
+    1:     format = Format.BINARY
+       
+       
+    2: class JsonbBinaryLoader(_JsonLoader):
+    1:     format = Format.BINARY
+       
+    1:     def load(self, data: Buffer) -> Any:
+               if data and data[0] != 1:
+                   raise DataError("unknown jsonb binary format: {data[0]}")
+               if not isinstance((data := data[1:]), bytes):
+                   data = bytes(data)
+               return self.loads(data)
+       
+       
+    1: def _get_current_dumper(
+           adapters: AdaptersMap, cls: type, format: PyFormat
+       ) -> type[abc.Dumper]:
+           try:
+               return adapters.get_dumper(cls, format)
+           except e.ProgrammingError:
+               return _default_dumpers[cls, format]
+       
+       
+    1: _default_dumpers: dict[tuple[type[_JsonWrapper], PyFormat], type[Dumper]] = {
+    1:     (Json, PyFormat.BINARY): JsonBinaryDumper,
+    1:     (Json, PyFormat.TEXT): JsonDumper,
+    1:     (Jsonb, PyFormat.BINARY): JsonbBinaryDumper,
+    1:     (Jsonb, PyFormat.TEXT): JsonDumper,
+       }
+       
+       
+    1: def register_default_adapters(context: abc.AdaptContext) -> None:
+    1:     adapters = context.adapters
+       
+           # Currently json binary format is nothing different than text, maybe with
+           # an extra memcopy we can avoid.
+    1:     adapters.register_dumper(Json, JsonBinaryDumper)
+    1:     adapters.register_dumper(Json, JsonDumper)
+    1:     adapters.register_dumper(Jsonb, JsonbBinaryDumper)
+    1:     adapters.register_dumper(Jsonb, JsonbDumper)
+    1:     adapters.register_loader("json", JsonLoader)
+    1:     adapters.register_loader("jsonb", JsonbLoader)
+    1:     adapters.register_loader("json", JsonBinaryLoader)
+    1:     adapters.register_loader("jsonb", JsonbBinaryLoader)

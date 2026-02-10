@@ -1,0 +1,303 @@
+    1: from contextlib import contextmanager
+    1: from copy import copy
+       
+       # Hard-coded processor for easier use of CSRF protection.
+    1: _builtin_context_processors = ("django.template.context_processors.csrf",)
+       
+       
+    2: class ContextPopException(Exception):
+    1:     "pop() has been called more times than push()"
+       
+    1:     pass
+       
+       
+    2: class ContextDict(dict):
+    1:     def __init__(self, context, *args, **kwargs):
+  170:         super().__init__(*args, **kwargs)
+       
+  170:         context.dicts.append(self)
+  170:         self.context = context
+       
+    1:     def __enter__(self):
+   95:         return self
+       
+    1:     def __exit__(self, *args, **kwargs):
+   95:         self.context.pop()
+       
+       
+    2: class BaseContext:
+    1:     def __init__(self, dict_=None):
+  120:         self._reset_dicts(dict_)
+       
+    1:     def _reset_dicts(self, value=None):
+  120:         builtins = {"True": True, "False": False, "None": None}
+  120:         self.dicts = [builtins]
+  120:         if isinstance(value, BaseContext):
+                   self.dicts += value.dicts[1:]
+  120:         elif value is not None:
+                   self.dicts.append(value)
+       
+    1:     def __copy__(self):
+   80:         duplicate = BaseContext()
+   80:         duplicate.__class__ = self.__class__
+   80:         duplicate.__dict__ = copy(self.__dict__)
+   80:         duplicate.dicts = self.dicts[:]
+   80:         return duplicate
+       
+    1:     def __repr__(self):
+               return repr(self.dicts)
+       
+    1:     def __iter__(self):
+               return reversed(self.dicts)
+       
+    1:     def push(self, *args, **kwargs):
+  130:         dicts = []
+  145:         for d in args:
+   15:             if isinstance(d, BaseContext):
+                       dicts += d.dicts[1:]
+                   else:
+   15:                 dicts.append(d)
+  130:         return ContextDict(self, *dicts, **kwargs)
+       
+    1:     def pop(self):
+  115:         if len(self.dicts) == 1:
+                   raise ContextPopException
+  115:         return self.dicts.pop()
+       
+    1:     def __setitem__(self, key, value):
+               "Set a variable in the current context"
+  122:         self.dicts[-1][key] = value
+       
+    1:     def set_upward(self, key, value):
+               """
+               Set a variable in one of the higher contexts if it exists there,
+               otherwise in the current context.
+               """
+               context = self.dicts[-1]
+               for d in reversed(self.dicts):
+                   if key in d:
+                       context = d
+                       break
+               context[key] = value
+       
+    1:     def __getitem__(self, key):
+               "Get a variable's value, starting at the current context and going upward"
+  453:         for d in reversed(self.dicts):
+  453:             if key in d:
+  230:                 return d[key]
+               raise KeyError(key)
+       
+    1:     def __delitem__(self, key):
+               "Delete a variable from the current context"
+               del self.dicts[-1][key]
+       
+    1:     def __contains__(self, key):
+  105:         return any(key in d for d in self.dicts)
+       
+    1:     def get(self, key, otherwise=None):
+               for d in reversed(self.dicts):
+                   if key in d:
+                       return d[key]
+               return otherwise
+       
+    1:     def setdefault(self, key, default=None):
+   20:         try:
+   20:             return self[key]
+   20:         except KeyError:
+   20:             self[key] = default
+   20:         return default
+       
+    1:     def new(self, values=None):
+               """
+               Return a new context with the same properties, but with only the
+               values given in 'values' stored.
+               """
+               new_context = copy(self)
+               new_context._reset_dicts(values)
+               return new_context
+       
+    1:     def flatten(self):
+               """
+               Return self.dicts as one dictionary.
+               """
+               flat = {}
+               for d in self.dicts:
+                   flat.update(d)
+               return flat
+       
+    1:     def __eq__(self, other):
+               """
+               Compare two contexts by comparing theirs 'dicts' attributes.
+               """
+               if not isinstance(other, BaseContext):
+                   return NotImplemented
+               # flatten dictionaries because they can be put in a different order.
+               return self.flatten() == other.flatten()
+       
+       
+    2: class Context(BaseContext):
+    1:     "A stack container for variable context"
+       
+    1:     def __init__(self, dict_=None, autoescape=True, use_l10n=None, use_tz=None):
+   20:         self.autoescape = autoescape
+   20:         self.use_l10n = use_l10n
+   20:         self.use_tz = use_tz
+   20:         self.template_name = "unknown"
+   20:         self.render_context = RenderContext()
+               # Set to the original template -- as opposed to extended or included
+               # templates -- during rendering, see bind_template.
+   20:         self.template = None
+   20:         super().__init__(dict_)
+       
+    2:     @contextmanager
+    2:     def bind_template(self, template):
+               if self.template is not None:
+                   raise RuntimeError("Context is already bound to a template")
+               self.template = template
+               try:
+                   yield
+               finally:
+                   self.template = None
+       
+    1:     def __copy__(self):
+   40:         duplicate = super().__copy__()
+   40:         duplicate.render_context = copy(self.render_context)
+   40:         return duplicate
+       
+    1:     def update(self, other_dict):
+               "Push other_dict to the stack of dictionaries in the Context"
+   40:         if not hasattr(other_dict, "__getitem__"):
+                   raise TypeError("other_dict must be a mapping (dictionary-like) object.")
+   40:         if isinstance(other_dict, BaseContext):
+                   other_dict = other_dict.dicts[1:].pop()
+   40:         return ContextDict(self, other_dict)
+       
+       
+    2: class RenderContext(BaseContext):
+    1:     """
+           A stack container for storing Template state.
+       
+           RenderContext simplifies the implementation of template Nodes by providing a
+           safe place to store state between invocations of a node's `render` method.
+       
+           The RenderContext also provides scoping rules that are more sensible for
+           'template local' variables. The render context stack is pushed before each
+           template is rendered, creating a fresh scope with nothing in it. Name
+           resolution fails if a variable is not found at the top of the RequestContext
+           stack. Thus, variables are local to a specific template and don't affect the
+           rendering of other templates as they would if they were stored in the normal
+           template context.
+           """
+       
+    1:     template = None
+       
+    1:     def __iter__(self):
+               yield from self.dicts[-1]
+       
+    1:     def __contains__(self, key):
+   20:         return key in self.dicts[-1]
+       
+    1:     def get(self, key, otherwise=None):
+   60:         return self.dicts[-1].get(key, otherwise)
+       
+    1:     def __getitem__(self, key):
+   40:         return self.dicts[-1][key]
+       
+    2:     @contextmanager
+    2:     def push_state(self, template, isolated_context=True):
+   40:         initial = self.template
+   40:         self.template = template
+   40:         if isolated_context:
+   20:             self.push()
+   40:         try:
+   40:             yield
+               finally:
+   40:             self.template = initial
+   40:             if isolated_context:
+   20:                 self.pop()
+       
+       
+    2: class RequestContext(Context):
+    1:     """
+           This subclass of template.Context automatically populates itself using
+           the processors defined in the engine's configuration.
+           Additional processors can be specified as a list of callables
+           using the "processors" keyword argument.
+           """
+       
+    1:     def __init__(
+               self,
+               request,
+    1:         dict_=None,
+    1:         processors=None,
+    1:         use_l10n=None,
+    1:         use_tz=None,
+    1:         autoescape=True,
+           ):
+   20:         super().__init__(dict_, use_l10n=use_l10n, use_tz=use_tz, autoescape=autoescape)
+   20:         self.request = request
+   20:         self._processors = () if processors is None else tuple(processors)
+   20:         self._processors_index = len(self.dicts)
+       
+               # placeholder for context processors output
+   20:         self.update({})
+       
+               # empty dict for any new modifications
+               # (so that context processors don't overwrite them)
+   20:         self.update({})
+       
+    2:     @contextmanager
+    2:     def bind_template(self, template):
+   20:         if self.template is not None:
+                   raise RuntimeError("Context is already bound to a template")
+       
+   20:         self.template = template
+               # Set context processors according to the template engine's settings.
+   20:         processors = template.engine.template_context_processors + self._processors
+   20:         updates = {}
+  120:         for processor in processors:
+  100:             context = processor(self.request)
+  100:             try:
+  100:                 updates.update(context)
+                   except TypeError as e:
+                       raise TypeError(
+                           f"Context processor {processor.__qualname__} didn't return a "
+                           "dictionary."
+                       ) from e
+       
+   20:         self.dicts[self._processors_index] = updates
+       
+   20:         try:
+   20:             yield
+               finally:
+   20:             self.template = None
+                   # Unset context processors.
+   20:             self.dicts[self._processors_index] = {}
+       
+    1:     def new(self, values=None):
+               new_context = super().new(values)
+               # This is for backwards-compatibility: RequestContexts created via
+               # Context.new don't include values from context processors.
+               if hasattr(new_context, "_processors_index"):
+                   del new_context._processors_index
+               return new_context
+       
+       
+    1: def make_context(context, request=None, **kwargs):
+           """
+           Create a suitable Context from a plain dict and optionally an HttpRequest.
+           """
+   20:     if context is not None and not isinstance(context, dict):
+               raise TypeError(
+                   "context must be a dict rather than %s." % context.__class__.__name__
+               )
+   20:     if request is None:
+               context = Context(context, **kwargs)
+           else:
+               # The following pattern is required to ensure values from
+               # context override those from template context processors.
+   20:         original_context = context
+   20:         context = RequestContext(request, **kwargs)
+   20:         if original_context:
+   15:             context.push(original_context)
+   20:     return context

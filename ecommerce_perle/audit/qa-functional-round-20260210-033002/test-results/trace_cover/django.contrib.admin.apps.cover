@@ -1,0 +1,27 @@
+    1: from django.apps import AppConfig
+    1: from django.contrib.admin.checks import check_admin_app, check_dependencies
+    1: from django.core import checks
+    1: from django.utils.translation import gettext_lazy as _
+       
+       
+    2: class SimpleAdminConfig(AppConfig):
+    1:     """Simple AppConfig which does not do automatic discovery."""
+       
+    1:     default_auto_field = "django.db.models.AutoField"
+    1:     default_site = "django.contrib.admin.sites.AdminSite"
+    1:     name = "django.contrib.admin"
+    1:     verbose_name = _("Administration")
+       
+    1:     def ready(self):
+    1:         checks.register(check_dependencies, checks.Tags.admin)
+    1:         checks.register(check_admin_app, checks.Tags.admin)
+       
+       
+    2: class AdminConfig(SimpleAdminConfig):
+    1:     """The default AppConfig for admin which does autodiscovery."""
+       
+    1:     default = True
+       
+    1:     def ready(self):
+    1:         super().ready()
+    1:         self.module.autodiscover()

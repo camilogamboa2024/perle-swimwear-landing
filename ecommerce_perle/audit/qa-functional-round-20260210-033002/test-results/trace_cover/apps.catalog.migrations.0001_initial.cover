@@ -1,0 +1,58 @@
+    1: from django.db import migrations, models
+    1: import django.db.models.deletion
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     initial = True
+       
+    1:     dependencies = []
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name='Category',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('name', models.CharField(max_length=80, unique=True)),
+    1:                 ('slug', models.SlugField(db_index=True, max_length=90, unique=True)),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name='Product',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('name', models.CharField(max_length=140)),
+    1:                 ('slug', models.SlugField(db_index=True, unique=True)),
+    1:                 ('description', models.TextField()),
+    1:                 ('is_active', models.BooleanField(db_index=True, default=True)),
+    1:                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
+    1:                 ('category', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='products', to='catalog.category')),
+                   ],
+    1:             options={'indexes': [models.Index(fields=['is_active', 'created_at'], name='catalog_pro_is_acti_b8dd35_idx')]},
+               ),
+    2:         migrations.CreateModel(
+    1:             name='ProductVariant',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('sku', models.CharField(max_length=40, unique=True)),
+    1:                 ('size', models.CharField(db_index=True, max_length=16)),
+    1:                 ('color', models.CharField(db_index=True, max_length=32)),
+    1:                 ('price_cop', models.PositiveIntegerField()),
+    1:                 ('compare_at_price_cop', models.PositiveIntegerField(blank=True, null=True)),
+    1:                 ('is_default', models.BooleanField(default=False)),
+    1:                 ('is_active', models.BooleanField(db_index=True, default=True)),
+    1:                 ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='variants', to='catalog.product')),
+                   ],
+    1:             options={'indexes': [models.Index(fields=['product', 'size', 'color'], name='catalog_pro_product_6217c7_idx')]},
+               ),
+    2:         migrations.CreateModel(
+    1:             name='ProductImage',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('image_url', models.URLField()),
+    1:                 ('alt_text', models.CharField(max_length=150)),
+    1:                 ('sort_order', models.PositiveSmallIntegerField(default=0)),
+    1:                 ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='catalog.product')),
+                   ],
+    1:             options={'ordering': ['sort_order']},
+               ),
+           ]

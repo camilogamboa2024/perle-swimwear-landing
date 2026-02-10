@@ -1,0 +1,7 @@
+System check identified some issues:
+
+WARNINGS:
+?: (security.W021) You have not set the SECURE_HSTS_PRELOAD setting to True. Without this, your site cannot be submitted to the browser preload list.
+
+System check identified 1 issue (0 silenced).
+exit_code=0

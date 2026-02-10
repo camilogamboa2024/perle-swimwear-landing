@@ -1,0 +1,21 @@
+Not Found: /orders/confirmation/b2e8ff8d-90ee-4a7a-b69d-16787b6ae294/
+SMOKE_RESULTS
+- GET /: 200 contains_PERLE=True
+- GET /api/products/: 200 products_count=4
+- GET /product/<slug>/: 200 slug=bikini-reversible-aura
+- GET /api/cart/: 200 items=0
+- POST /api/cart/items/: 201 variant_id=1
+- GET /cart/: 200 
+- GET /checkout/: 200 
+- POST /checkout/api/checkout/confirm/: 201 public_id=b2e8ff8d-90ee-4a7a-b69d-16787b6ae294
+- GET /orders/confirmation/<uuid> same session: 200 
+- GET /orders/confirmation/<uuid> different session: 404 
+- GET /legal/terms/: 200 
+- GET /legal/privacy/: 200 
+- GET /legal/shipping-returns/: 200 
+- GET /admin/login/: 200 
+- POST /admin/login/ invalid creds: 200 contains_error=False
+- POST /admin/login/ valid creds: 200 redirect_chain=0
+
+SUMMARY total=16 failed=0
+exit_code=0

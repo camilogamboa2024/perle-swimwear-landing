@@ -1,0 +1,11 @@
+    1: from django.db.models.signals import post_save
+    1: from django.dispatch import receiver
+       
+    1: from apps.catalog.models import ProductVariant
+    1: from .models import StockLevel
+       
+       
+    2: @receiver(post_save, sender=ProductVariant)
+    2: def ensure_stock_level(sender, instance, created, **kwargs):
+   23:     if created:
+   23:         StockLevel.objects.get_or_create(variant=instance)

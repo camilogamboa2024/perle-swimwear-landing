@@ -1,0 +1,379 @@
+    1: """
+       SQLite backend for the sqlite3 module in the standard library.
+       """
+       
+    1: import datetime
+    1: import decimal
+    1: import warnings
+    1: from collections.abc import Mapping
+    1: from itertools import chain, tee
+    1: from sqlite3 import dbapi2 as Database
+       
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.db import IntegrityError
+    1: from django.db.backends.base.base import BaseDatabaseWrapper
+    1: from django.utils.asyncio import async_unsafe
+    1: from django.utils.dateparse import parse_date, parse_datetime, parse_time
+    1: from django.utils.regex_helper import _lazy_re_compile
+       
+    1: from ._functions import register as register_functions
+    1: from .client import DatabaseClient
+    1: from .creation import DatabaseCreation
+    1: from .features import DatabaseFeatures
+    1: from .introspection import DatabaseIntrospection
+    1: from .operations import DatabaseOperations
+    1: from .schema import DatabaseSchemaEditor
+       
+       
+    1: def decoder(conv_func):
+           """
+           Convert bytestrings from Python's sqlite3 interface to a regular string.
+           """
+  149:     return lambda s: conv_func(s.decode())
+       
+       
+    1: def adapt_date(val):
+           return val.isoformat()
+       
+       
+    1: def adapt_datetime(val):
+           return val.isoformat(" ")
+       
+       
+    1: def _get_varchar_column(data):
+  165:     if data["max_length"] is None:
+               return "varchar"
+  165:     return "varchar(%(max_length)s)" % data
+       
+       
+    1: Database.register_converter("bool", b"1".__eq__)
+    1: Database.register_converter("date", decoder(parse_date))
+    1: Database.register_converter("time", decoder(parse_time))
+    1: Database.register_converter("datetime", decoder(parse_datetime))
+    1: Database.register_converter("timestamp", decoder(parse_datetime))
+       
+    1: Database.register_adapter(decimal.Decimal, str)
+    1: Database.register_adapter(datetime.date, adapt_date)
+    1: Database.register_adapter(datetime.datetime, adapt_datetime)
+       
+       
+    2: class DatabaseWrapper(BaseDatabaseWrapper):
+    1:     vendor = "sqlite"
+    1:     display_name = "SQLite"
+           # SQLite doesn't actually support most of these types, but it "does the right
+           # thing" given more verbose field definitions, so leave them as is so that
+           # schema inspection is more useful.
+   19:     data_types = {
+    1:         "AutoField": "integer",
+    1:         "BigAutoField": "integer",
+    1:         "BinaryField": "BLOB",
+    1:         "BooleanField": "bool",
+    1:         "CharField": _get_varchar_column,
+    1:         "DateField": "date",
+    1:         "DateTimeField": "datetime",
+    1:         "DecimalField": "decimal",
+    1:         "DurationField": "bigint",
+    1:         "FileField": "varchar(%(max_length)s)",
+    1:         "FilePathField": "varchar(%(max_length)s)",
+    1:         "FloatField": "real",
+    1:         "IntegerField": "integer",
+    1:         "BigIntegerField": "bigint",
+    1:         "IPAddressField": "char(15)",
+    1:         "GenericIPAddressField": "char(39)",
+    1:         "JSONField": "text",
+    1:         "OneToOneField": "integer",
+    1:         "PositiveBigIntegerField": "bigint unsigned",
+    1:         "PositiveIntegerField": "integer unsigned",
+    1:         "PositiveSmallIntegerField": "smallint unsigned",
+    1:         "SlugField": "varchar(%(max_length)s)",
+    1:         "SmallAutoField": "integer",
+    1:         "SmallIntegerField": "smallint",
+    1:         "TextField": "text",
+    1:         "TimeField": "time",
+    1:         "UUIDField": "char(32)",
+           }
+    1:     data_type_check_constraints = {
+    1:         "PositiveBigIntegerField": '"%(column)s" >= 0',
+    1:         "JSONField": '(JSON_VALID("%(column)s") OR "%(column)s" IS NULL)',
+    1:         "PositiveIntegerField": '"%(column)s" >= 0',
+    1:         "PositiveSmallIntegerField": '"%(column)s" >= 0',
+           }
+    1:     data_types_suffix = {
+    1:         "AutoField": "AUTOINCREMENT",
+    1:         "BigAutoField": "AUTOINCREMENT",
+    1:         "SmallAutoField": "AUTOINCREMENT",
+           }
+           # SQLite requires LIKE statements to include an ESCAPE clause if the value
+           # being escaped has a percent or underscore in it.
+           # See https://www.sqlite.org/lang_expr.html for an explanation.
+    1:     operators = {
+    1:         "exact": "= %s",
+    1:         "iexact": "LIKE %s ESCAPE '\\'",
+    1:         "contains": "LIKE %s ESCAPE '\\'",
+    1:         "icontains": "LIKE %s ESCAPE '\\'",
+    1:         "regex": "REGEXP %s",
+    1:         "iregex": "REGEXP '(?i)' || %s",
+    1:         "gt": "> %s",
+    1:         "gte": ">= %s",
+    1:         "lt": "< %s",
+    1:         "lte": "<= %s",
+    1:         "startswith": "LIKE %s ESCAPE '\\'",
+    1:         "endswith": "LIKE %s ESCAPE '\\'",
+    1:         "istartswith": "LIKE %s ESCAPE '\\'",
+    1:         "iendswith": "LIKE %s ESCAPE '\\'",
+           }
+       
+           # The patterns below are used to generate SQL pattern lookup clauses when
+           # the right-hand side of the lookup isn't a raw string (it might be an expression
+           # or the result of a bilateral transformation).
+           # In those cases, special characters for LIKE operators (e.g. \, *, _) should be
+           # escaped on database side.
+           #
+           # Note: we use str.format() here for readability as '%' is used as a wildcard for
+           # the LIKE operator.
+    1:     pattern_esc = r"REPLACE(REPLACE(REPLACE({}, '\', '\\'), '%%', '\%%'), '_', '\_')"
+    1:     pattern_ops = {
+    1:         "contains": r"LIKE '%%' || {} || '%%' ESCAPE '\'",
+    1:         "icontains": r"LIKE '%%' || UPPER({}) || '%%' ESCAPE '\'",
+    1:         "startswith": r"LIKE {} || '%%' ESCAPE '\'",
+    1:         "istartswith": r"LIKE UPPER({}) || '%%' ESCAPE '\'",
+    1:         "endswith": r"LIKE '%%' || {} ESCAPE '\'",
+    1:         "iendswith": r"LIKE '%%' || UPPER({}) ESCAPE '\'",
+           }
+       
+    1:     transaction_modes = frozenset(["DEFERRED", "EXCLUSIVE", "IMMEDIATE"])
+       
+    1:     Database = Database
+    1:     SchemaEditorClass = DatabaseSchemaEditor
+           # Classes instantiated in __init__().
+    1:     client_class = DatabaseClient
+    1:     creation_class = DatabaseCreation
+    1:     features_class = DatabaseFeatures
+    1:     introspection_class = DatabaseIntrospection
+    1:     ops_class = DatabaseOperations
+       
+    1:     def get_connection_params(self):
+    1:         settings_dict = self.settings_dict
+    1:         if not settings_dict["NAME"]:
+                   raise ImproperlyConfigured(
+                       "settings.DATABASES is improperly configured. "
+                       "Please supply the NAME value."
+                   )
+    2:         kwargs = {
+    1:             "database": settings_dict["NAME"],
+    1:             "detect_types": Database.PARSE_DECLTYPES | Database.PARSE_COLNAMES,
+    1:             **settings_dict["OPTIONS"],
+               }
+               # Always allow the underlying SQLite connection to be shareable
+               # between multiple threads. The safe-guarding will be handled at a
+               # higher level by the `BaseDatabaseWrapper.allow_thread_sharing`
+               # property. This is necessary as the shareability is disabled by
+               # default in sqlite3 and it cannot be changed once a connection is
+               # opened.
+    1:         if "check_same_thread" in kwargs and kwargs["check_same_thread"]:
+                   warnings.warn(
+                       "The `check_same_thread` option was provided and set to "
+                       "True. It will be overridden with False. Use the "
+                       "`DatabaseWrapper.allow_thread_sharing` property instead "
+                       "for controlling thread shareability.",
+                       RuntimeWarning,
+                   )
+    1:         kwargs.update({"check_same_thread": False, "uri": True})
+    1:         transaction_mode = kwargs.pop("transaction_mode", None)
+               if (
+    1:             transaction_mode is not None
+                   and transaction_mode.upper() not in self.transaction_modes
+               ):
+                   allowed_transaction_modes = ", ".join(
+                       [f"{mode!r}" for mode in sorted(self.transaction_modes)]
+                   )
+                   raise ImproperlyConfigured(
+                       f"settings.DATABASES[{self.alias!r}]['OPTIONS']['transaction_mode'] "
+                       f"is improperly configured to '{transaction_mode}'. Use one of "
+                       f"{allowed_transaction_modes}, or None."
+                   )
+    1:         self.transaction_mode = transaction_mode.upper() if transaction_mode else None
+       
+    1:         init_command = kwargs.pop("init_command", "")
+    1:         self.init_commands = init_command.split(";")
+    1:         return kwargs
+       
+    1:     def get_database_version(self):
+    1:         return self.Database.sqlite_version_info
+       
+    2:     @async_unsafe
+    2:     def get_new_connection(self, conn_params):
+    1:         conn = Database.connect(**conn_params)
+    1:         register_functions(conn)
+       
+    1:         conn.execute("PRAGMA foreign_keys = ON")
+               # The macOS bundled SQLite defaults legacy_alter_table ON, which
+               # prevents atomic table renames.
+    1:         conn.execute("PRAGMA legacy_alter_table = OFF")
+    2:         for init_command in self.init_commands:
+    1:             if init_command := init_command.strip():
+                       conn.execute(init_command)
+    1:         return conn
+       
+    1:     def create_cursor(self, name=None):
+ 1157:         return self.connection.cursor(factory=SQLiteCursorWrapper)
+       
+    2:     @async_unsafe
+    2:     def close(self):
+   10:         self.validate_thread_sharing()
+               # If database is in memory, closing the connection destroys the
+               # database. To prevent accidental data loss, ignore close requests on
+               # an in-memory db.
+   10:         if not self.is_in_memory_db():
+    2:             BaseDatabaseWrapper.close(self)
+       
+    1:     def _savepoint_allowed(self):
+               # When 'isolation_level' is not None, sqlite3 commits before each
+               # savepoint; it's a bug. When it is None, savepoints don't make sense
+               # because autocommit is enabled. The only exception is inside 'atomic'
+               # blocks. To work around that bug, on SQLite, 'atomic' starts a
+               # transaction explicitly rather than simply disable autocommit.
+  301:         return self.in_atomic_block
+       
+    1:     def _set_autocommit(self, autocommit):
+   51:         if autocommit:
+   51:             level = None
+               else:
+                   # sqlite3's internal default is ''. It's different from None.
+                   # See Modules/_sqlite/connection.c.
+                   level = ""
+               # 'isolation_level' is a misleading API.
+               # SQLite always runs at the SERIALIZABLE isolation level.
+  102:         with self.wrap_database_errors:
+   51:             self.connection.isolation_level = level
+       
+    1:     def disable_constraint_checking(self):
+   54:         with self.cursor() as cursor:
+   27:             cursor.execute("PRAGMA foreign_keys = OFF")
+                   # Foreign key constraints cannot be turned off while in a multi-
+                   # statement transaction. Fetch the current state of the pragma
+                   # to determine if constraints are effectively disabled.
+   27:             enabled = cursor.execute("PRAGMA foreign_keys").fetchone()[0]
+   27:         return not bool(enabled)
+       
+    1:     def enable_constraint_checking(self):
+   54:         with self.cursor() as cursor:
+   27:             cursor.execute("PRAGMA foreign_keys = ON")
+       
+    1:     def check_constraints(self, table_names=None):
+               """
+               Check each table name in `table_names` for rows with invalid foreign
+               key references. This method is intended to be used in conjunction with
+               `disable_constraint_checking()` and `enable_constraint_checking()`, to
+               determine if rows with invalid references were entered while constraint
+               checks were off.
+               """
+  102:         with self.cursor() as cursor:
+   51:             if table_names is None:
+   51:                 violations = cursor.execute("PRAGMA foreign_key_check").fetchall()
+                   else:
+                       violations = chain.from_iterable(
+                           cursor.execute(
+                               "PRAGMA foreign_key_check(%s)" % self.ops.quote_name(table_name)
+                           ).fetchall()
+                           for table_name in table_names
+                       )
+                   # See https://www.sqlite.org/pragma.html#pragma_foreign_key_check
+   51:             for (
+                       table_name,
+                       rowid,
+                       referenced_table_name,
+                       foreign_key_index,
+   51:             ) in violations:
+                       foreign_key = cursor.execute(
+                           "PRAGMA foreign_key_list(%s)" % self.ops.quote_name(table_name)
+                       ).fetchall()[foreign_key_index]
+                       column_name, referenced_column_name = foreign_key[3:5]
+                       primary_key_column_name = self.introspection.get_primary_key_column(
+                           cursor, table_name
+                       )
+                       primary_key_value, bad_value = cursor.execute(
+                           "SELECT %s, %s FROM %s WHERE rowid = %%s"
+                           % (
+                               self.ops.quote_name(primary_key_column_name),
+                               self.ops.quote_name(column_name),
+                               self.ops.quote_name(table_name),
+                           ),
+                           (rowid,),
+                       ).fetchone()
+                       raise IntegrityError(
+                           "The row in table '%s' with primary key '%s' has an "
+                           "invalid foreign key: %s.%s contains a value '%s' that "
+                           "does not have a corresponding value in %s.%s."
+                           % (
+                               table_name,
+                               primary_key_value,
+                               table_name,
+                               column_name,
+                               bad_value,
+                               referenced_table_name,
+                               referenced_column_name,
+                           )
+                       )
+       
+    1:     def is_usable(self):
+   24:         return True
+       
+    1:     def _start_transaction_under_autocommit(self):
+               """
+               Start a transaction explicitly in autocommit mode.
+       
+               Staying in autocommit mode works around a bug of sqlite3 that breaks
+               savepoints when autocommit is disabled.
+               """
+   50:         if self.transaction_mode is None:
+   50:             self.cursor().execute("BEGIN")
+               else:
+                   self.cursor().execute(f"BEGIN {self.transaction_mode}")
+       
+    1:     def is_in_memory_db(self):
+   10:         return self.creation.is_in_memory_db(self.settings_dict["NAME"])
+       
+       
+    1: FORMAT_QMARK_REGEX = _lazy_re_compile(r"(?<!%)%s")
+       
+       
+    2: class SQLiteCursorWrapper(Database.Cursor):
+    1:     """
+           Django uses the "format" and "pyformat" styles, but Python's sqlite3 module
+           supports neither of these styles.
+       
+           This wrapper performs the following conversions:
+       
+           - "format" style to "qmark" style
+           - "pyformat" style to "named" style
+       
+           In both cases, if you want to use a literal "%s", you'll need to use "%%s".
+           """
+       
+    1:     def execute(self, query, params=None):
+ 1184:         if params is None:
+  570:             return super().execute(query)
+               # Extract names if params is a mapping, i.e. "pyformat" style is used.
+  614:         param_names = list(params) if isinstance(params, Mapping) else None
+  614:         query = self.convert_query(query, param_names=param_names)
+  614:         return super().execute(query, params)
+       
+    1:     def executemany(self, query, param_list):
+               # Extract names if params is a mapping, i.e. "pyformat" style is used.
+               # Peek carefully as a generator can be passed instead of a list/tuple.
+               peekable, param_list = tee(iter(param_list))
+               if (params := next(peekable, None)) and isinstance(params, Mapping):
+                   param_names = list(params)
+               else:
+                   param_names = None
+               query = self.convert_query(query, param_names=param_names)
+               return super().executemany(query, param_list)
+       
+    1:     def convert_query(self, query, *, param_names=None):
+  614:         if param_names is None:
+                   # Convert from "format" style to "qmark" style.
+  614:             return FORMAT_QMARK_REGEX.sub("?", query).replace("%%", "%")
+               else:
+                   # Convert from "pyformat" style to "named" style.
+                   return query % {name: f":{name}" for name in param_names}

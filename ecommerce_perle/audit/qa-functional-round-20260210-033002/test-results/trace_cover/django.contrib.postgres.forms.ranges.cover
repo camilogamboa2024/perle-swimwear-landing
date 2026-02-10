@@ -1,0 +1,119 @@
+    1: from django import forms
+    1: from django.core import exceptions
+    1: from django.db.backends.postgresql.psycopg_any import (
+           DateRange,
+           DateTimeTZRange,
+           NumericRange,
+       )
+    1: from django.forms.widgets import HiddenInput, MultiWidget
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: __all__ = [
+           "BaseRangeField",
+           "IntegerRangeField",
+           "DecimalRangeField",
+           "DateTimeRangeField",
+           "DateRangeField",
+           "HiddenRangeWidget",
+           "RangeWidget",
+       ]
+       
+       
+    2: class RangeWidget(MultiWidget):
+    1:     def __init__(self, base_widget, attrs=None):
+               widgets = (base_widget, base_widget)
+               super().__init__(widgets, attrs)
+       
+    1:     def decompress(self, value):
+               if value:
+                   return (value.lower, value.upper)
+               return (None, None)
+       
+       
+    2: class HiddenRangeWidget(RangeWidget):
+    1:     """A widget that splits input into two <input type="hidden"> inputs."""
+       
+    1:     def __init__(self, attrs=None):
+               super().__init__(HiddenInput, attrs)
+       
+       
+    2: class BaseRangeField(forms.MultiValueField):
+    1:     default_error_messages = {
+    1:         "invalid": _("Enter two valid values."),
+    2:         "bound_ordering": _(
+    1:             "The start of the range must not exceed the end of the range."
+               ),
+           }
+    1:     hidden_widget = HiddenRangeWidget
+       
+    1:     def __init__(self, **kwargs):
+               if "widget" not in kwargs:
+                   kwargs["widget"] = RangeWidget(self.base_field.widget)
+               if "fields" not in kwargs:
+                   kwargs["fields"] = [
+                       self.base_field(required=False),
+                       self.base_field(required=False),
+                   ]
+               kwargs.setdefault("required", False)
+               kwargs.setdefault("require_all_fields", False)
+               self.range_kwargs = {}
+               if default_bounds := kwargs.pop("default_bounds", None):
+                   self.range_kwargs = {"bounds": default_bounds}
+               super().__init__(**kwargs)
+       
+    1:     def prepare_value(self, value):
+               lower_base, upper_base = self.fields
+               if isinstance(value, self.range_type):
+                   return [
+                       lower_base.prepare_value(value.lower),
+                       upper_base.prepare_value(value.upper),
+                   ]
+               if value is None:
+                   return [
+                       lower_base.prepare_value(None),
+                       upper_base.prepare_value(None),
+                   ]
+               return value
+       
+    1:     def compress(self, values):
+               if not values:
+                   return None
+               lower, upper = values
+               if lower is not None and upper is not None and lower > upper:
+                   raise exceptions.ValidationError(
+                       self.error_messages["bound_ordering"],
+                       code="bound_ordering",
+                   )
+               try:
+                   range_value = self.range_type(lower, upper, **self.range_kwargs)
+               except TypeError:
+                   raise exceptions.ValidationError(
+                       self.error_messages["invalid"],
+                       code="invalid",
+                   )
+               else:
+                   return range_value
+       
+       
+    2: class IntegerRangeField(BaseRangeField):
+    1:     default_error_messages = {"invalid": _("Enter two whole numbers.")}
+    1:     base_field = forms.IntegerField
+    1:     range_type = NumericRange
+       
+       
+    2: class DecimalRangeField(BaseRangeField):
+    1:     default_error_messages = {"invalid": _("Enter two numbers.")}
+    1:     base_field = forms.DecimalField
+    1:     range_type = NumericRange
+       
+       
+    2: class DateTimeRangeField(BaseRangeField):
+    1:     default_error_messages = {"invalid": _("Enter two valid date/times.")}
+    1:     base_field = forms.DateTimeField
+    1:     range_type = DateTimeTZRange
+       
+       
+    2: class DateRangeField(BaseRangeField):
+    1:     default_error_messages = {"invalid": _("Enter two valid dates.")}
+    1:     base_field = forms.DateField
+    1:     range_type = DateRange

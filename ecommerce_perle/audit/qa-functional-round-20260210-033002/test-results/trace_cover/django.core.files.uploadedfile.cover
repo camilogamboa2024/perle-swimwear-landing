@@ -1,0 +1,150 @@
+    1: """
+       Classes representing uploaded files.
+       """
+       
+    1: import os
+    1: from io import BytesIO
+       
+    1: from django.conf import settings
+    1: from django.core.files import temp as tempfile
+    1: from django.core.files.base import File
+    1: from django.core.files.utils import validate_file_name
+       
+    1: __all__ = (
+           "UploadedFile",
+           "TemporaryUploadedFile",
+           "InMemoryUploadedFile",
+           "SimpleUploadedFile",
+       )
+       
+       
+    2: class UploadedFile(File):
+    1:     """
+           An abstract uploaded file (``TemporaryUploadedFile`` and
+           ``InMemoryUploadedFile`` are the built-in concrete subclasses).
+       
+           An ``UploadedFile`` object behaves somewhat like a file object and
+           represents some file data that the user submitted with a form.
+           """
+       
+    1:     def __init__(
+               self,
+    1:         file=None,
+    1:         name=None,
+    1:         content_type=None,
+    1:         size=None,
+    1:         charset=None,
+    1:         content_type_extra=None,
+           ):
+               super().__init__(file, name)
+               self.size = size
+               self.content_type = content_type
+               self.charset = charset
+               self.content_type_extra = content_type_extra
+       
+    1:     def __repr__(self):
+               return "<%s: %s (%s)>" % (self.__class__.__name__, self.name, self.content_type)
+       
+    1:     def _get_name(self):
+               return self._name
+       
+    1:     def _set_name(self, name):
+               # Sanitize the file name so that it can't be dangerous.
+               if name is not None:
+                   # Just use the basename of the file -- anything else is dangerous.
+                   name = os.path.basename(name)
+       
+                   # File names longer than 255 characters can cause problems on older OSes.
+                   if len(name) > 255:
+                       name, ext = os.path.splitext(name)
+                       ext = ext[:255]
+                       name = name[: 255 - len(ext)] + ext
+       
+                   name = validate_file_name(name)
+       
+               self._name = name
+       
+    1:     name = property(_get_name, _set_name)
+       
+       
+    2: class TemporaryUploadedFile(UploadedFile):
+    1:     """
+           A file uploaded to a temporary location (i.e. stream-to-disk).
+           """
+       
+    1:     def __init__(self, name, content_type, size, charset, content_type_extra=None):
+               _, ext = os.path.splitext(name)
+               file = tempfile.NamedTemporaryFile(
+                   suffix=".upload" + ext, dir=settings.FILE_UPLOAD_TEMP_DIR
+               )
+               super().__init__(file, name, content_type, size, charset, content_type_extra)
+       
+    1:     def temporary_file_path(self):
+               """Return the full path of this file."""
+               return self.file.name
+       
+    1:     def close(self):
+               try:
+                   return self.file.close()
+               except FileNotFoundError:
+                   # The file was moved or deleted before the tempfile could unlink
+                   # it. Still sets self.file.close_called and calls
+                   # self.file.file.close() before the exception.
+                   pass
+       
+       
+    2: class InMemoryUploadedFile(UploadedFile):
+    1:     """
+           A file uploaded into memory (i.e. stream-to-memory).
+           """
+       
+    1:     def __init__(
+               self,
+               file,
+               field_name,
+               name,
+               content_type,
+               size,
+               charset,
+    1:         content_type_extra=None,
+           ):
+               super().__init__(file, name, content_type, size, charset, content_type_extra)
+               self.field_name = field_name
+       
+    1:     def open(self, mode=None):
+               self.file.seek(0)
+               return self
+       
+    1:     def chunks(self, chunk_size=None):
+               self.file.seek(0)
+               yield self.read()
+       
+    1:     def multiple_chunks(self, chunk_size=None):
+               # Since it's in memory, we'll never have multiple chunks.
+               return False
+       
+       
+    2: class SimpleUploadedFile(InMemoryUploadedFile):
+    1:     """
+           A simple representation of a file, which just has content, size, and a name.
+           """
+       
+    1:     def __init__(self, name, content, content_type="text/plain"):
+               content = content or b""
+               super().__init__(
+                   BytesIO(content), None, name, content_type, len(content), None, None
+               )
+       
+    2:     @classmethod
+    2:     def from_dict(cls, file_dict):
+               """
+               Create a SimpleUploadedFile object from a dictionary with keys:
+                  - filename
+                  - content-type
+                  - content
+               """
+               return cls(
+                   file_dict["filename"],
+                   file_dict["content"],
+                   file_dict.get("content-type", "text/plain"),
+               )

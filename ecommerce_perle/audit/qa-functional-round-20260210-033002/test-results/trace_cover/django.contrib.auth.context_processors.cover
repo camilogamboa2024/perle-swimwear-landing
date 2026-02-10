@@ -1,0 +1,67 @@
+       # PermWrapper and PermLookupDict proxy the permissions system into objects that
+       # the template system can understand.
+       
+       
+    2: class PermLookupDict:
+    1:     def __init__(self, user, app_label):
+               self.user, self.app_label = user, app_label
+       
+    1:     def __repr__(self):
+               return str(self.user.get_all_permissions())
+       
+    1:     def __getitem__(self, perm_name):
+               return self.user.has_perm("%s.%s" % (self.app_label, perm_name))
+       
+    1:     def __iter__(self):
+               # To fix 'item in perms.someapp' and __getitem__ interaction we need to
+               # define __iter__. See #18979 for details.
+               raise TypeError("PermLookupDict is not iterable.")
+       
+    1:     def __bool__(self):
+               return self.user.has_module_perms(self.app_label)
+       
+       
+    2: class PermWrapper:
+    1:     def __init__(self, user):
+   20:         self.user = user
+       
+    1:     def __repr__(self):
+               return f"{self.__class__.__qualname__}({self.user!r})"
+       
+    1:     def __getitem__(self, app_label):
+               return PermLookupDict(self.user, app_label)
+       
+    1:     def __iter__(self):
+               # I am large, I contain multitudes.
+               raise TypeError("PermWrapper is not iterable.")
+       
+    1:     def __contains__(self, perm_name):
+               """
+               Lookup by "someapp" or "someapp.someperm" in perms.
+               """
+               if "." not in perm_name:
+                   # The name refers to module.
+                   return bool(self[perm_name])
+               app_label, perm_name = perm_name.split(".", 1)
+               return self[app_label][perm_name]
+       
+       
+    1: def auth(request):
+           """
+           Return context variables required by apps that use Django's authentication
+           system.
+       
+           If there is no 'user' attribute in the request, use AnonymousUser (from
+           django.contrib.auth).
+           """
+   20:     if hasattr(request, "user"):
+   20:         user = request.user
+           else:
+               from django.contrib.auth.models import AnonymousUser
+       
+               user = AnonymousUser()
+       
+   20:     return {
+   20:         "user": user,
+   20:         "perms": PermWrapper(user),
+           }

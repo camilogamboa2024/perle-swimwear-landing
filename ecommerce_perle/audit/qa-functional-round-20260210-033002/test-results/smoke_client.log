@@ -1,0 +1,30 @@
+Bad Request: /checkout/api/checkout/confirm/
+Not Found: /orders/confirmation/ac466c0a-6bc4-4965-9d2d-56226c255637/
+Forbidden: /api/cart/items/
+Bad Request: /checkout/api/checkout/confirm/
+20 objects imported automatically (use -v 2 for details).
+
+SMOKE_START
+GET / -> 200
+GET /api/products/ -> 200
+products_count= 5
+GET /product/qa-smoke-product/ -> 200
+GET /legal/terms/ -> 200
+GET /legal/privacy/ -> 200
+GET /legal/shipping-returns/ -> 200
+GET /checkout/ -> 200
+GET /cart/ -> 200
+GET /admin/login/ -> 200
+checkout_csrf_cookie_present= True
+POST /checkout/api/checkout/confirm/ (empty cart) -> 400
+empty_checkout_json= {'error': 'El carrito está vacío'}
+POST /api/cart/items/ (stock ok) -> 201
+POST /checkout/api/checkout/confirm/ (stock ok) -> 201
+checkout_ok_payload_keys= ['confirmation_url', 'order_id', 'order_public_id', 'whatsapp_url']
+GET confirmation same session -> 200
+GET confirmation different session -> 404
+POST /api/cart/items/ (no csrf) -> 403
+POST /api/cart/items/ (prepare out-of-stock) -> 201
+POST /checkout/api/checkout/confirm/ (out of stock) -> 400
+out_checkout_json= {'error': 'Sin stock para SKU QA-SMOKE-SKU-2'}
+SMOKE_END

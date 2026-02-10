@@ -1,0 +1,112 @@
+    1: import json
+       
+    1: from django.contrib.postgres import forms, lookups
+    1: from django.contrib.postgres.fields.array import ArrayField
+    1: from django.core import exceptions
+    1: from django.db.models import Field, TextField, Transform
+    1: from django.db.models.fields.mixins import CheckFieldDefaultMixin
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: __all__ = ["HStoreField"]
+       
+       
+    2: class HStoreField(CheckFieldDefaultMixin, Field):
+    1:     empty_strings_allowed = False
+    1:     description = _("Map of strings to strings/nulls")
+    1:     default_error_messages = {
+    1:         "not_a_string": _("The value of “%(key)s” is not a string or null."),
+           }
+    1:     _default_hint = ("dict", "{}")
+       
+    1:     def db_type(self, connection):
+               return "hstore"
+       
+    1:     def get_transform(self, name):
+               transform = super().get_transform(name)
+               if transform:
+                   return transform
+               return KeyTransformFactory(name)
+       
+    1:     def validate(self, value, model_instance):
+               super().validate(value, model_instance)
+               for key, val in value.items():
+                   if not isinstance(val, str) and val is not None:
+                       raise exceptions.ValidationError(
+                           self.error_messages["not_a_string"],
+                           code="not_a_string",
+                           params={"key": key},
+                       )
+       
+    1:     def to_python(self, value):
+               if isinstance(value, str):
+                   value = json.loads(value)
+               return value
+       
+    1:     def value_to_string(self, obj):
+               return json.dumps(self.value_from_object(obj), ensure_ascii=False)
+       
+    1:     def formfield(self, **kwargs):
+               return super().formfield(
+                   **{
+                       "form_class": forms.HStoreField,
+                       **kwargs,
+                   }
+               )
+       
+    1:     def get_prep_value(self, value):
+               value = super().get_prep_value(value)
+       
+               if isinstance(value, dict):
+                   prep_value = {}
+                   for key, val in value.items():
+                       key = str(key)
+                       if val is not None:
+                           val = str(val)
+                       prep_value[key] = val
+                   value = prep_value
+       
+               if isinstance(value, list):
+                   value = [str(item) for item in value]
+       
+               return value
+       
+       
+    1: HStoreField.register_lookup(lookups.DataContains)
+    1: HStoreField.register_lookup(lookups.ContainedBy)
+    1: HStoreField.register_lookup(lookups.HasKey)
+    1: HStoreField.register_lookup(lookups.HasKeys)
+    1: HStoreField.register_lookup(lookups.HasAnyKeys)
+       
+       
+    2: class KeyTransform(Transform):
+    1:     output_field = TextField()
+       
+    1:     def __init__(self, key_name, *args, **kwargs):
+               super().__init__(*args, **kwargs)
+               self.key_name = key_name
+       
+    1:     def as_sql(self, compiler, connection):
+               lhs, params = compiler.compile(self.lhs)
+               return "(%s -> %%s)" % lhs, tuple(params) + (self.key_name,)
+       
+       
+    2: class KeyTransformFactory:
+    1:     def __init__(self, key_name):
+               self.key_name = key_name
+       
+    1:     def __call__(self, *args, **kwargs):
+               return KeyTransform(self.key_name, *args, **kwargs)
+       
+       
+    3: @HStoreField.register_lookup
+    2: class KeysTransform(Transform):
+    1:     lookup_name = "keys"
+    1:     function = "akeys"
+    1:     output_field = ArrayField(TextField())
+       
+       
+    3: @HStoreField.register_lookup
+    2: class ValuesTransform(Transform):
+    1:     lookup_name = "values"
+    1:     function = "avals"
+    1:     output_field = ArrayField(TextField())

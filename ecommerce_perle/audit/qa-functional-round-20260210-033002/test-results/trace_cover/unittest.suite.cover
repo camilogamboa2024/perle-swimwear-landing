@@ -1,0 +1,379 @@
+    1: """TestSuite"""
+       
+    1: import sys
+       
+    1: from . import case
+    1: from . import util
+       
+    1: __unittest = True
+       
+       
+    1: def _call_if_exists(parent, attr):
+   34:     func = getattr(parent, attr, lambda: None)
+   34:     func()
+       
+       
+    2: class BaseTestSuite(object):
+    1:     """A simple test suite that doesn't provide class or module shared fixtures.
+           """
+    1:     _cleanup = True
+       
+    1:     def __init__(self, tests=()):
+   31:         self._tests = []
+   31:         self._removed_tests = 0
+   31:         self.addTests(tests)
+       
+    1:     def __repr__(self):
+               return "<%s tests=%s>" % (util.strclass(self.__class__), list(self))
+       
+    1:     def __eq__(self, other):
+               if not isinstance(other, self.__class__):
+                   return NotImplemented
+               return list(self) == list(other)
+       
+    1:     def __iter__(self):
+   32:         return iter(self._tests)
+       
+    1:     def countTestCases(self):
+               cases = self._removed_tests
+               for test in self:
+                   if test:
+                       cases += test.countTestCases()
+               return cases
+       
+    1:     def addTest(self, test):
+               # sanity checks
+   77:         if not callable(test):
+                   raise TypeError("{} is not callable".format(repr(test)))
+   77:         if isinstance(test, type) and issubclass(test,
+                                                        (case.TestCase, TestSuite)):
+                   raise TypeError("TestCases and TestSuites must be instantiated "
+                                   "before passing them to addTest()")
+   77:         self._tests.append(test)
+       
+    1:     def addTests(self, tests):
+   31:         if isinstance(tests, str):
+                   raise TypeError("tests must be an iterable of tests, not a string")
+  108:         for test in tests:
+   77:             self.addTest(test)
+       
+    1:     def run(self, result):
+               for index, test in enumerate(self):
+                   if result.shouldStop:
+                       break
+                   test(result)
+                   if self._cleanup:
+                       self._removeTestAtIndex(index)
+               return result
+       
+    1:     def _removeTestAtIndex(self, index):
+               """Stop holding a reference to the TestCase at index."""
+   24:         try:
+   24:             test = self._tests[index]
+               except TypeError:
+                   # support for suite implementations that have overridden self._tests
+                   pass
+               else:
+                   # Some unittest tests add non TestCase/TestSuite objects to
+                   # the suite.
+   24:             if hasattr(test, 'countTestCases'):
+   24:                 self._removed_tests += test.countTestCases()
+   24:             self._tests[index] = None
+       
+    1:     def __call__(self, *args, **kwds):
+    1:         return self.run(*args, **kwds)
+       
+    1:     def debug(self):
+               """Run the tests without collecting errors in a TestResult"""
+               for test in self:
+                   test.debug()
+       
+       
+    2: class TestSuite(BaseTestSuite):
+    1:     """A test suite is a composite test consisting of a number of TestCases.
+       
+           For use, create an instance of TestSuite, then add test case instances.
+           When all tests have been added, the suite can be passed to a test
+           runner, such as TextTestRunner. It will run the individual test cases
+           in the order in which they were added, aggregating the results. When
+           subclassing, do not forget to call the base class constructor.
+           """
+       
+    1:     def run(self, result, debug=False):
+    1:         topLevel = False
+    1:         if getattr(result, '_testRunEntered', False) is False:
+    1:             result._testRunEntered = topLevel = True
+       
+   25:         for index, test in enumerate(self):
+   24:             if result.shouldStop:
+                       break
+       
+   24:             if _isnotsuite(test):
+   24:                 self._tearDownPreviousClass(test, result)
+   24:                 self._handleModuleFixture(test, result)
+   24:                 self._handleClassSetUp(test, result)
+   24:                 result._previousTestClass = test.__class__
+       
+   48:                 if (getattr(test.__class__, '_classSetupFailed', False) or
+   24:                     getattr(result, '_moduleSetUpFailed', False)):
+                           continue
+       
+   24:             if not debug:
+   24:                 test(result)
+                   else:
+                       test.debug()
+       
+   24:             if self._cleanup:
+   24:                 self._removeTestAtIndex(index)
+       
+    1:         if topLevel:
+    1:             self._tearDownPreviousClass(None, result)
+    1:             self._handleModuleTearDown(result)
+    1:             result._testRunEntered = False
+    1:         return result
+       
+    1:     def debug(self):
+               """Run the tests without collecting errors in a TestResult"""
+               debug = _DebugResult()
+               self.run(debug, True)
+       
+           ################################
+       
+    1:     def _handleClassSetUp(self, test, result):
+   24:         previousClass = getattr(result, '_previousTestClass', None)
+   24:         currentClass = test.__class__
+   24:         if currentClass == previousClass:
+   17:             return
+    7:         if result._moduleSetUpFailed:
+                   return
+    7:         if getattr(currentClass, "__unittest_skip__", False):
+                   return
+       
+    7:         failed = False
+    7:         try:
+    7:             currentClass._classSetupFailed = False
+               except TypeError:
+                   # test may actually be a function
+                   # so its class will be a builtin-type
+                   pass
+       
+    7:         setUpClass = getattr(currentClass, 'setUpClass', None)
+    7:         doClassCleanups = getattr(currentClass, 'doClassCleanups', None)
+    7:         if setUpClass is not None:
+    7:             _call_if_exists(result, '_setupStdout')
+    7:             try:
+    7:                 try:
+    7:                     setUpClass()
+                       except Exception as e:
+                           if isinstance(result, _DebugResult):
+                               raise
+                           failed = True
+                           try:
+                               currentClass._classSetupFailed = True
+                           except TypeError:
+                               pass
+                           className = util.strclass(currentClass)
+                           self._createClassOrModuleLevelException(result, e,
+                                                                   'setUpClass',
+                                                                   className)
+    7:                 if failed and doClassCleanups is not None:
+                           doClassCleanups()
+                           for exc_info in currentClass.tearDown_exceptions:
+                               self._createClassOrModuleLevelException(
+                                       result, exc_info[1], 'setUpClass', className,
+                                       info=exc_info)
+                   finally:
+    7:                 _call_if_exists(result, '_restoreStdout')
+       
+    1:     def _get_previous_module(self, result):
+   28:         previousModule = None
+   28:         previousClass = getattr(result, '_previousTestClass', None)
+   28:         if previousClass is not None:
+   26:             previousModule = previousClass.__module__
+   28:         return previousModule
+       
+       
+    1:     def _handleModuleFixture(self, test, result):
+   24:         previousModule = self._get_previous_module(result)
+   24:         currentModule = test.__class__.__module__
+   24:         if currentModule == previousModule:
+   21:             return
+       
+    3:         self._handleModuleTearDown(result)
+       
+       
+    3:         result._moduleSetUpFailed = False
+    3:         try:
+    3:             module = sys.modules[currentModule]
+               except KeyError:
+                   return
+    3:         setUpModule = getattr(module, 'setUpModule', None)
+    3:         if setUpModule is not None:
+                   _call_if_exists(result, '_setupStdout')
+                   try:
+                       try:
+                           setUpModule()
+                       except Exception as e:
+                           if isinstance(result, _DebugResult):
+                               raise
+                           result._moduleSetUpFailed = True
+                           self._createClassOrModuleLevelException(result, e,
+                                                                   'setUpModule',
+                                                                   currentModule)
+                       if result._moduleSetUpFailed:
+                           try:
+                               case.doModuleCleanups()
+                           except Exception as e:
+                               self._createClassOrModuleLevelException(result, e,
+                                                                       'setUpModule',
+                                                                       currentModule)
+                   finally:
+                       _call_if_exists(result, '_restoreStdout')
+       
+    1:     def _createClassOrModuleLevelException(self, result, exc, method_name,
+    1:                                            parent, info=None):
+               errorName = f'{method_name} ({parent})'
+               self._addClassOrModuleLevelException(result, exc, errorName, info)
+       
+    1:     def _addClassOrModuleLevelException(self, result, exception, errorName,
+    1:                                         info=None):
+               error = _ErrorHolder(errorName)
+               addSkip = getattr(result, 'addSkip', None)
+               if addSkip is not None and isinstance(exception, case.SkipTest):
+                   addSkip(error, str(exception))
+               else:
+                   if not info:
+                       result.addError(error, sys.exc_info())
+                   else:
+                       result.addError(error, info)
+       
+    1:     def _handleModuleTearDown(self, result):
+    4:         previousModule = self._get_previous_module(result)
+    4:         if previousModule is None:
+    1:             return
+    3:         if result._moduleSetUpFailed:
+                   return
+       
+    3:         try:
+    3:             module = sys.modules[previousModule]
+               except KeyError:
+                   return
+       
+    3:         _call_if_exists(result, '_setupStdout')
+    3:         try:
+    3:             tearDownModule = getattr(module, 'tearDownModule', None)
+    3:             if tearDownModule is not None:
+                       try:
+                           tearDownModule()
+                       except Exception as e:
+                           if isinstance(result, _DebugResult):
+                               raise
+                           self._createClassOrModuleLevelException(result, e,
+                                                                   'tearDownModule',
+                                                                   previousModule)
+    3:             try:
+    3:                 case.doModuleCleanups()
+                   except Exception as e:
+                       if isinstance(result, _DebugResult):
+                           raise
+                       self._createClassOrModuleLevelException(result, e,
+                                                               'tearDownModule',
+                                                               previousModule)
+               finally:
+    3:             _call_if_exists(result, '_restoreStdout')
+       
+    1:     def _tearDownPreviousClass(self, test, result):
+   25:         previousClass = getattr(result, '_previousTestClass', None)
+   25:         currentClass = test.__class__
+   25:         if currentClass == previousClass or previousClass is None:
+   18:             return
+    7:         if getattr(previousClass, '_classSetupFailed', False):
+                   return
+    7:         if getattr(result, '_moduleSetUpFailed', False):
+                   return
+    7:         if getattr(previousClass, "__unittest_skip__", False):
+                   return
+       
+    7:         tearDownClass = getattr(previousClass, 'tearDownClass', None)
+    7:         doClassCleanups = getattr(previousClass, 'doClassCleanups', None)
+    7:         if tearDownClass is None and doClassCleanups is None:
+                   return
+       
+    7:         _call_if_exists(result, '_setupStdout')
+    7:         try:
+    7:             if tearDownClass is not None:
+    7:                 try:
+    7:                     tearDownClass()
+                       except Exception as e:
+                           if isinstance(result, _DebugResult):
+                               raise
+                           className = util.strclass(previousClass)
+                           self._createClassOrModuleLevelException(result, e,
+                                                                   'tearDownClass',
+                                                                   className)
+    7:             if doClassCleanups is not None:
+    7:                 doClassCleanups()
+    7:                 for exc_info in previousClass.tearDown_exceptions:
+                           if isinstance(result, _DebugResult):
+                               raise exc_info[1]
+                           className = util.strclass(previousClass)
+                           self._createClassOrModuleLevelException(result, exc_info[1],
+                                                                   'tearDownClass',
+                                                                   className,
+                                                                   info=exc_info)
+               finally:
+    7:             _call_if_exists(result, '_restoreStdout')
+       
+       
+    2: class _ErrorHolder(object):
+    1:     """
+           Placeholder for a TestCase inside a result. As far as a TestResult
+           is concerned, this looks exactly like a unit test. Used to insert
+           arbitrary errors into a test suite run.
+           """
+           # Inspired by the ErrorHolder from Twisted:
+           # http://twistedmatrix.com/trac/browser/trunk/twisted/trial/runner.py
+       
+           # attribute used by TestResult._exc_info_to_string
+    1:     failureException = None
+       
+    1:     def __init__(self, description):
+               self.description = description
+       
+    1:     def id(self):
+               return self.description
+       
+    1:     def shortDescription(self):
+               return None
+       
+    1:     def __repr__(self):
+               return "<ErrorHolder description=%r>" % (self.description,)
+       
+    1:     def __str__(self):
+               return self.id()
+       
+    1:     def run(self, result):
+               # could call result.addError(...) - but this test-like object
+               # shouldn't be run anyway
+               pass
+       
+    1:     def __call__(self, result):
+               return self.run(result)
+       
+    1:     def countTestCases(self):
+               return 0
+       
+    1: def _isnotsuite(test):
+           "A crude way to tell apart testcases and suites with duck-typing"
+   24:     try:
+   24:         iter(test)
+   24:     except TypeError:
+   24:         return True
+           return False
+       
+       
+    2: class _DebugResult(object):
+    1:     "Used by the TestSuite to hold previous class when running in debug."
+    1:     _previousTestClass = None
+    1:     _moduleSetUpFailed = False
+    1:     shouldStop = False

@@ -1,0 +1,31 @@
+    1: from django.core.exceptions import ObjectDoesNotExist
+    1: from rest_framework import serializers
+    1: from .models import Product, ProductVariant
+       
+       
+    2: class ProductVariantSerializer(serializers.ModelSerializer):
+    1:     stock = serializers.SerializerMethodField()
+       
+    2:     class Meta:
+    1:         model = ProductVariant
+    1:         fields = ['id', 'sku', 'size', 'color', 'price_cop', 'compare_at_price_cop', 'is_default', 'stock']
+       
+    1:     def get_stock(self, obj):
+   11:         try:
+   11:             return obj.stock_level.available
+               except ObjectDoesNotExist:
+                   return 0
+       
+       
+    2: class ProductSerializer(serializers.ModelSerializer):
+    1:     category = serializers.CharField(source='category.slug')
+    1:     variants = ProductVariantSerializer(many=True)
+    1:     image = serializers.SerializerMethodField()
+       
+    2:     class Meta:
+    1:         model = Product
+    1:         fields = ['id', 'name', 'slug', 'description', 'category', 'variants', 'image']
+       
+    1:     def get_image(self, obj):
+   11:         first = obj.images.first()
+   11:         return first.image_url if first else ''

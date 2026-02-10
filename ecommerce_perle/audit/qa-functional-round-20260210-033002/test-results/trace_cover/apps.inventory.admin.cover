@@ -1,0 +1,13 @@
+    1: from django.contrib import admin
+       
+    1: from .models import InventoryMovement, StockLevel
+       
+       
+    3: @admin.register(InventoryMovement)
+    2: class InventoryMovementAdmin(admin.ModelAdmin):
+    1:     list_display = ('variant', 'movement_type', 'quantity', 'reason', 'created_at')
+    1:     list_filter = ('movement_type', 'created_at')
+    1:     search_fields = ('variant__sku', 'reason')
+       
+       
+    1: admin.site.register(StockLevel)

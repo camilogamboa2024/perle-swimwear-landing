@@ -1,0 +1,22 @@
+    1: from django.apps import AppConfig
+    1: from django.contrib.contenttypes.checks import (
+           check_generic_foreign_keys,
+           check_model_name_lengths,
+       )
+    1: from django.core import checks
+    1: from django.db.models.signals import post_migrate, pre_migrate
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: from .management import create_contenttypes, inject_rename_contenttypes_operations
+       
+       
+    2: class ContentTypesConfig(AppConfig):
+    1:     default_auto_field = "django.db.models.AutoField"
+    1:     name = "django.contrib.contenttypes"
+    1:     verbose_name = _("Content Types")
+       
+    1:     def ready(self):
+    1:         pre_migrate.connect(inject_rename_contenttypes_operations, sender=self)
+    1:         post_migrate.connect(create_contenttypes)
+    1:         checks.register(check_generic_foreign_keys, checks.Tags.models)
+    1:         checks.register(check_model_name_lengths, checks.Tags.models)

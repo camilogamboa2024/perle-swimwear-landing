@@ -1,0 +1,26 @@
+    1: from django.conf import settings
+    1: from django.contrib.messages.storage import default_storage
+    1: from django.utils.deprecation import MiddlewareMixin
+       
+       
+    2: class MessageMiddleware(MiddlewareMixin):
+    1:     """
+           Middleware that handles temporary messages.
+           """
+       
+    1:     def process_request(self, request):
+   43:         request._messages = default_storage(request)
+       
+    1:     def process_response(self, request, response):
+               """
+               Update the storage backend (i.e., save the messages).
+       
+               Raise ValueError if not all messages could be stored and DEBUG is True.
+               """
+               # A higher middleware layer may return a request which does not contain
+               # messages storage, so make no assumption that it will be there.
+   43:         if hasattr(request, "_messages"):
+   43:             unstored_messages = request._messages.update(response)
+   43:             if unstored_messages and settings.DEBUG:
+                       raise ValueError("Not all temporary messages could be stored.")
+   43:         return response

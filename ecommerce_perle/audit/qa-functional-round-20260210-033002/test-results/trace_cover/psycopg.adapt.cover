@@ -1,0 +1,152 @@
+    1: """
+       Entry point into the adaptation system.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from abc import ABC, abstractmethod
+    1: from typing import TYPE_CHECKING, Any
+       
+    1: from . import abc, pq
+       
+       # Objects exported here
+    1: from ._enums import PyFormat as PyFormat
+    1: from ._transformer import Transformer as Transformer
+    1: from ._adapters_map import AdaptersMap as AdaptersMap  # noqa: F401 # reexport
+       
+    1: if TYPE_CHECKING:
+           from ._connection_base import BaseConnection
+       
+    1: Buffer = abc.Buffer
+       
+    1: ORD_BS = ord("\\")
+       
+       
+    2: class Dumper(abc.Dumper, ABC):
+    1:     """
+           Convert Python object of the type `!cls` to PostgreSQL representation.
+           """
+       
+    1:     oid: int = 0
+    1:     """The oid to pass to the server, if known."""
+       
+    1:     format: pq.Format = pq.Format.TEXT
+    1:     """The format of the data dumped."""
+       
+    1:     def __init__(self, cls: type, context: abc.AdaptContext | None = None):
+    8:         self.cls = cls
+    8:         self.connection: BaseConnection[Any] | None
+    8:         self.connection = context.connection if context else None
+       
+    1:     def __repr__(self) -> str:
+               return (
+                   f"<{type(self).__module__}.{type(self).__qualname__}"
+                   f" (oid={self.oid}) at 0x{id(self):x}>"
+               )
+       
+    2:     @abstractmethod
+    2:     def dump(self, obj: Any) -> Buffer | None: ...
+       
+    1:     def quote(self, obj: Any) -> Buffer:
+               """
+               By default return the `dump()` value quoted and sanitised, so
+               that the result can be used to build a SQL string. This works well
+               for most types and you won't likely have to implement this method in a
+               subclass.
+               """
+               if (value := self.dump(obj)) is None:
+                   return b"NULL"
+       
+               if self.connection:
+                   esc = pq.Escaping(self.connection.pgconn)
+                   # escaping and quoting
+                   return esc.escape_literal(value)
+       
+               # This path is taken when quote is asked without a connection,
+               # usually it means by psycopg.sql.quote() or by
+               # 'Composible.as_string(None)'. Most often than not this is done by
+               # someone generating a SQL file to consume elsewhere.
+       
+               # No quoting, only quote escaping, random bs escaping. See further.
+               esc = pq.Escaping()
+               out = esc.escape_string(value)
+       
+               # b"\\" in memoryview doesn't work so search for the ascii value
+               if ORD_BS not in out:
+                   # If the string has no backslash, the result is correct and we
+                   # don't need to bother with standard_conforming_strings.
+                   return b"'" + out + b"'"
+       
+               # The libpq has a crazy behaviour: PQescapeString uses the last
+               # standard_conforming_strings setting seen on a connection. This
+               # means that backslashes might be escaped or might not.
+               #
+               # A syntax E'\\' works everywhere, whereas E'\' is an error. OTOH,
+               # if scs is off, '\\' raises a warning and '\' is an error.
+               #
+               # Check what the libpq does, and if it doesn't escape the backslash
+               # let's do it on our own. Never mind the race condition.
+               rv: bytes = b" E'" + out + b"'"
+               if esc.escape_string(b"\\") == b"\\":
+                   rv = rv.replace(b"\\", b"\\\\")
+               return rv
+       
+    1:     def get_key(self, obj: Any, format: PyFormat) -> abc.DumperKey:
+               """
+               Implementation of the `~psycopg.abc.Dumper.get_key()` member of the
+               `~psycopg.abc.Dumper` protocol. Look at its definition for details.
+       
+               This implementation returns the `!cls` passed in the constructor.
+               Subclasses needing to specialise the PostgreSQL type according to the
+               *value* of the object dumped (not only according to to its type)
+               should override this class.
+       
+               """
+               return self.cls
+       
+    1:     def upgrade(self, obj: Any, format: PyFormat) -> Dumper:
+               """
+               Implementation of the `~psycopg.abc.Dumper.upgrade()` member of the
+               `~psycopg.abc.Dumper` protocol. Look at its definition for details.
+       
+               This implementation just returns `!self`. If a subclass implements
+               `get_key()` it should probably override `!upgrade()` too.
+               """
+               return self
+       
+       
+    2: class Loader(abc.Loader, ABC):
+    1:     """
+           Convert PostgreSQL values with type OID `!oid` to Python objects.
+           """
+       
+    1:     format: pq.Format = pq.Format.TEXT
+    1:     """The format of the data loaded."""
+       
+    1:     def __init__(self, oid: int, context: abc.AdaptContext | None = None):
+               self.oid = oid
+               self.connection: BaseConnection[Any] | None
+               self.connection = context.connection if context else None
+       
+    2:     @abstractmethod
+    2:     def load(self, data: Buffer) -> Any:
+               """Convert a PostgreSQL value to a Python object."""
+               ...
+       
+       
+    2: class RecursiveDumper(Dumper):
+    1:     """Dumper with a transformer to help dumping recursive types."""
+       
+    1:     def __init__(self, cls: type, context: abc.AdaptContext | None = None):
+               super().__init__(cls, context)
+               self._tx = Transformer.from_context(context)
+       
+       
+    2: class RecursiveLoader(Loader):
+    1:     """Loader with a transformer to help loading recursive types."""
+       
+    1:     def __init__(self, oid: int, context: abc.AdaptContext | None = None):
+               super().__init__(oid, context)
+               self._tx = Transformer.from_context(context)

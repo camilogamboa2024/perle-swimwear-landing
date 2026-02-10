@@ -1,0 +1,13 @@
+    1: from django.contrib import admin
+    1: from django.urls import include, path
+    1: from django.views.generic import TemplateView
+       
+    1: urlpatterns = [
+    1:     path('admin/', admin.site.urls),
+    1:     path('', include('apps.catalog.urls')),
+    1:     path('', include('apps.orders.urls')),
+    1:     path('checkout/', include('apps.checkout.urls')),
+    1:     path('legal/terms/', TemplateView.as_view(template_name='legal/terms.html'), name='legal-terms'),
+    1:     path('legal/privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='legal-privacy'),
+    1:     path('legal/shipping-returns/', TemplateView.as_view(template_name='legal/shipping_returns.html'), name='legal-shipping-returns'),
+       ]

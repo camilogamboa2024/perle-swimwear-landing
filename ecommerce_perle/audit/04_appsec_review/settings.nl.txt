@@ -1,0 +1,145 @@
+     1	import os
+     2	import sys
+     3	
+     4	import dj_database_url
+     5	from pathlib import Path
+     6	
+     7	from django.core.exceptions import ImproperlyConfigured
+     8	
+     9	BASE_DIR = Path(__file__).resolve().parent.parent
+    10	RUNNING_TESTS = 'test' in sys.argv
+    11	SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-key-change-me')
+    12	DEBUG = os.getenv('DEBUG', '1') == '1'
+    13	if not DEBUG and SECRET_KEY == 'dev-key-change-me':
+    14	    raise ImproperlyConfigured('Configura DJANGO_SECRET_KEY para producción.')
+    15	ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+    16	CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if x.strip()]
+    17	
+    18	INSTALLED_APPS = [
+    19	    'django.contrib.admin',
+    20	    'django.contrib.auth',
+    21	    'django.contrib.contenttypes',
+    22	    'django.contrib.sessions',
+    23	    'django.contrib.messages',
+    24	    'django.contrib.staticfiles',
+    25	    'rest_framework',
+    26	    'apps.catalog',
+    27	    'apps.inventory.apps.InventoryConfig',
+    28	    'apps.customers',
+    29	    'apps.orders',
+    30	    'apps.checkout',
+    31	    'apps.dashboard',
+    32	]
+    33	
+    34	MIDDLEWARE = [
+    35	    'django.middleware.security.SecurityMiddleware',
+    36	    'whitenoise.middleware.WhiteNoiseMiddleware',
+    37	    'django.contrib.sessions.middleware.SessionMiddleware',
+    38	    'django.middleware.common.CommonMiddleware',
+    39	    'django.middleware.csrf.CsrfViewMiddleware',
+    40	    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    41	    'django.contrib.messages.middleware.MessageMiddleware',
+    42	    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    43	]
+    44	
+    45	ROOT_URLCONF = 'core.urls'
+    46	
+    47	TEMPLATES = [
+    48	    {
+    49	        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    50	        'DIRS': [BASE_DIR / 'templates'],
+    51	        'APP_DIRS': True,
+    52	        'OPTIONS': {
+    53	            'context_processors': [
+    54	                'django.template.context_processors.request',
+    55	                'django.contrib.auth.context_processors.auth',
+    56	                'django.contrib.messages.context_processors.messages',
+    57	                'core.context_processors.brand_globals',
+    58	            ],
+    59	        },
+    60	    },
+    61	]
+    62	
+    63	WSGI_APPLICATION = 'core.wsgi.application'
+    64	ASGI_APPLICATION = 'core.asgi.application'
+    65	
+    66	DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
+    67	if DATABASE_URL:
+    68	    DATABASES = {
+    69	        'default': dj_database_url.parse(
+    70	            DATABASE_URL,
+    71	            conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '600')),
+    72	            ssl_require=os.getenv('DB_SSL_REQUIRE', '1') == '1',
+    73	        )
+    74	    }
+    75	else:
+    76	    if not DEBUG and os.getenv('DB_ENGINE', 'django.db.backends.sqlite3') == 'django.db.backends.sqlite3':
+    77	        raise ImproperlyConfigured('En producción debes configurar DATABASE_URL o DB_ENGINE no-SQLite.')
+    78	    DATABASES = {
+    79	        'default': {
+    80	            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+    81	            'NAME': os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3'),
+    82	            'USER': os.getenv('DB_USER', ''),
+    83	            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+    84	            'HOST': os.getenv('DB_HOST', ''),
+    85	            'PORT': os.getenv('DB_PORT', ''),
+    86	            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '600')),
+    87	        }
+    88	    }
+    89	
+    90	
+    91	AUTH_PASSWORD_VALIDATORS = [
+    92	    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    93	    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 9}},
+    94	    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    95	    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    96	]
+    97	LANGUAGE_CODE = 'es-co'
+    98	TIME_ZONE = 'America/Bogota'
+    99	USE_I18N = True
+   100	USE_TZ = True
+   101	STATIC_URL = '/static/'
+   102	STATICFILES_DIRS = [BASE_DIR / 'static']
+   103	STATIC_ROOT = BASE_DIR / 'staticfiles'
+   104	DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+   105	EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+   106	SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+   107	
+   108	WHATSAPP_PHONE = os.getenv('WHATSAPP_PHONE', '')
+   109	CURRENCY_USD_RATE = float(os.getenv('CURRENCY_USD_RATE', '0.00026'))
+   110	
+   111	REST_FRAMEWORK = {
+   112	    'DEFAULT_THROTTLE_RATES': {
+   113	        'checkout': '20/hour',
+   114	        'sensitive': '60/hour',
+   115	    }
+   116	}
+   117	
+   118	STATICFILES_STORAGE_BACKEND = (
+   119	    'django.contrib.staticfiles.storage.StaticFilesStorage'
+   120	    if RUNNING_TESTS
+   121	    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+   122	)
+   123	STORAGES = {
+   124	    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+   125	    'staticfiles': {'BACKEND': STATICFILES_STORAGE_BACKEND},
+   126	}
+   127	
+   128	SECURE_CONTENT_TYPE_NOSNIFF = True
+   129	X_FRAME_OPTIONS = 'DENY'
+   130	
+   131	if not DEBUG:
+   132	    CSRF_COOKIE_SECURE = True
+   133	    SESSION_COOKIE_SECURE = True
+   134	    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', '1') == '1'
+   135	    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '300'))
+   136	    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', '1') == '1'
+   137	    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', '0') == '1'
+   138	
+   139	
+   140	SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'strict-origin-when-cross-origin')
+   141	SECURE_CROSS_ORIGIN_OPENER_POLICY = os.getenv('SECURE_CROSS_ORIGIN_OPENER_POLICY', 'same-origin')
+   142	SESSION_COOKIE_HTTPONLY = True
+   143	CSRF_COOKIE_HTTPONLY = os.getenv('CSRF_COOKIE_HTTPONLY', '0') == '1'
+   144	SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+   145	CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax')

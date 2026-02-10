@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -10,8 +11,9 @@ from rest_framework.views import APIView
 from apps.customers.models import Address, Customer
 from apps.orders.models import Coupon
 from apps.orders.views import _get_or_create_cart
+from core.authentication import EnforcedCsrfSessionAuthentication
 from .serializers import CheckoutConfirmSerializer
-from .services import create_order_from_cart
+from .services import CheckoutError, create_order_from_cart
 from .whatsapp import build_whatsapp_url
 
 
@@ -21,6 +23,7 @@ def checkout_page(request):
 
 
 class CheckoutConfirmApiView(APIView):
+    authentication_classes = [EnforcedCsrfSessionAuthentication]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'checkout'
 
@@ -29,33 +32,39 @@ class CheckoutConfirmApiView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        customer, _ = Customer.objects.get_or_create(
-            email=data['email'], defaults={'full_name': data['full_name'], 'phone': data.get('phone', '')}
-        )
-        customer.full_name = data['full_name']
-        customer.phone = data.get('phone', '')
-        customer.save(update_fields=['full_name', 'phone'])
-        address = Address.objects.create(
-            customer=customer,
-            line1=data['line1'],
-            city=data['city'],
-            state=data['state'],
-            country='Colombia',
-            label='Checkout',
-        )
         cart = _get_or_create_cart(request)
         coupon = None
         if data.get('coupon_code'):
             coupon = Coupon.objects.filter(code=data['coupon_code'], is_active=True).first()
 
-        order = create_order_from_cart(
-            customer=customer,
-            address=address,
-            cart=cart,
-            coupon=coupon,
-            payment_method=data['payment_method'],
-            session_key=request.session.session_key or '',
-        )
+        try:
+            with transaction.atomic():
+                customer, _ = Customer.objects.get_or_create(
+                    email=data['email'],
+                    defaults={'full_name': data['full_name'], 'phone': data.get('phone', '')},
+                )
+                customer.full_name = data['full_name']
+                customer.phone = data.get('phone', '')
+                customer.save(update_fields=['full_name', 'phone'])
+                address = Address.objects.create(
+                    customer=customer,
+                    line1=data['line1'],
+                    city=data['city'],
+                    state=data['state'],
+                    country='Colombia',
+                    label='Checkout',
+                )
+                order = create_order_from_cart(
+                    customer=customer,
+                    address=address,
+                    cart=cart,
+                    coupon=coupon,
+                    payment_method=data['payment_method'],
+                    session_key=request.session.session_key or '',
+                )
+        except CheckoutError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
         return Response(
             {

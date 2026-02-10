@@ -1,0 +1,27 @@
+    1: from django.db import models
+    1: from apps.catalog.models import ProductVariant
+       
+       
+    2: class InventoryMovement(models.Model):
+    1:     IN = 'IN'
+    1:     OUT = 'OUT'
+    1:     ADJUST = 'ADJUST'
+    1:     MOVEMENT_TYPES = [(IN, 'Ingreso'), (OUT, 'Salida'), (ADJUST, 'Ajuste')]
+       
+    1:     variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT, related_name='movements')
+    1:     movement_type = models.CharField(max_length=10, choices=MOVEMENT_TYPES)
+    1:     quantity = models.IntegerField()
+    1:     reason = models.CharField(max_length=180)
+    1:     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+       
+    2:     class Meta:
+    1:         indexes = [models.Index(fields=['variant', 'created_at'])]
+       
+       
+    2: class StockLevel(models.Model):
+    1:     variant = models.OneToOneField(ProductVariant, on_delete=models.CASCADE, related_name='stock_level')
+    1:     available = models.IntegerField(default=0)
+    1:     updated_at = models.DateTimeField(auto_now=True)
+       
+    2:     class Meta:
+    1:         indexes = [models.Index(fields=['available'])]

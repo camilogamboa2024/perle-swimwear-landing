@@ -1,0 +1,35 @@
+    1: """
+       Module gathering the various parts of the copy subsystem.
+       """
+       
+    1: from typing import IO
+       
+    1: from . import _copy, _copy_async
+    1: from .abc import Buffer
+       
+       # re-exports
+       
+    1: AsyncCopy = _copy_async.AsyncCopy
+    1: AsyncWriter = _copy_async.AsyncWriter
+    1: AsyncLibpqWriter = _copy_async.AsyncLibpqWriter
+    1: AsyncQueuedLibpqWriter = _copy_async.AsyncQueuedLibpqWriter
+       
+    1: Copy = _copy.Copy
+    1: Writer = _copy.Writer
+    1: LibpqWriter = _copy.LibpqWriter
+    1: QueuedLibpqWriter = _copy.QueuedLibpqWriter
+       
+       
+    2: class FileWriter(Writer):
+    1:     """
+           A `Writer` to write copy data to a file-like object.
+       
+           :param file: the file where to write copy data. It must be open for writing
+               in binary mode.
+           """
+       
+    1:     def __init__(self, file: IO[bytes]):
+               self.file = file
+       
+    1:     def write(self, data: Buffer) -> None:
+               self.file.write(data)

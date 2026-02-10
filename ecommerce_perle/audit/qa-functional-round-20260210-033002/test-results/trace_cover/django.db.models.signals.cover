@@ -1,0 +1,54 @@
+    1: from functools import partial
+       
+    1: from django.db.models.utils import make_model_tuple
+    1: from django.dispatch import Signal
+       
+    1: class_prepared = Signal()
+       
+       
+    2: class ModelSignal(Signal):
+    1:     """
+           Signal subclass that allows the sender to be lazily specified as a string
+           of the `app_label.ModelName` form.
+           """
+       
+    1:     def _lazy_method(self, method, apps, receiver, sender, **kwargs):
+    1:         from django.db.models.options import Options
+       
+               # This partial takes a single optional argument named "sender".
+    1:         partial_method = partial(method, receiver, **kwargs)
+    1:         if isinstance(sender, str):
+                   apps = apps or Options.default_apps
+                   apps.lazy_model_operation(partial_method, make_model_tuple(sender))
+               else:
+    1:             return partial_method(sender)
+       
+    1:     def connect(self, receiver, sender=None, weak=True, dispatch_uid=None, apps=None):
+    2:         self._lazy_method(
+    1:             super().connect,
+    1:             apps,
+    1:             receiver,
+    1:             sender,
+    1:             weak=weak,
+    1:             dispatch_uid=dispatch_uid,
+               )
+       
+    1:     def disconnect(self, receiver=None, sender=None, dispatch_uid=None, apps=None):
+               return self._lazy_method(
+                   super().disconnect, apps, receiver, sender, dispatch_uid=dispatch_uid
+               )
+       
+       
+    1: pre_init = ModelSignal(use_caching=True)
+    1: post_init = ModelSignal(use_caching=True)
+       
+    1: pre_save = ModelSignal(use_caching=True)
+    1: post_save = ModelSignal(use_caching=True)
+       
+    1: pre_delete = ModelSignal(use_caching=True)
+    1: post_delete = ModelSignal(use_caching=True)
+       
+    1: m2m_changed = ModelSignal(use_caching=True)
+       
+    1: pre_migrate = Signal()
+    1: post_migrate = Signal()

@@ -1,0 +1,327 @@
+    1: """
+       Helper functions for mapping model fields to a dictionary of default
+       keyword arguments that should be used for their equivalent serializer fields.
+       """
+    1: import inspect
+       
+    1: from django.core import validators
+    1: from django.db import models
+    1: from django.utils.text import capfirst
+       
+    1: from rest_framework.compat import postgres_fields
+    1: from rest_framework.validators import UniqueValidator
+       
+    1: NUMERIC_FIELD_TYPES = (
+    1:     models.IntegerField, models.FloatField, models.DecimalField, models.DurationField,
+       )
+       
+       
+    2: class ClassLookupDict:
+    1:     """
+           Takes a dictionary with classes as keys.
+           Lookups against this object will traverses the object's inheritance
+           hierarchy in method resolution order, and returns the first matching value
+           from the dictionary or raises a KeyError if nothing matches.
+           """
+    1:     def __init__(self, mapping):
+  167:         self.mapping = mapping
+       
+    1:     def __getitem__(self, key):
+  165:         if hasattr(key, '_proxy_class'):
+                   # Deal with proxy classes. Ie. BoundField behaves as if it
+                   # is a Field instance when using ClassLookupDict.
+                   base_class = key._proxy_class
+               else:
+  165:             base_class = key.__class__
+       
+  253:         for cls in inspect.getmro(base_class):
+  253:             if cls in self.mapping:
+  165:                 return self.mapping[cls]
+               raise KeyError('Class %s not found in lookup.' % base_class.__name__)
+       
+    1:     def __setitem__(self, key, value):
+               self.mapping[key] = value
+       
+       
+    1: def needs_label(model_field, field_name):
+           """
+           Returns `True` if the label based on the model's verbose name
+           is not equal to the default label it would have based on it's field name.
+           """
+  174:     default_label = field_name.replace('_', ' ').capitalize()
+  174:     return capfirst(model_field.verbose_name) != default_label
+       
+       
+    1: def get_detail_view_name(model):
+           """
+           Given a model class, return the view name to use for URL relationships
+           that refer to instances of the model.
+           """
+   18:     return '%(model_name)s-detail' % {
+    9:         'model_name': model._meta.object_name.lower()
+           }
+       
+       
+    1: def get_unique_validators(field_name, model_field):
+           """
+           Returns a list of UniqueValidators that should be applied to the field.
+           """
+  121:     field_set = {field_name}
+  363:     conditions = {
+               c.condition
+  121:         for c in model_field.model._meta.constraints
+  121:         if isinstance(c, models.UniqueConstraint) and set(c.fields) == field_set
+           }
+  121:     if getattr(model_field, 'unique', False):
+   22:         conditions.add(None)
+  121:     if not conditions:
+   99:         return
+   22:     unique_error_message = get_unique_error_message(model_field)
+   22:     queryset = model_field.model._default_manager
+   44:     for condition in conditions:
+   44:         yield UniqueValidator(
+   22:             queryset=queryset if condition is None else queryset.filter(condition),
+   22:             message=unique_error_message
+               )
+       
+       
+    1: def get_field_kwargs(field_name, model_field):
+           """
+           Creates a default instance of a basic non-relational field.
+           """
+  165:     kwargs = {}
+  165:     validator_kwarg = list(model_field.validators)
+       
+           # The following will only be used by ModelField classes.
+           # Gets removed for everything else.
+  165:     kwargs['model_field'] = model_field
+       
+  165:     if model_field.verbose_name and needs_label(model_field, field_name):
+   44:         kwargs['label'] = capfirst(model_field.verbose_name)
+       
+  165:     if model_field.help_text:
+               kwargs['help_text'] = model_field.help_text
+       
+  165:     max_digits = getattr(model_field, 'max_digits', None)
+  165:     if max_digits is not None:
+               kwargs['max_digits'] = max_digits
+       
+  165:     decimal_places = getattr(model_field, 'decimal_places', None)
+  165:     if decimal_places is not None:
+               kwargs['decimal_places'] = decimal_places
+       
+  165:     if isinstance(model_field, models.SlugField):
+   11:         kwargs['allow_unicode'] = model_field.allow_unicode
+       
+  781:     if isinstance(model_field, models.TextField) and not model_field.choices or \
+  308:             (postgres_fields and isinstance(model_field, postgres_fields.JSONField)) or \
+  308:             (hasattr(models, 'JSONField') and isinstance(model_field, models.JSONField)):
+   11:         kwargs['style'] = {'base_template': 'textarea.html'}
+       
+  165:     if model_field.null:
+   11:         kwargs['allow_null'] = True
+       
+  165:     if isinstance(model_field, models.AutoField) or not model_field.editable:
+               # If this field is read-only, then return early.
+               # Further keyword arguments are not valid.
+   44:         kwargs['read_only'] = True
+   44:         return kwargs
+       
+  121:     if model_field.has_default() or model_field.blank or model_field.null:
+   44:         kwargs['required'] = False
+       
+  121:     if model_field.blank and (isinstance(model_field, (models.CharField, models.TextField))):
+               kwargs['allow_blank'] = True
+       
+  121:     if not model_field.blank and (postgres_fields and isinstance(model_field, postgres_fields.ArrayField)):
+               kwargs['allow_empty'] = False
+       
+  121:     if isinstance(model_field, models.FilePathField):
+               kwargs['path'] = model_field.path
+       
+               if model_field.match is not None:
+                   kwargs['match'] = model_field.match
+       
+               if model_field.recursive is not False:
+                   kwargs['recursive'] = model_field.recursive
+       
+               if model_field.allow_files is not True:
+                   kwargs['allow_files'] = model_field.allow_files
+       
+               if model_field.allow_folders is not False:
+                   kwargs['allow_folders'] = model_field.allow_folders
+       
+  121:     if model_field.choices:
+               kwargs['choices'] = model_field.choices
+           else:
+               # Ensure that max_value is passed explicitly as a keyword arg,
+               # rather than as a validator.
+  766:         max_value = next((
+  293:             validator.limit_value for validator in validator_kwarg
+  141:             if isinstance(validator, validators.MaxValueValidator)
+  121:         ), None)
+  121:         if max_value is not None and isinstance(model_field, NUMERIC_FIELD_TYPES):
+   31:             kwargs['max_value'] = max_value
+  248:             validator_kwarg = [
+  124:                 validator for validator in validator_kwarg
+   62:                 if not isinstance(validator, validators.MaxValueValidator)
+                   ]
+       
+               # Ensure that min_value is passed explicitly as a keyword arg,
+               # rather than as a validator.
+  704:         min_value = next((
+  262:             validator.limit_value for validator in validator_kwarg
+  110:             if isinstance(validator, validators.MinValueValidator)
+  121:         ), None)
+  121:         if min_value is not None and isinstance(model_field, NUMERIC_FIELD_TYPES):
+   31:             kwargs['min_value'] = min_value
+  155:             validator_kwarg = [
+   62:                 validator for validator in validator_kwarg
+   31:                 if not isinstance(validator, validators.MinValueValidator)
+                   ]
+       
+               # URLField does not need to include the URLValidator argument,
+               # as it is explicitly added in.
+  121:         if isinstance(model_field, models.URLField):
+                   validator_kwarg = [
+                       validator for validator in validator_kwarg
+                       if not isinstance(validator, validators.URLValidator)
+                   ]
+       
+               # EmailField does not need to include the validate_email argument,
+               # as it is explicitly added in.
+  121:         if isinstance(model_field, models.EmailField):
+                   validator_kwarg = [
+                       validator for validator in validator_kwarg
+                       if validator is not validators.validate_email
+                   ]
+       
+               # SlugField do not need to include the 'validate_slug' argument,
+  121:         if isinstance(model_field, models.SlugField):
+   55:             validator_kwarg = [
+   44:                 validator for validator in validator_kwarg
+   44:                 if validator is not validators.validate_slug
+                   ]
+       
+               # IPAddressField do not need to include the 'validate_ipv46_address' argument,
+  121:         if isinstance(model_field, models.GenericIPAddressField):
+                   validator_kwarg = [
+                       validator for validator in validator_kwarg
+                       if validator is not validators.validate_ipv46_address
+                   ]
+               # Our decimal validation is handled in the field code, not validator code.
+  121:         if isinstance(model_field, models.DecimalField):
+                   validator_kwarg = [
+                       validator for validator in validator_kwarg
+                       if not isinstance(validator, validators.DecimalValidator)
+                   ]
+       
+           # Ensure that max_length is passed explicitly as a keyword arg,
+           # rather than as a validator.
+  121:     max_length = getattr(model_field, 'max_length', None)
+  121:     if max_length is not None and (isinstance(model_field, (models.CharField, models.TextField, models.FileField))):
+   68:         kwargs['max_length'] = max_length
+  340:         validator_kwarg = [
+  136:             validator for validator in validator_kwarg
+   68:             if not isinstance(validator, validators.MaxLengthValidator)
+               ]
+       
+           # Ensure that min_length is passed explicitly as a keyword arg,
+           # rather than as a validator.
+  484:     min_length = next((
+  121:         validator.limit_value for validator in validator_kwarg
+               if isinstance(validator, validators.MinLengthValidator)
+  121:     ), None)
+  121:     if min_length is not None and isinstance(model_field, models.CharField):
+               kwargs['min_length'] = min_length
+               validator_kwarg = [
+                   validator for validator in validator_kwarg
+                   if not isinstance(validator, validators.MinLengthValidator)
+               ]
+       
+  121:     validator_kwarg += get_unique_validators(field_name, model_field)
+       
+  121:     if validator_kwarg:
+   22:         kwargs['validators'] = validator_kwarg
+       
+  121:     return kwargs
+       
+       
+    1: def get_relation_kwargs(field_name, relation_info):
+           """
+           Creates a default instance of a flat relational field.
+           """
+    9:     model_field, related_model, to_many, to_field, has_through_model, reverse = relation_info
+    9:     kwargs = {
+    9:         'queryset': related_model._default_manager,
+    9:         'view_name': get_detail_view_name(related_model)
+           }
+       
+    9:     if to_many:
+               kwargs['many'] = True
+       
+    9:     if to_field:
+    9:         kwargs['to_field'] = to_field
+       
+    9:     limit_choices_to = model_field and model_field.get_limit_choices_to()
+    9:     if limit_choices_to:
+               if not isinstance(limit_choices_to, models.Q):
+                   limit_choices_to = models.Q(**limit_choices_to)
+               kwargs['queryset'] = kwargs['queryset'].filter(limit_choices_to)
+       
+    9:     if has_through_model:
+               kwargs['read_only'] = True
+               kwargs.pop('queryset', None)
+       
+    9:     if model_field:
+    9:         if model_field.verbose_name and needs_label(model_field, field_name):
+                   kwargs['label'] = capfirst(model_field.verbose_name)
+    9:         help_text = model_field.help_text
+    9:         if help_text:
+                   kwargs['help_text'] = help_text
+    9:         if not model_field.editable:
+                   kwargs['read_only'] = True
+                   kwargs.pop('queryset', None)
+    9:         if model_field.null:
+                   kwargs['allow_null'] = True
+    9:         if kwargs.get('read_only', False):
+                   # If this field is read-only, then return early.
+                   # No further keyword arguments are valid.
+                   return kwargs
+       
+    9:         if model_field.has_default() or model_field.blank or model_field.null:
+                   kwargs['required'] = False
+    9:         if model_field.validators:
+                   kwargs['validators'] = model_field.validators
+    9:         if getattr(model_field, 'unique', False):
+                   validator = UniqueValidator(
+                       queryset=model_field.model._default_manager,
+                       message=get_unique_error_message(model_field))
+                   kwargs['validators'] = kwargs.get('validators', []) + [validator]
+    9:         if to_many and not model_field.blank:
+                   kwargs['allow_empty'] = False
+       
+    9:     return kwargs
+       
+       
+    1: def get_nested_relation_kwargs(relation_info):
+           kwargs = {'read_only': True}
+           if relation_info.to_many:
+               kwargs['many'] = True
+           return kwargs
+       
+       
+    1: def get_url_kwargs(model_field):
+           return {
+               'view_name': get_detail_view_name(model_field)
+           }
+       
+       
+    1: def get_unique_error_message(model_field):
+   22:     unique_error_message = model_field.error_messages.get('unique', None)
+   22:     if unique_error_message:
+   44:         unique_error_message = unique_error_message % {
+   22:             'model_name': model_field.model._meta.verbose_name,
+   22:             'field_label': model_field.verbose_name
+               }
+   22:     return unique_error_message

@@ -1,0 +1,6 @@
+    1: from django.dispatch import Signal
+       
+    1: request_started = Signal()
+    1: request_finished = Signal()
+    1: got_request_exception = Signal()
+    1: setting_changed = Signal()

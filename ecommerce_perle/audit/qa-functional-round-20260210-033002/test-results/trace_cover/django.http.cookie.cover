@@ -1,0 +1,23 @@
+    1: from http import cookies
+       
+       # For backwards compatibility in Django 2.1.
+    1: SimpleCookie = cookies.SimpleCookie
+       
+       
+    1: def parse_cookie(cookie):
+           """
+           Return a dictionary parsed from a `Cookie:` header string.
+           """
+   43:     cookiedict = {}
+  102:     for chunk in cookie.split(";"):
+   59:         if "=" in chunk:
+   43:             key, val = chunk.split("=", 1)
+               else:
+                   # Assume an empty name per
+                   # https://bugzilla.mozilla.org/show_bug.cgi?id=169091
+   16:             key, val = "", chunk
+   59:         key, val = key.strip(), val.strip()
+   59:         if key or val:
+                   # unquote using Python's algorithm.
+   43:             cookiedict[key] = cookies._unquote(val)
+   43:     return cookiedict

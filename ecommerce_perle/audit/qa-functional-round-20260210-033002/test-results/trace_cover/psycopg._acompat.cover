@@ -1,0 +1,92 @@
+    1: """
+       Utilities to ease the differences between async and sync code.
+       
+       These object offer a similar interface between sync and async versions; the
+       script async_to_sync.py will replace the async names with the sync names
+       when generating the sync version.
+       """
+       
+       # Copyright (C) 2023 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import queue
+    1: import asyncio
+    1: import threading
+    1: from typing import Any, TypeAlias
+    1: from collections.abc import Callable, Coroutine
+       
+    1: from ._compat import TypeVar
+       
+    1: Worker: TypeAlias = threading.Thread
+    1: AWorker: TypeAlias = asyncio.Task[None]
+    1: Lock = threading.Lock
+    1: ALock = asyncio.Lock
+       
+    1: T = TypeVar("T")
+       
+       
+    2: class Queue(queue.Queue[T]):
+    1:     """
+           A Queue subclass with an interruptible get() method.
+           """
+       
+    1:     def get(self, block: bool = True, timeout: float | None = None) -> T:
+               # Always specify a timeout to make the wait interruptible.
+               if timeout is None:
+                   timeout = 24.0 * 60.0 * 60.0
+               return super().get(block=block, timeout=timeout)
+       
+       
+    2: class AQueue(asyncio.Queue[T]):
+    1:     pass
+       
+       
+    1: def aspawn(
+           f: Callable[..., Coroutine[Any, Any, None]],
+    1:     args: tuple[Any, ...] = (),
+    1:     name: str | None = None,
+       ) -> asyncio.Task[None]:
+           """
+           Equivalent to asyncio.create_task.
+           """
+           return asyncio.create_task(f(*args), name=name)
+       
+       
+    1: def spawn(
+           f: Callable[..., Any],
+    1:     args: tuple[Any, ...] = (),
+    1:     name: str | None = None,
+       ) -> threading.Thread:
+           """
+           Equivalent to creating and running a daemon thread.
+           """
+           t = threading.Thread(target=f, args=args, name=name, daemon=True)
+           t.start()
+           return t
+       
+       
+    1: async def agather(*tasks: asyncio.Task[Any], timeout: float | None = None) -> None:
+           """
+           Equivalent to asyncio.gather or Thread.join()
+           """
+           wait = asyncio.gather(*tasks)
+           try:
+               if timeout is not None:
+                   await asyncio.wait_for(asyncio.shield(wait), timeout=timeout)
+               else:
+                   await wait
+           except asyncio.TimeoutError:
+               pass
+           else:
+               return
+       
+       
+    1: def gather(*tasks: threading.Thread, timeout: float | None = None) -> None:
+           """
+           Equivalent to asyncio.gather or Thread.join()
+           """
+           for t in tasks:
+               if not t.is_alive():
+                   continue
+               t.join(timeout)

@@ -1,0 +1,46 @@
+    1: from itertools import chain
+       
+    1: from django.apps import apps
+    1: from django.core.checks import Error
+       
+       
+    1: def check_generic_foreign_keys(app_configs=None, **kwargs):
+    1:     from .fields import GenericForeignKey
+       
+    1:     if app_configs is None:
+    1:         models = apps.get_models()
+           else:
+               models = chain.from_iterable(
+                   app_config.get_models() for app_config in app_configs
+               )
+    1:     errors = []
+  723:     fields = (
+               obj
+   21:         for model in models
+  360:         for obj in vars(model).values()
+  340:         if isinstance(obj, GenericForeignKey)
+           )
+    1:     for field in fields:
+               errors.extend(field.check())
+    1:     return errors
+       
+       
+    1: def check_model_name_lengths(app_configs=None, **kwargs):
+    1:     if app_configs is None:
+    1:         models = apps.get_models()
+           else:
+               models = chain.from_iterable(
+                   app_config.get_models() for app_config in app_configs
+               )
+    1:     errors = []
+   21:     for model in models:
+   20:         if len(model._meta.model_name) > 100:
+                   errors.append(
+                       Error(
+                           "Model names must be at most 100 characters (got %d)."
+                           % (len(model._meta.model_name),),
+                           obj=model,
+                           id="contenttypes.E005",
+                       )
+                   )
+    1:     return errors

@@ -1,0 +1,35 @@
+    1: from django.db import migrations, models
+    1: import django.db.models.deletion
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     initial = True
+       
+    1:     dependencies = [
+    1:         ('catalog', '0001_initial'),
+           ]
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name='InventoryMovement',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('movement_type', models.CharField(choices=[('IN', 'Ingreso'), ('OUT', 'Salida'), ('ADJUST', 'Ajuste')], max_length=10)),
+    1:                 ('quantity', models.IntegerField()),
+    1:                 ('reason', models.CharField(max_length=180)),
+    1:                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
+    1:                 ('variant', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='movements', to='catalog.productvariant')),
+                   ],
+    1:             options={'indexes': [models.Index(fields=['variant', 'created_at'], name='inventory_i_variant_56b574_idx')]},
+               ),
+    2:         migrations.CreateModel(
+    1:             name='StockLevel',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('available', models.IntegerField(default=0)),
+    1:                 ('updated_at', models.DateTimeField(auto_now=True)),
+    1:                 ('variant', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='stock_level', to='catalog.productvariant')),
+                   ],
+    1:             options={'indexes': [models.Index(fields=['available'], name='inventory_s_availab_7b9ddc_idx')]},
+               ),
+           ]

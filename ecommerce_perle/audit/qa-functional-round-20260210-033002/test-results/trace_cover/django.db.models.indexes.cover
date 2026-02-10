@@ -1,0 +1,299 @@
+    1: from types import NoneType
+       
+    1: from django.db.backends.utils import names_digest, split_identifier
+    1: from django.db.models.expressions import Col, ExpressionList, F, Func, OrderBy
+    1: from django.db.models.functions import Collate
+    1: from django.db.models.query_utils import Q
+    1: from django.db.models.sql import Query
+    1: from django.utils.functional import partition
+       
+    1: __all__ = ["Index"]
+       
+       
+    2: class Index:
+    1:     suffix = "idx"
+           # The max length of the name of the index (restricted to 30 for
+           # cross-database compatibility with Oracle)
+    1:     max_name_length = 30
+       
+    1:     def __init__(
+               self,
+               *expressions,
+    1:         fields=(),
+    1:         name=None,
+    1:         db_tablespace=None,
+    1:         opclasses=(),
+    1:         condition=None,
+    1:         include=None,
+           ):
+   62:         if opclasses and not name:
+                   raise ValueError("An index must be named to use opclasses.")
+   62:         if not isinstance(condition, (NoneType, Q)):
+                   raise ValueError("Index.condition must be a Q instance.")
+   62:         if condition and not name:
+                   raise ValueError("An index must be named to use condition.")
+   62:         if not isinstance(fields, (list, tuple)):
+                   raise ValueError("Index.fields must be a list or tuple.")
+   62:         if not isinstance(opclasses, (list, tuple)):
+                   raise ValueError("Index.opclasses must be a list or tuple.")
+   62:         if not expressions and not fields:
+                   raise ValueError(
+                       "At least one field or expression is required to define an index."
+                   )
+   62:         if expressions and fields:
+                   raise ValueError(
+                       "Index.fields and expressions are mutually exclusive.",
+                   )
+   62:         if expressions and not name:
+                   raise ValueError("An index must be named to use expressions.")
+   62:         if expressions and opclasses:
+                   raise ValueError(
+                       "Index.opclasses cannot be used with expressions. Use "
+                       "django.contrib.postgres.indexes.OpClass() instead."
+                   )
+   62:         if opclasses and len(fields) != len(opclasses):
+                   raise ValueError(
+                       "Index.fields and Index.opclasses must have the same number of "
+                       "elements."
+                   )
+  253:         if fields and not all(isinstance(field, str) for field in fields):
+                   raise ValueError("Index.fields must contain only strings with field names.")
+   62:         if include and not name:
+                   raise ValueError("A covering index must be named.")
+   62:         if not isinstance(include, (NoneType, list, tuple)):
+                   raise ValueError("Index.include must be a list or tuple.")
+   62:         self.fields = list(fields)
+               # A list of 2-tuple with the field name and ordering ('' or 'DESC').
+  444:         self.fields_orders = [
+  129:             (field_name.removeprefix("-"), "DESC" if field_name.startswith("-") else "")
+  191:             for field_name in self.fields
+               ]
+   62:         self.name = name or ""
+   62:         self.db_tablespace = db_tablespace
+   62:         self.opclasses = opclasses
+   62:         self.condition = condition
+   62:         self.include = tuple(include) if include else ()
+  186:         self.expressions = tuple(
+                   F(expression) if isinstance(expression, str) else expression
+   62:             for expression in expressions
+               )
+       
+    2:     @property
+    2:     def contains_expressions(self):
+   20:         return bool(self.expressions)
+       
+    1:     def _get_condition_sql(self, model, schema_editor):
+   10:         if self.condition is None:
+   10:             return None
+               query = Query(model=model, alias_cols=False)
+               where = query.build_where(self.condition)
+               compiler = query.get_compiler(connection=schema_editor.connection)
+               sql, params = where.as_sql(compiler, schema_editor.connection)
+               return sql % tuple(schema_editor.quote_value(p) for p in params)
+       
+    1:     def create_sql(self, model, schema_editor, using="", **kwargs):
+   30:         include = [
+   10:             model._meta.get_field(field_name).column for field_name in self.include
+               ]
+   10:         condition = self._get_condition_sql(model, schema_editor)
+   10:         if self.expressions:
+                   index_expressions = []
+                   for expression in self.expressions:
+                       index_expression = IndexExpression(expression)
+                       index_expression.set_wrapper_classes(schema_editor.connection)
+                       index_expressions.append(index_expression)
+                   expressions = ExpressionList(*index_expressions).resolve_expression(
+                       Query(model, alias_cols=False),
+                   )
+                   fields = None
+                   col_suffixes = None
+               else:
+   70:             fields = [
+   20:                 model._meta.get_field(field_name)
+   30:                 for field_name, _ in self.fields_orders
+                   ]
+   10:             if schema_editor.connection.features.supports_index_column_ordering:
+   40:                 col_suffixes = [order[1] for order in self.fields_orders]
+                   else:
+                       col_suffixes = [""] * len(self.fields_orders)
+   10:             expressions = None
+   40:         return schema_editor._create_index_sql(
+   10:             model,
+   10:             fields=fields,
+   10:             name=self.name,
+   10:             using=using,
+   10:             db_tablespace=self.db_tablespace,
+   10:             col_suffixes=col_suffixes,
+   10:             opclasses=self.opclasses,
+   10:             condition=condition,
+   10:             include=include,
+   10:             expressions=expressions,
+   10:             **kwargs,
+               )
+       
+    1:     def remove_sql(self, model, schema_editor, **kwargs):
+    5:         return schema_editor._delete_index_sql(model, self.name, **kwargs)
+       
+    1:     def deconstruct(self):
+   52:         path = "%s.%s" % (self.__class__.__module__, self.__class__.__name__)
+   52:         path = path.replace("django.db.models.indexes", "django.db.models")
+   52:         kwargs = {"name": self.name}
+   52:         if self.fields:
+   52:             kwargs["fields"] = self.fields
+   52:         if self.db_tablespace is not None:
+                   kwargs["db_tablespace"] = self.db_tablespace
+   52:         if self.opclasses:
+                   kwargs["opclasses"] = self.opclasses
+   52:         if self.condition:
+                   kwargs["condition"] = self.condition
+   52:         if self.include:
+                   kwargs["include"] = self.include
+   52:         return (path, self.expressions, kwargs)
+       
+    1:     def clone(self):
+               """Create a copy of this Index."""
+   52:         _, args, kwargs = self.deconstruct()
+   52:         return self.__class__(*args, **kwargs)
+       
+    1:     def set_name_with_model(self, model):
+               """
+               Generate a unique name for the index.
+       
+               The name is divided into 3 parts - table name (12 chars), field name
+               (8 chars) and unique hash + suffix (10 chars). Each part is made to
+               fit its size by truncating the excess length.
+               """
+    5:         _, table_name = split_identifier(model._meta.db_table)
+   35:         column_names = [
+   10:             model._meta.get_field(field_name).column
+   15:             for field_name, order in self.fields_orders
+               ]
+   35:         column_names_with_order = [
+   10:             (("-%s" if order else "%s") % column_name)
+   20:             for column_name, (field_name, order) in zip(
+    5:                 column_names, self.fields_orders
+                   )
+               ]
+               # The length of the parts of the name is based on the default max
+               # length of 30 characters.
+    5:         hash_data = [table_name] + column_names_with_order + [self.suffix]
+    5:         self.name = "%s_%s_%s" % (
+    5:             table_name[:11],
+    5:             column_names[0][:7],
+    5:             "%s_%s" % (names_digest(*hash_data, length=6), self.suffix),
+               )
+    5:         if len(self.name) > self.max_name_length:
+                   raise ValueError(
+                       "Index too long for multiple database support. Is self.suffix "
+                       "longer than 3 characters?"
+                   )
+    5:         if self.name[0] == "_" or self.name[0].isdigit():
+                   self.name = "D%s" % self.name[1:]
+       
+    1:     def __repr__(self):
+               return "<%s:%s%s%s%s%s%s%s>" % (
+                   self.__class__.__qualname__,
+                   "" if not self.fields else " fields=%s" % repr(self.fields),
+                   "" if not self.expressions else " expressions=%s" % repr(self.expressions),
+                   "" if not self.name else " name=%s" % repr(self.name),
+                   (
+                       ""
+                       if self.db_tablespace is None
+                       else " db_tablespace=%s" % repr(self.db_tablespace)
+                   ),
+                   "" if self.condition is None else " condition=%s" % self.condition,
+                   "" if not self.include else " include=%s" % repr(self.include),
+                   "" if not self.opclasses else " opclasses=%s" % repr(self.opclasses),
+               )
+       
+    1:     def __eq__(self, other):
+               if self.__class__ == other.__class__:
+                   return self.deconstruct() == other.deconstruct()
+               return NotImplemented
+       
+       
+    2: class IndexExpression(Func):
+    1:     """Order and wrap expressions for CREATE INDEX statements."""
+       
+    1:     template = "%(expressions)s"
+    1:     wrapper_classes = (OrderBy, Collate)
+       
+    1:     def set_wrapper_classes(self, connection=None):
+               # Some databases (e.g. MySQL) treats COLLATE as an indexed expression.
+               if connection and connection.features.collate_as_index_expression:
+                   self.wrapper_classes = tuple(
+                       [
+                           wrapper_cls
+                           for wrapper_cls in self.wrapper_classes
+                           if wrapper_cls is not Collate
+                       ]
+                   )
+       
+    2:     @classmethod
+    2:     def register_wrappers(cls, *wrapper_classes):
+               cls.wrapper_classes = wrapper_classes
+       
+    1:     def resolve_expression(
+               self,
+    1:         query=None,
+    1:         allow_joins=True,
+    1:         reuse=None,
+    1:         summarize=False,
+    1:         for_save=False,
+           ):
+               expressions = list(self.flatten())
+               # Split expressions and wrappers.
+               index_expressions, wrappers = partition(
+                   lambda e: isinstance(e, self.wrapper_classes),
+                   expressions,
+               )
+               wrapper_types = [type(wrapper) for wrapper in wrappers]
+               if len(wrapper_types) != len(set(wrapper_types)):
+                   raise ValueError(
+                       "Multiple references to %s can't be used in an indexed "
+                       "expression."
+                       % ", ".join(
+                           [wrapper_cls.__qualname__ for wrapper_cls in self.wrapper_classes]
+                       )
+                   )
+               if expressions[1 : len(wrappers) + 1] != wrappers:
+                   raise ValueError(
+                       "%s must be topmost expressions in an indexed expression."
+                       % ", ".join(
+                           [wrapper_cls.__qualname__ for wrapper_cls in self.wrapper_classes]
+                       )
+                   )
+               # Wrap expressions in parentheses if they are not column references.
+               root_expression = index_expressions[1]
+               resolve_root_expression = root_expression.resolve_expression(
+                   query,
+                   allow_joins,
+                   reuse,
+                   summarize,
+                   for_save,
+               )
+               if not isinstance(resolve_root_expression, Col):
+                   root_expression = Func(root_expression, template="(%(expressions)s)")
+       
+               if wrappers:
+                   # Order wrappers and set their expressions.
+                   wrappers = sorted(
+                       wrappers,
+                       key=lambda w: self.wrapper_classes.index(type(w)),
+                   )
+                   wrappers = [wrapper.copy() for wrapper in wrappers]
+                   for i, wrapper in enumerate(wrappers[:-1]):
+                       wrapper.set_source_expressions([wrappers[i + 1]])
+                   # Set the root expression on the deepest wrapper.
+                   wrappers[-1].set_source_expressions([root_expression])
+                   self.set_source_expressions([wrappers[0]])
+               else:
+                   # Use the root expression, if there are no wrappers.
+                   self.set_source_expressions([root_expression])
+               return super().resolve_expression(
+                   query, allow_joins, reuse, summarize, for_save
+               )
+       
+    1:     def as_sqlite(self, compiler, connection, **extra_context):
+               # Casting to numeric is unnecessary.
+               return self.as_sql(compiler, connection, **extra_context)

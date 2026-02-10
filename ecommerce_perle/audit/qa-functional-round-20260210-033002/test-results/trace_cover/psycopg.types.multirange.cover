@@ -1,0 +1,556 @@
+    1: """
+       Support for multirange types adaptation.
+       """
+       
+       # Copyright (C) 2021 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from typing import TYPE_CHECKING, Any, Generic, overload
+    1: from decimal import Decimal
+    1: from datetime import date, datetime
+    1: from functools import cache
+    1: from collections.abc import Iterable, MutableSequence
+       
+    1: from .. import _oids
+    1: from .. import errors as e
+    1: from .. import postgres, sql
+    1: from ..pq import Format
+    1: from ..abc import AdaptContext, Buffer, Dumper, DumperKey, QueryNoTemplate
+    1: from .range import Range, T, dump_range_binary, dump_range_text, fail_dump
+    1: from .range import load_range_binary, load_range_text
+    1: from .._oids import INVALID_OID, TEXT_OID
+    1: from ..adapt import PyFormat, RecursiveDumper, RecursiveLoader
+    1: from .._struct import pack_len, unpack_len
+    1: from .._typeinfo import TypeInfo, TypesRegistry
+       
+    1: if TYPE_CHECKING:
+           from .._connection_base import BaseConnection
+       
+       
+    2: class MultirangeInfo(TypeInfo):
+    1:     """Manage information about a multirange type."""
+       
+    1:     def __init__(
+               self,
+               name: str,
+               oid: int,
+               array_oid: int,
+               *,
+    1:         regtype: str = "",
+               range_oid: int,
+               subtype_oid: int,
+           ):
+    6:         super().__init__(name, oid, array_oid, regtype=regtype)
+    6:         self.range_oid = range_oid
+    6:         self.subtype_oid = subtype_oid
+       
+    2:     @classmethod
+    2:     def _get_info_query(cls, conn: BaseConnection[Any]) -> QueryNoTemplate:
+               if conn.info.server_version < 140000:
+                   raise e.NotSupportedError(
+                       "multirange types are only available from PostgreSQL 14"
+                   )
+               return sql.SQL(
+                   """\
+       SELECT t.typname AS name, t.oid AS oid, t.typarray AS array_oid,
+           t.oid::regtype::text AS regtype,
+           r.rngtypid AS range_oid, r.rngsubtype AS subtype_oid
+       FROM pg_type t
+       JOIN pg_range r ON t.oid = r.rngmultitypid
+       WHERE t.oid = {regtype}
+       """
+               ).format(regtype=cls._to_regtype(conn))
+       
+    1:     def _added(self, registry: TypesRegistry) -> None:
+               # Map multiranges ranges and subtypes to info
+   12:         registry._registry[MultirangeInfo, self.range_oid] = self
+   12:         registry._registry[MultirangeInfo, self.subtype_oid] = self
+       
+       
+    2: class Multirange(MutableSequence[Range[T]]):
+    1:     """Python representation for a PostgreSQL multirange type.
+       
+           :param items: Sequence of ranges to initialise the object.
+           """
+       
+    1:     def __init__(self, items: Iterable[Range[T]] = ()):
+               self._ranges: list[Range[T]] = list(map(self._check_type, items))
+       
+    1:     def _check_type(self, item: Any) -> Range[Any]:
+               if not isinstance(item, Range):
+                   raise TypeError(
+                       f"Multirange is a sequence of Range, got {type(item).__name__}"
+                   )
+               return item
+       
+    1:     def __repr__(self) -> str:
+               return f"{self.__class__.__name__}({self._ranges!r})"
+       
+    1:     def __str__(self) -> str:
+               return f"{{{', '.join(map(str, self._ranges))}}}"
+       
+    2:     @overload
+    2:     def __getitem__(self, index: int) -> Range[T]: ...
+       
+    2:     @overload
+    2:     def __getitem__(self, index: slice) -> Multirange[T]: ...
+       
+    1:     def __getitem__(self, index: int | slice) -> Range[T] | Multirange[T]:
+               if isinstance(index, int):
+                   return self._ranges[index]
+               else:
+                   return Multirange(self._ranges[index])
+       
+    1:     def __len__(self) -> int:
+               return len(self._ranges)
+       
+    2:     @overload
+    2:     def __setitem__(self, index: int, value: Range[T]) -> None: ...
+       
+    2:     @overload
+    2:     def __setitem__(self, index: slice, value: Iterable[Range[T]]) -> None: ...
+       
+    1:     def __setitem__(
+               self, index: int | slice, value: Range[T] | Iterable[Range[T]]
+           ) -> None:
+               if isinstance(index, int):
+                   self._check_type(value)
+                   self._ranges[index] = self._check_type(value)
+               elif not isinstance(value, Iterable):
+                   raise TypeError("can only assign an iterable")
+               else:
+                   value = map(self._check_type, value)
+                   self._ranges[index] = value
+       
+    1:     def __delitem__(self, index: int | slice) -> None:
+               del self._ranges[index]
+       
+    1:     def insert(self, index: int, value: Range[T]) -> None:
+               self._ranges.insert(index, self._check_type(value))
+       
+    1:     def __eq__(self, other: Any) -> bool:
+               if not isinstance(other, Multirange):
+                   return False
+               return self._ranges == other._ranges
+       
+           # Order is arbitrary but consistent
+       
+    1:     def __lt__(self, other: Any) -> bool:
+               if not isinstance(other, Multirange):
+                   return NotImplemented
+               return self._ranges < other._ranges
+       
+    1:     def __le__(self, other: Any) -> bool:
+               return self == other or self < other  # type: ignore
+       
+    1:     def __gt__(self, other: Any) -> bool:
+               if not isinstance(other, Multirange):
+                   return NotImplemented
+               return self._ranges > other._ranges
+       
+    1:     def __ge__(self, other: Any) -> bool:
+               return self == other or self > other  # type: ignore
+       
+       
+       # Subclasses to specify a specific subtype. Usually not needed
+       
+       
+    2: class Int4Multirange(Multirange[int]):
+    1:     pass
+       
+       
+    2: class Int8Multirange(Multirange[int]):
+    1:     pass
+       
+       
+    2: class NumericMultirange(Multirange[Decimal]):
+    1:     pass
+       
+       
+    2: class DateMultirange(Multirange[date]):
+    1:     pass
+       
+       
+    2: class TimestampMultirange(Multirange[datetime]):
+    1:     pass
+       
+       
+    2: class TimestamptzMultirange(Multirange[datetime]):
+    1:     pass
+       
+       
+    2: class BaseMultirangeDumper(RecursiveDumper):
+    1:     def __init__(self, cls: type, context: AdaptContext | None = None):
+               super().__init__(cls, context)
+               self.sub_dumper: Dumper | None = None
+               self._adapt_format = PyFormat.from_pq(self.format)
+       
+    1:     def get_key(self, obj: Multirange[Any], format: PyFormat) -> DumperKey:
+               # If we are a subclass whose oid is specified we don't need upgrade
+               if self.cls is not Multirange:
+                   return self.cls
+       
+               if (item := self._get_item(obj)) is not None:
+                   sd = self._tx.get_dumper(item, self._adapt_format)
+                   return (self.cls, sd.get_key(item, format))
+               else:
+                   return (self.cls,)
+       
+    1:     def upgrade(self, obj: Multirange[Any], format: PyFormat) -> BaseMultirangeDumper:
+               # If we are a subclass whose oid is specified we don't need upgrade
+               if self.cls is not Multirange:
+                   return self
+       
+               if (item := self._get_item(obj)) is None:
+                   return self
+       
+               dumper: BaseMultirangeDumper
+               if type(item) is int:
+                   # postgres won't cast int4range -> int8range so we must use
+                   # text format and unknown oid here
+                   sd = self._tx.get_dumper(item, PyFormat.TEXT)
+                   dumper = MultirangeDumper(self.cls, self._tx)
+                   dumper.sub_dumper = sd
+                   dumper.oid = INVALID_OID
+                   return dumper
+       
+               sd = self._tx.get_dumper(item, format)
+               dumper = type(self)(self.cls, self._tx)
+               dumper.sub_dumper = sd
+               if sd.oid == INVALID_OID and isinstance(item, str):
+                   # Work around the normal mapping where text is dumped as unknown
+                   dumper.oid = self._get_multirange_oid(TEXT_OID)
+               else:
+                   dumper.oid = self._get_multirange_oid(sd.oid)
+       
+               return dumper
+       
+    1:     def _get_item(self, obj: Multirange[Any]) -> Any:
+               """
+               Return a member representative of the multirange
+               """
+               for r in obj:
+                   if r.lower is not None:
+                       return r.lower
+                   if r.upper is not None:
+                       return r.upper
+               return None
+       
+    1:     def _get_multirange_oid(self, sub_oid: int) -> int:
+               """
+               Return the oid of the range from the oid of its elements.
+               """
+               info = self._tx.adapters.types.get_by_subtype(MultirangeInfo, sub_oid)
+               return info.oid if info else INVALID_OID
+       
+       
+    2: class MultirangeDumper(BaseMultirangeDumper):
+    1:     """
+           Dumper for multirange types.
+       
+           The dumper can upgrade to one specific for a different range type.
+           """
+       
+    1:     def dump(self, obj: Multirange[Any]) -> Buffer | None:
+               if not obj:
+                   return b"{}"
+       
+               if (item := self._get_item(obj)) is not None:
+                   dump = self._tx.get_dumper(item, self._adapt_format).dump
+               else:
+                   dump = fail_dump
+       
+               out: list[Buffer] = [b"{"]
+               for r in obj:
+                   out.append(dump_range_text(r, dump))
+                   out.append(b",")
+               out[-1] = b"}"
+               return b"".join(out)
+       
+       
+    2: class MultirangeBinaryDumper(BaseMultirangeDumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: Multirange[Any]) -> Buffer | None:
+               if (item := self._get_item(obj)) is not None:
+                   dump = self._tx.get_dumper(item, self._adapt_format).dump
+               else:
+                   dump = fail_dump
+       
+               out: list[Buffer] = [pack_len(len(obj))]
+               for r in obj:
+                   data = dump_range_binary(r, dump)
+                   out.append(pack_len(len(data)))
+                   out.append(data)
+               return b"".join(out)
+       
+       
+    2: class BaseMultirangeLoader(RecursiveLoader, Generic[T]):
+    1:     subtype_oid: int
+       
+    1:     def __init__(self, oid: int, context: AdaptContext | None = None):
+               super().__init__(oid, context)
+               self._load = self._tx.get_loader(self.subtype_oid, format=self.format).load
+       
+       
+    2: class MultirangeLoader(BaseMultirangeLoader[T]):
+    1:     def load(self, data: Buffer) -> Multirange[T]:
+               if not data or data[0] != _START_INT:
+                   raise e.DataError(
+                       "malformed multirange starting with"
+                       f" {bytes(data[:1]).decode('utf8', 'replace')}"
+                   )
+       
+               out = Multirange[T]()
+               if data == b"{}":
+                   return out
+       
+               pos = 1
+               data = data[pos:]
+               try:
+                   while True:
+                       r, pos = load_range_text(data, self._load)
+                       out.append(r)
+       
+                       sep = data[pos]  # can raise IndexError
+                       if sep == _SEP_INT:
+                           data = data[pos + 1 :]
+                           continue
+                       elif sep == _END_INT:
+                           if len(data) == pos + 1:
+                               return out
+                           else:
+                               raise e.DataError(
+                                   "malformed multirange: data after closing brace"
+                               )
+                       else:
+                           raise e.DataError(
+                               f"malformed multirange: found unexpected {chr(sep)}"
+                           )
+       
+               except IndexError:
+                   raise e.DataError("malformed multirange: separator missing")
+       
+               return out
+       
+       
+    1: _SEP_INT = ord(",")
+    1: _START_INT = ord("{")
+    1: _END_INT = ord("}")
+       
+       
+    2: class MultirangeBinaryLoader(BaseMultirangeLoader[T]):
+    1:     format = Format.BINARY
+       
+    1:     def load(self, data: Buffer) -> Multirange[T]:
+               nelems = unpack_len(data, 0)[0]
+               pos = 4
+               out = Multirange[T]()
+               for i in range(nelems):
+                   length = unpack_len(data, pos)[0]
+                   pos += 4
+                   out.append(load_range_binary(data[pos : pos + length], self._load))
+                   pos += length
+       
+               if pos != len(data):
+                   raise e.DataError("unexpected trailing data in multirange")
+       
+               return out
+       
+       
+    1: def register_multirange(
+    1:     info: MultirangeInfo, context: AdaptContext | None = None
+       ) -> None:
+           """Register the adapters to load and dump a multirange type.
+       
+           :param info: The object with the information about the range to register.
+           :param context: The context where to register the adapters. If `!None`,
+               register it globally.
+       
+           Register loaders so that loading data of this type will result in a `Range`
+           with bounds parsed as the right subtype.
+       
+           .. note::
+       
+               Registering the adapters doesn't affect objects already created, even
+               if they are children of the registered context. For instance,
+               registering the adapter globally doesn't affect already existing
+               connections.
+           """
+           # A friendly error warning instead of an AttributeError in case fetch()
+           # failed and it wasn't noticed.
+           if not info:
+               raise TypeError("no info passed. Is the requested multirange available?")
+       
+           # Register arrays and type info
+           info.register(context)
+       
+           adapters = context.adapters if context else postgres.adapters
+       
+           # generate and register a customized text loader
+           loader: type[BaseMultirangeLoader[Any]]
+           loader = _make_loader(info.name, info.subtype_oid)
+           adapters.register_loader(info.oid, loader)
+       
+           # generate and register a customized binary loader
+           loader = _make_binary_loader(info.name, info.subtype_oid)
+           adapters.register_loader(info.oid, loader)
+       
+       
+       # Cache all dynamically-generated types to avoid leaks in case the types
+       # cannot be GC'd.
+       
+       
+    2: @cache
+    2: def _make_loader(name: str, oid: int) -> type[MultirangeLoader[Any]]:
+           return type(f"{name.title()}Loader", (MultirangeLoader,), {"subtype_oid": oid})
+       
+       
+    2: @cache
+    2: def _make_binary_loader(name: str, oid: int) -> type[MultirangeBinaryLoader[Any]]:
+           return type(
+               f"{name.title()}BinaryLoader", (MultirangeBinaryLoader,), {"subtype_oid": oid}
+           )
+       
+       
+       # Text dumpers for builtin multirange types wrappers
+       # These are registered on specific subtypes so that the upgrade mechanism
+       # doesn't kick in.
+       
+       
+    2: class Int4MultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.INT4MULTIRANGE_OID
+       
+       
+    2: class Int8MultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.INT8MULTIRANGE_OID
+       
+       
+    2: class NumericMultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.NUMMULTIRANGE_OID
+       
+       
+    2: class DateMultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.DATEMULTIRANGE_OID
+       
+       
+    2: class TimestampMultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.TSMULTIRANGE_OID
+       
+       
+    2: class TimestamptzMultirangeDumper(MultirangeDumper):
+    1:     oid = _oids.TSTZMULTIRANGE_OID
+       
+       
+       # Binary dumpers for builtin multirange types wrappers
+       # These are registered on specific subtypes so that the upgrade mechanism
+       # doesn't kick in.
+       
+       
+    2: class Int4MultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.INT4MULTIRANGE_OID
+       
+       
+    2: class Int8MultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.INT8MULTIRANGE_OID
+       
+       
+    2: class NumericMultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.NUMMULTIRANGE_OID
+       
+       
+    2: class DateMultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.DATEMULTIRANGE_OID
+       
+       
+    2: class TimestampMultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.TSMULTIRANGE_OID
+       
+       
+    2: class TimestamptzMultirangeBinaryDumper(MultirangeBinaryDumper):
+    1:     oid = _oids.TSTZMULTIRANGE_OID
+       
+       
+       # Text loaders for builtin multirange types
+       
+       
+    2: class Int4MultirangeLoader(MultirangeLoader[int]):
+    1:     subtype_oid = _oids.INT4_OID
+       
+       
+    2: class Int8MultirangeLoader(MultirangeLoader[int]):
+    1:     subtype_oid = _oids.INT8_OID
+       
+       
+    2: class NumericMultirangeLoader(MultirangeLoader[Decimal]):
+    1:     subtype_oid = _oids.NUMERIC_OID
+       
+       
+    2: class DateMultirangeLoader(MultirangeLoader[date]):
+    1:     subtype_oid = _oids.DATE_OID
+       
+       
+    2: class TimestampMultirangeLoader(MultirangeLoader[datetime]):
+    1:     subtype_oid = _oids.TIMESTAMP_OID
+       
+       
+    2: class TimestampTZMultirangeLoader(MultirangeLoader[datetime]):
+    1:     subtype_oid = _oids.TIMESTAMPTZ_OID
+       
+       
+       # Binary loaders for builtin multirange types
+       
+       
+    2: class Int4MultirangeBinaryLoader(MultirangeBinaryLoader[int]):
+    1:     subtype_oid = _oids.INT4_OID
+       
+       
+    2: class Int8MultirangeBinaryLoader(MultirangeBinaryLoader[int]):
+    1:     subtype_oid = _oids.INT8_OID
+       
+       
+    2: class NumericMultirangeBinaryLoader(MultirangeBinaryLoader[Decimal]):
+    1:     subtype_oid = _oids.NUMERIC_OID
+       
+       
+    2: class DateMultirangeBinaryLoader(MultirangeBinaryLoader[date]):
+    1:     subtype_oid = _oids.DATE_OID
+       
+       
+    2: class TimestampMultirangeBinaryLoader(MultirangeBinaryLoader[datetime]):
+    1:     subtype_oid = _oids.TIMESTAMP_OID
+       
+       
+    2: class TimestampTZMultirangeBinaryLoader(MultirangeBinaryLoader[datetime]):
+    1:     subtype_oid = _oids.TIMESTAMPTZ_OID
+       
+       
+    1: def register_default_adapters(context: AdaptContext) -> None:
+    1:     adapters = context.adapters
+    1:     adapters.register_dumper(Multirange, MultirangeBinaryDumper)
+    1:     adapters.register_dumper(Multirange, MultirangeDumper)
+    1:     adapters.register_dumper(Int4Multirange, Int4MultirangeDumper)
+    1:     adapters.register_dumper(Int8Multirange, Int8MultirangeDumper)
+    1:     adapters.register_dumper(NumericMultirange, NumericMultirangeDumper)
+    1:     adapters.register_dumper(DateMultirange, DateMultirangeDumper)
+    1:     adapters.register_dumper(TimestampMultirange, TimestampMultirangeDumper)
+    1:     adapters.register_dumper(TimestamptzMultirange, TimestamptzMultirangeDumper)
+    1:     adapters.register_dumper(Int4Multirange, Int4MultirangeBinaryDumper)
+    1:     adapters.register_dumper(Int8Multirange, Int8MultirangeBinaryDumper)
+    1:     adapters.register_dumper(NumericMultirange, NumericMultirangeBinaryDumper)
+    1:     adapters.register_dumper(DateMultirange, DateMultirangeBinaryDumper)
+    1:     adapters.register_dumper(TimestampMultirange, TimestampMultirangeBinaryDumper)
+    1:     adapters.register_dumper(TimestamptzMultirange, TimestamptzMultirangeBinaryDumper)
+    1:     adapters.register_loader("int4multirange", Int4MultirangeLoader)
+    1:     adapters.register_loader("int8multirange", Int8MultirangeLoader)
+    1:     adapters.register_loader("nummultirange", NumericMultirangeLoader)
+    1:     adapters.register_loader("datemultirange", DateMultirangeLoader)
+    1:     adapters.register_loader("tsmultirange", TimestampMultirangeLoader)
+    1:     adapters.register_loader("tstzmultirange", TimestampTZMultirangeLoader)
+    1:     adapters.register_loader("int4multirange", Int4MultirangeBinaryLoader)
+    1:     adapters.register_loader("int8multirange", Int8MultirangeBinaryLoader)
+    1:     adapters.register_loader("nummultirange", NumericMultirangeBinaryLoader)
+    1:     adapters.register_loader("datemultirange", DateMultirangeBinaryLoader)
+    1:     adapters.register_loader("tsmultirange", TimestampMultirangeBinaryLoader)
+    1:     adapters.register_loader("tstzmultirange", TimestampTZMultirangeBinaryLoader)

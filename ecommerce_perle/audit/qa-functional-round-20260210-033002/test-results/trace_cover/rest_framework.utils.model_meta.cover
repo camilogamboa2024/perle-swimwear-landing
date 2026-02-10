@@ -1,0 +1,156 @@
+    1: """
+       Helper function for returning the field information that is associated
+       with a model class. This includes returning all the forward and reverse
+       relationships and their associated metadata.
+       
+       Usage: `get_field_info(model)` returns a `FieldInfo` instance.
+       """
+    1: from collections import namedtuple
+       
+    1: FieldInfo = namedtuple('FieldInfo', [
+           'pk',  # Model field instance
+           'fields',  # Dict of field name -> model field instance
+           'forward_relations',  # Dict of field name -> RelationInfo
+           'reverse_relations',  # Dict of field name -> RelationInfo
+           'fields_and_pk',  # Shortcut for 'pk' + 'fields'
+           'relations'  # Shortcut for 'forward_relations' + 'reverse_relations'
+       ])
+       
+    1: RelationInfo = namedtuple('RelationInfo', [
+           'model_field',
+           'related_model',
+           'to_many',
+           'to_field',
+           'has_through_model',
+           'reverse'
+       ])
+       
+       
+    1: def get_field_info(model):
+           """
+           Given a model class, returns a `FieldInfo` instance, which is a
+           `namedtuple`, containing metadata about the various field types on the model
+           including information about their relationships.
+           """
+   44:     opts = model._meta.concrete_model._meta
+       
+   44:     pk = _get_pk(opts)
+   44:     fields = _get_fields(opts)
+   44:     forward_relations = _get_forward_relationships(opts)
+   44:     reverse_relations = _get_reverse_relationships(opts)
+   44:     fields_and_pk = _merge_fields_and_pk(pk, fields)
+   44:     relationships = _merge_relationships(forward_relations, reverse_relations)
+       
+   88:     return FieldInfo(pk, fields, forward_relations, reverse_relations,
+   44:                      fields_and_pk, relationships)
+       
+       
+    1: def _get_pk(opts):
+   44:     pk = opts.pk
+   44:     rel = pk.remote_field
+       
+   44:     while rel and rel.parent_link:
+               # If model is a child via multi-table inheritance, use parent's pk.
+               pk = pk.remote_field.model._meta.pk
+               rel = pk.remote_field
+       
+   44:     return pk
+       
+       
+    1: def _get_fields(opts):
+   44:     fields = {}
+  545:     for field in [field for field in opts.fields if field.serialize and not field.remote_field]:
+  180:         fields[field.name] = field
+       
+   44:     return fields
+       
+       
+    1: def _get_to_field(field):
+  132:     return getattr(field, 'to_fields', None) and field.to_fields[0]
+       
+       
+    1: def _get_forward_relationships(opts):
+           """
+           Returns a dict of field names to `RelationInfo`.
+           """
+   44:     forward_relations = {}
+  418:     for field in [field for field in opts.fields if field.serialize and field.remote_field]:
+  106:         forward_relations[field.name] = RelationInfo(
+   53:             model_field=field,
+   53:             related_model=field.remote_field.model,
+   53:             to_many=False,
+   53:             to_field=_get_to_field(field),
+   53:             has_through_model=False,
+   53:             reverse=False
+               )
+       
+           # Deal with forward many-to-many relationships.
+   88:     for field in [field for field in opts.many_to_many if field.serialize]:
+               forward_relations[field.name] = RelationInfo(
+                   model_field=field,
+                   related_model=field.remote_field.model,
+                   to_many=True,
+                   # manytomany do not have to_fields
+                   to_field=None,
+                   has_through_model=(
+                       not field.remote_field.through._meta.auto_created
+                   ),
+                   reverse=False
+               )
+       
+   44:     return forward_relations
+       
+       
+    1: def _get_reverse_relationships(opts):
+           """
+           Returns a dict of field names to `RelationInfo`.
+           """
+   44:     reverse_relations = {}
+  167:     all_related_objects = [r for r in opts.related_objects if not r.field.many_to_many]
+  123:     for relation in all_related_objects:
+   79:         accessor_name = relation.get_accessor_name()
+  158:         reverse_relations[accessor_name] = RelationInfo(
+   79:             model_field=None,
+   79:             related_model=relation.related_model,
+   79:             to_many=relation.field.remote_field.multiple,
+   79:             to_field=_get_to_field(relation.field),
+   79:             has_through_model=False,
+   79:             reverse=True
+               )
+       
+           # Deal with reverse many-to-many relationships.
+  167:     all_related_many_to_many_objects = [r for r in opts.related_objects if r.field.many_to_many]
+   44:     for relation in all_related_many_to_many_objects:
+               accessor_name = relation.get_accessor_name()
+               reverse_relations[accessor_name] = RelationInfo(
+                   model_field=None,
+                   related_model=relation.related_model,
+                   to_many=True,
+                   # manytomany do not have to_fields
+                   to_field=None,
+                   has_through_model=(
+                       (getattr(relation.field.remote_field, 'through', None) is not None) and
+                       not relation.field.remote_field.through._meta.auto_created
+                   ),
+                   reverse=True
+               )
+       
+   44:     return reverse_relations
+       
+       
+    1: def _merge_fields_and_pk(pk, fields):
+   44:     fields_and_pk = {'pk': pk, pk.name: pk}
+   44:     fields_and_pk.update(fields)
+       
+   44:     return fields_and_pk
+       
+       
+    1: def _merge_relationships(forward_relations, reverse_relations):
+   44:     return {**forward_relations, **reverse_relations}
+       
+       
+    1: def is_abstract_model(model):
+           """
+           Given a model class, returns a boolean True if it is abstract and False if it is not.
+           """
+   44:     return hasattr(model, '_meta') and hasattr(model._meta, 'abstract') and model._meta.abstract

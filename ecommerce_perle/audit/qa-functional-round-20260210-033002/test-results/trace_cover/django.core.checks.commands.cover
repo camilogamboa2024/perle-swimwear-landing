@@ -1,0 +1,28 @@
+    1: from django.core.checks import Error, Tags, register
+       
+       
+    2: @register(Tags.commands)
+    2: def migrate_and_makemigrations_autodetector(**kwargs):
+    1:     from django.core.management import get_commands, load_command_class
+       
+    1:     commands = get_commands()
+       
+    1:     make_migrations = load_command_class(commands["makemigrations"], "makemigrations")
+    1:     migrate = load_command_class(commands["migrate"], "migrate")
+       
+    1:     if make_migrations.autodetector is not migrate.autodetector:
+               return [
+                   Error(
+                       "The migrate and makemigrations commands must have the same "
+                       "autodetector.",
+                       hint=(
+                           f"makemigrations.Command.autodetector is "
+                           f"{make_migrations.autodetector.__name__}, but "
+                           f"migrate.Command.autodetector is "
+                           f"{migrate.autodetector.__name__}."
+                       ),
+                       id="commands.E001",
+                   )
+               ]
+       
+    1:     return []

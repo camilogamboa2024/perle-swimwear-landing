@@ -1,0 +1,12 @@
+    1: from django.conf import settings
+    1: from django.contrib.messages import constants
+       
+       
+    1: def get_level_tags():
+           """
+           Return the message level tags.
+           """
+           return {
+               **constants.DEFAULT_TAGS,
+               **getattr(settings, "MESSAGE_TAGS", {}),
+           }

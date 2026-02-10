@@ -1,0 +1,50 @@
+    1: """
+       Adapters for booleans.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from .. import _oids
+    1: from ..pq import Format
+    1: from ..abc import AdaptContext
+    1: from ..adapt import Buffer, Dumper, Loader
+       
+       
+    2: class BoolDumper(Dumper):
+    1:     oid = _oids.BOOL_OID
+       
+    1:     def dump(self, obj: bool) -> Buffer | None:
+               return b"t" if obj else b"f"
+       
+    1:     def quote(self, obj: bool) -> Buffer:
+               return b"true" if obj else b"false"
+       
+       
+    2: class BoolBinaryDumper(Dumper):
+    1:     format = Format.BINARY
+    1:     oid = _oids.BOOL_OID
+       
+    1:     def dump(self, obj: bool) -> Buffer | None:
+               return b"\x01" if obj else b"\x00"
+       
+       
+    2: class BoolLoader(Loader):
+    1:     def load(self, data: Buffer) -> bool:
+               return data == b"t"
+       
+       
+    2: class BoolBinaryLoader(Loader):
+    1:     format = Format.BINARY
+       
+    1:     def load(self, data: Buffer) -> bool:
+               return data != b"\x00"
+       
+       
+    1: def register_default_adapters(context: AdaptContext) -> None:
+    1:     adapters = context.adapters
+    1:     adapters.register_dumper(bool, BoolDumper)
+    1:     adapters.register_dumper(bool, BoolBinaryDumper)
+    1:     adapters.register_loader("bool", BoolLoader)
+    1:     adapters.register_loader("bool", BoolBinaryLoader)

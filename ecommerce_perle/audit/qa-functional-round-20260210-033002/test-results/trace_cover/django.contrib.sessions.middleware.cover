@@ -1,0 +1,77 @@
+    1: import time
+    1: from importlib import import_module
+       
+    1: from django.conf import settings
+    1: from django.contrib.sessions.backends.base import UpdateError
+    1: from django.contrib.sessions.exceptions import SessionInterrupted
+    1: from django.utils.cache import patch_vary_headers
+    1: from django.utils.deprecation import MiddlewareMixin
+    1: from django.utils.http import http_date
+       
+       
+    2: class SessionMiddleware(MiddlewareMixin):
+    1:     def __init__(self, get_response):
+   18:         super().__init__(get_response)
+   18:         engine = import_module(settings.SESSION_ENGINE)
+   18:         self.SessionStore = engine.SessionStore
+       
+    1:     def process_request(self, request):
+   43:         session_key = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+   43:         request.session = self.SessionStore(session_key)
+       
+    1:     def process_response(self, request, response):
+               """
+               If request.session was modified, or if the configuration is to save the
+               session every time, save the changes and set a session cookie or delete
+               the session cookie if the session has been emptied.
+               """
+   43:         try:
+   43:             accessed = request.session.accessed
+   43:             modified = request.session.modified
+   43:             empty = request.session.is_empty()
+               except AttributeError:
+                   return response
+               # First check if we need to delete this cookie.
+               # The session should be deleted only if the session is entirely empty.
+   43:         if settings.SESSION_COOKIE_NAME in request.COOKIES and empty:
+                   response.delete_cookie(
+                       settings.SESSION_COOKIE_NAME,
+                       path=settings.SESSION_COOKIE_PATH,
+                       domain=settings.SESSION_COOKIE_DOMAIN,
+                       samesite=settings.SESSION_COOKIE_SAMESITE,
+                   )
+                   patch_vary_headers(response, ("Cookie",))
+               else:
+   43:             if accessed:
+   21:                 patch_vary_headers(response, ("Cookie",))
+   43:             if (modified or settings.SESSION_SAVE_EVERY_REQUEST) and not empty:
+    9:                 if request.session.get_expire_at_browser_close():
+                           max_age = None
+                           expires = None
+                       else:
+    9:                     max_age = request.session.get_expiry_age()
+    9:                     expires_time = time.time() + max_age
+    9:                     expires = http_date(expires_time)
+                       # Save the session data and refresh the client cookie.
+                       # Skip session save for 5xx responses.
+    9:                 if response.status_code < 500:
+    9:                     try:
+    9:                         request.session.save()
+                           except UpdateError:
+                               raise SessionInterrupted(
+                                   "The request's session was deleted before the "
+                                   "request completed. The user may have logged "
+                                   "out in a concurrent request, for example."
+                               )
+   18:                     response.set_cookie(
+    9:                         settings.SESSION_COOKIE_NAME,
+    9:                         request.session.session_key,
+    9:                         max_age=max_age,
+    9:                         expires=expires,
+    9:                         domain=settings.SESSION_COOKIE_DOMAIN,
+    9:                         path=settings.SESSION_COOKIE_PATH,
+    9:                         secure=settings.SESSION_COOKIE_SECURE or None,
+    9:                         httponly=settings.SESSION_COOKIE_HTTPONLY or None,
+    9:                         samesite=settings.SESSION_COOKIE_SAMESITE,
+                           )
+   43:         return response

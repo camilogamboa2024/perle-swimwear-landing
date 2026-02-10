@@ -1,0 +1,9 @@
+    1: from django.urls import include
+    1: from django.views import defaults
+       
+    1: __all__ = ["handler400", "handler403", "handler404", "handler500", "include"]
+       
+    1: handler400 = defaults.bad_request
+    1: handler403 = defaults.permission_denied
+    1: handler404 = defaults.page_not_found
+    1: handler500 = defaults.server_error

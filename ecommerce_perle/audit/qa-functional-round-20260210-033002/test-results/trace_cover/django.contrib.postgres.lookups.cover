@@ -1,0 +1,78 @@
+    1: from django.db.models import Transform
+    1: from django.db.models.lookups import PostgresOperatorLookup
+    1: from django.db.models.sql.query import Query
+       
+    1: from .search import SearchVector, SearchVectorExact, SearchVectorField
+       
+       
+    2: class DataContains(PostgresOperatorLookup):
+    1:     lookup_name = "contains"
+    1:     postgres_operator = "@>"
+       
+       
+    2: class ContainedBy(PostgresOperatorLookup):
+    1:     lookup_name = "contained_by"
+    1:     postgres_operator = "<@"
+       
+       
+    2: class Overlap(PostgresOperatorLookup):
+    1:     lookup_name = "overlap"
+    1:     postgres_operator = "&&"
+       
+    1:     def get_prep_lookup(self):
+               from .expressions import ArraySubquery
+       
+               if isinstance(self.rhs, Query):
+                   self.rhs = ArraySubquery(self.rhs)
+               return super().get_prep_lookup()
+       
+       
+    2: class HasKey(PostgresOperatorLookup):
+    1:     lookup_name = "has_key"
+    1:     postgres_operator = "?"
+    1:     prepare_rhs = False
+       
+       
+    2: class HasKeys(PostgresOperatorLookup):
+    1:     lookup_name = "has_keys"
+    1:     postgres_operator = "?&"
+       
+    1:     def get_prep_lookup(self):
+               return [str(item) for item in self.rhs]
+       
+       
+    2: class HasAnyKeys(HasKeys):
+    1:     lookup_name = "has_any_keys"
+    1:     postgres_operator = "?|"
+       
+       
+    2: class Unaccent(Transform):
+    1:     bilateral = True
+    1:     lookup_name = "unaccent"
+    1:     function = "UNACCENT"
+       
+       
+    2: class SearchLookup(SearchVectorExact):
+    1:     lookup_name = "search"
+       
+    1:     def process_lhs(self, qn, connection):
+               if not isinstance(self.lhs.output_field, SearchVectorField):
+                   config = getattr(self.rhs, "config", None)
+                   self.lhs = SearchVector(self.lhs, config=config)
+               lhs, lhs_params = super().process_lhs(qn, connection)
+               return lhs, lhs_params
+       
+       
+    2: class TrigramSimilar(PostgresOperatorLookup):
+    1:     lookup_name = "trigram_similar"
+    1:     postgres_operator = "%%"
+       
+       
+    2: class TrigramWordSimilar(PostgresOperatorLookup):
+    1:     lookup_name = "trigram_word_similar"
+    1:     postgres_operator = "%%>"
+       
+       
+    2: class TrigramStrictWordSimilar(PostgresOperatorLookup):
+    1:     lookup_name = "trigram_strict_word_similar"
+    1:     postgres_operator = "%%>>"

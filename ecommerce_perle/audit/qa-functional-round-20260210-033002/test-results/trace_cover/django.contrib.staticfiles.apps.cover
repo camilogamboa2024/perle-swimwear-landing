@@ -1,0 +1,14 @@
+    1: from django.apps import AppConfig
+    1: from django.contrib.staticfiles.checks import check_finders, check_storages
+    1: from django.core import checks
+    1: from django.utils.translation import gettext_lazy as _
+       
+       
+    2: class StaticFilesConfig(AppConfig):
+    1:     name = "django.contrib.staticfiles"
+    1:     verbose_name = _("Static Files")
+    1:     ignore_patterns = ["CVS", ".*", "*~"]
+       
+    1:     def ready(self):
+    1:         checks.register(check_finders, checks.Tags.staticfiles)
+    1:         checks.register(check_storages, checks.Tags.staticfiles)

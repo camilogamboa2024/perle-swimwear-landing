@@ -1,0 +1,27 @@
+    1: from functools import wraps
+       
+    1: from asgiref.sync import iscoroutinefunction
+       
+       
+    1: def no_append_slash(view_func):
+           """
+           Mark a view function as excluded from CommonMiddleware's APPEND_SLASH
+           redirection.
+           """
+       
+           # view_func.should_append_slash = False would also work, but decorators are
+           # nicer if they don't have side effects, so return a new function.
+       
+    1:     if iscoroutinefunction(view_func):
+       
+               async def _view_wrapper(request, *args, **kwargs):
+                   return await view_func(request, *args, **kwargs)
+       
+           else:
+       
+    1:         def _view_wrapper(request, *args, **kwargs):
+                   return view_func(request, *args, **kwargs)
+       
+    1:     _view_wrapper.should_append_slash = False
+       
+    1:     return wraps(view_func)(_view_wrapper)

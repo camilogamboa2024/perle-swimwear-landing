@@ -1,4 +1,5 @@
 import os
+import sys
 
 import dj_database_url
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+RUNNING_TESTS = 'test' in sys.argv
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-key-change-me')
 DEBUG = os.getenv('DEBUG', '1') == '1'
 if not DEBUG and SECRET_KEY == 'dev-key-change-me':
@@ -113,9 +115,14 @@ REST_FRAMEWORK = {
     }
 }
 
+STATICFILES_STORAGE_BACKEND = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if RUNNING_TESTS
+    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    'staticfiles': {'BACKEND': STATICFILES_STORAGE_BACKEND},
 }
 
 SECURE_CONTENT_TYPE_NOSNIFF = True

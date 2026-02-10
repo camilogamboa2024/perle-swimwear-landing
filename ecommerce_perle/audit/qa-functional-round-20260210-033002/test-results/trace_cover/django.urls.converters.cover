@@ -1,0 +1,78 @@
+    1: import functools
+    1: import uuid
+    1: import warnings
+       
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+       
+       
+    2: class IntConverter:
+    1:     regex = "[0-9]+"
+       
+    1:     def to_python(self, value):
+    3:         return int(value)
+       
+    1:     def to_url(self, value):
+               return str(value)
+       
+       
+    2: class StringConverter:
+    1:     regex = "[^/]+"
+       
+    1:     def to_python(self, value):
+    2:         return value
+       
+    1:     def to_url(self, value):
+               return value
+       
+       
+    2: class UUIDConverter:
+    1:     regex = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+       
+    1:     def to_python(self, value):
+               return uuid.UUID(value)
+       
+    1:     def to_url(self, value):
+    1:         return str(value)
+       
+       
+    2: class SlugConverter(StringConverter):
+    1:     regex = "[-a-zA-Z0-9_]+"
+       
+       
+    2: class PathConverter(StringConverter):
+    1:     regex = ".+"
+       
+       
+    1: DEFAULT_CONVERTERS = {
+    1:     "int": IntConverter(),
+    1:     "path": PathConverter(),
+    1:     "slug": SlugConverter(),
+    1:     "str": StringConverter(),
+    1:     "uuid": UUIDConverter(),
+       }
+       
+       
+    1: REGISTERED_CONVERTERS = {}
+       
+       
+    1: def register_converter(converter, type_name):
+           if type_name in REGISTERED_CONVERTERS or type_name in DEFAULT_CONVERTERS:
+               # RemovedInDjango60Warning: when the deprecation ends, replace with
+               # raise ValueError(f"Converter {type_name} is already registered.")
+               warnings.warn(
+                   f"Converter {type_name!r} is already registered. Support for overriding "
+                   "registered converters is deprecated and will be removed in Django 6.0.",
+                   RemovedInDjango60Warning,
+                   stacklevel=2,
+               )
+           REGISTERED_CONVERTERS[type_name] = converter()
+           get_converters.cache_clear()
+       
+           from django.urls.resolvers import _route_to_regex
+       
+           _route_to_regex.cache_clear()
+       
+       
+    2: @functools.cache
+    2: def get_converters():
+    1:     return {**DEFAULT_CONVERTERS, **REGISTERED_CONVERTERS}

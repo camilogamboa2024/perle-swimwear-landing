@@ -1,0 +1,11 @@
+    1: """
+       Django validation and HTML form handling.
+       """
+       
+    1: from django.core.exceptions import ValidationError  # NOQA
+    1: from django.forms.boundfield import *  # NOQA
+    1: from django.forms.fields import *  # NOQA
+    1: from django.forms.forms import *  # NOQA
+    1: from django.forms.formsets import *  # NOQA
+    1: from django.forms.models import *  # NOQA
+    1: from django.forms.widgets import *  # NOQA

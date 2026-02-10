@@ -1,0 +1,18 @@
+    1: from django.contrib import admin
+       
+    1: from .models import Cart, CartItem, Coupon, Order, OrderItem, OrderStatusHistory
+       
+       
+    3: @admin.register(Order)
+    2: class OrderAdmin(admin.ModelAdmin):
+    1:     list_display = ('id', 'customer', 'status', 'grand_total', 'created_at')
+    1:     list_filter = ('status', 'created_at')
+    1:     search_fields = ('id', 'customer__email')
+    1:     readonly_fields = ('subtotal', 'discount_total', 'grand_total', 'created_at')
+       
+       
+    1: admin.site.register(Cart)
+    1: admin.site.register(CartItem)
+    1: admin.site.register(OrderItem)
+    1: admin.site.register(OrderStatusHistory)
+    1: admin.site.register(Coupon)

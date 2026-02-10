@@ -1,0 +1,22 @@
+    1: from django.conf import settings
+    1: from django.db import models
+       
+       
+    2: class Customer(models.Model):
+    1:     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    1:     email = models.EmailField(unique=True)
+    1:     full_name = models.CharField(max_length=120)
+    1:     phone = models.CharField(max_length=30, blank=True)
+    1:     created_at = models.DateTimeField(auto_now_add=True)
+       
+       
+    2: class Address(models.Model):
+    1:     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='addresses')
+    1:     label = models.CharField(max_length=50, default='Casa')
+    1:     line1 = models.CharField(max_length=180)
+    1:     line2 = models.CharField(max_length=180, blank=True)
+    1:     city = models.CharField(max_length=80)
+    1:     state = models.CharField(max_length=80)
+    1:     country = models.CharField(max_length=80, default='Colombia')
+    1:     postal_code = models.CharField(max_length=20, blank=True)
+    1:     is_default = models.BooleanField(default=False)

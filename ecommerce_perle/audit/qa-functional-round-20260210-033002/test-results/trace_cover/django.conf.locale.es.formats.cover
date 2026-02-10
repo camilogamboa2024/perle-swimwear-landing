@@ -1,0 +1,30 @@
+       # This file is distributed under the same license as the Django package.
+       #
+       # The *_FORMAT strings use the Django date format syntax,
+       # see https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+    1: DATE_FORMAT = r"j \d\e F \d\e Y"
+    1: TIME_FORMAT = "H:i"
+    1: DATETIME_FORMAT = r"j \d\e F \d\e Y \a \l\a\s H:i"
+    1: YEAR_MONTH_FORMAT = r"F \d\e Y"
+    1: MONTH_DAY_FORMAT = r"j \d\e F"
+    1: SHORT_DATE_FORMAT = "d/m/Y"
+    1: SHORT_DATETIME_FORMAT = "d/m/Y H:i"
+    1: FIRST_DAY_OF_WEEK = 1  # Monday
+       
+       # The *_INPUT_FORMATS strings use the Python strftime format syntax,
+       # see https://docs.python.org/library/datetime.html#strftime-strptime-behavior
+    1: DATE_INPUT_FORMATS = [
+    1:     "%d/%m/%Y",  # '31/12/2009'
+    1:     "%d/%m/%y",  # '31/12/09'
+       ]
+    1: DATETIME_INPUT_FORMATS = [
+           "%d/%m/%Y %H:%M:%S",
+           "%d/%m/%Y %H:%M:%S.%f",
+           "%d/%m/%Y %H:%M",
+           "%d/%m/%y %H:%M:%S",
+           "%d/%m/%y %H:%M:%S.%f",
+           "%d/%m/%y %H:%M",
+       ]
+    1: DECIMAL_SEPARATOR = ","
+    1: THOUSAND_SEPARATOR = "\xa0"  # non-breaking space
+    1: NUMBER_GROUPING = 3

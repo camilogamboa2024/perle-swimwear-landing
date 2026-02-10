@@ -1,0 +1,258 @@
+    1: """
+       Settings for REST framework are all namespaced in the REST_FRAMEWORK setting.
+       For example your project's `settings.py` file might look like this:
+       
+       REST_FRAMEWORK = {
+           'DEFAULT_RENDERER_CLASSES': [
+               'rest_framework.renderers.JSONRenderer',
+               'rest_framework.renderers.TemplateHTMLRenderer',
+           ],
+           'DEFAULT_PARSER_CLASSES': [
+               'rest_framework.parsers.JSONParser',
+               'rest_framework.parsers.FormParser',
+               'rest_framework.parsers.MultiPartParser',
+           ],
+       }
+       
+       This module provides the `api_setting` object, that is used to access
+       REST framework settings, checking for user settings first, then falling
+       back to the defaults.
+       """
+    1: from django.conf import settings
+       # Import from `django.core.signals` instead of the official location
+       # `django.test.signals` to avoid importing the test module unnecessarily.
+    1: from django.core.signals import setting_changed
+    1: from django.utils.module_loading import import_string
+       
+    1: from rest_framework import ISO_8601
+       
+   36: DEFAULTS = {
+           # Base API policies
+    2:     'DEFAULT_RENDERER_CLASSES': [
+    1:         'rest_framework.renderers.JSONRenderer',
+    1:         'rest_framework.renderers.BrowsableAPIRenderer',
+           ],
+    1:     'DEFAULT_PARSER_CLASSES': [
+               'rest_framework.parsers.JSONParser',
+               'rest_framework.parsers.FormParser',
+               'rest_framework.parsers.MultiPartParser'
+           ],
+    2:     'DEFAULT_AUTHENTICATION_CLASSES': [
+    1:         'rest_framework.authentication.SessionAuthentication',
+    1:         'rest_framework.authentication.BasicAuthentication'
+           ],
+    2:     'DEFAULT_PERMISSION_CLASSES': [
+    1:         'rest_framework.permissions.AllowAny',
+           ],
+    1:     'DEFAULT_THROTTLE_CLASSES': [],
+    1:     'DEFAULT_CONTENT_NEGOTIATION_CLASS': 'rest_framework.negotiation.DefaultContentNegotiation',
+    1:     'DEFAULT_METADATA_CLASS': 'rest_framework.metadata.SimpleMetadata',
+    1:     'DEFAULT_VERSIONING_CLASS': None,
+       
+           # Generic view behavior
+    1:     'DEFAULT_PAGINATION_CLASS': None,
+    1:     'DEFAULT_FILTER_BACKENDS': [],
+       
+           # Schema
+    1:     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
+       
+           # Throttling
+    2:     'DEFAULT_THROTTLE_RATES': {
+    1:         'user': None,
+    1:         'anon': None,
+           },
+    1:     'NUM_PROXIES': None,
+       
+           # Pagination
+    1:     'PAGE_SIZE': None,
+       
+           # Filtering
+    1:     'SEARCH_PARAM': 'search',
+    1:     'ORDERING_PARAM': 'ordering',
+       
+           # Versioning
+    1:     'DEFAULT_VERSION': None,
+    1:     'ALLOWED_VERSIONS': None,
+    1:     'VERSION_PARAM': 'version',
+       
+           # Authentication
+    1:     'UNAUTHENTICATED_USER': 'django.contrib.auth.models.AnonymousUser',
+    1:     'UNAUTHENTICATED_TOKEN': None,
+       
+           # View configuration
+    1:     'VIEW_NAME_FUNCTION': 'rest_framework.views.get_view_name',
+    1:     'VIEW_DESCRIPTION_FUNCTION': 'rest_framework.views.get_view_description',
+       
+           # Exception handling
+    1:     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    1:     'NON_FIELD_ERRORS_KEY': 'non_field_errors',
+       
+           # Testing
+    2:     'TEST_REQUEST_RENDERER_CLASSES': [
+    1:         'rest_framework.renderers.MultiPartRenderer',
+    1:         'rest_framework.renderers.JSONRenderer'
+           ],
+    1:     'TEST_REQUEST_DEFAULT_FORMAT': 'multipart',
+       
+           # Hyperlink settings
+    1:     'URL_FORMAT_OVERRIDE': 'format',
+    1:     'FORMAT_SUFFIX_KWARG': 'format',
+    1:     'URL_FIELD_NAME': 'url',
+       
+           # Input and output formats
+    1:     'DATE_FORMAT': ISO_8601,
+    1:     'DATE_INPUT_FORMATS': [ISO_8601],
+       
+    1:     'DATETIME_FORMAT': ISO_8601,
+    1:     'DATETIME_INPUT_FORMATS': [ISO_8601],
+       
+    1:     'TIME_FORMAT': ISO_8601,
+    1:     'TIME_INPUT_FORMATS': [ISO_8601],
+       
+           # Encoding
+    1:     'UNICODE_JSON': True,
+    1:     'COMPACT_JSON': True,
+    1:     'STRICT_JSON': True,
+    1:     'COERCE_DECIMAL_TO_STRING': True,
+    1:     'UPLOADED_FILES_USE_URL': True,
+       
+           # Browsable API
+    1:     'HTML_SELECT_CUTOFF': 1000,
+    1:     'HTML_SELECT_CUTOFF_TEXT': "More than {count} items...",
+       
+           # Schemas
+    1:     'SCHEMA_COERCE_PATH_PK': True,
+    1:     'SCHEMA_COERCE_METHOD_NAMES': {
+    1:         'retrieve': 'read',
+    1:         'destroy': 'delete'
+           },
+       }
+       
+       
+       # List of settings that may be in string import notation.
+    1: IMPORT_STRINGS = [
+           'DEFAULT_RENDERER_CLASSES',
+           'DEFAULT_PARSER_CLASSES',
+           'DEFAULT_AUTHENTICATION_CLASSES',
+           'DEFAULT_PERMISSION_CLASSES',
+           'DEFAULT_THROTTLE_CLASSES',
+           'DEFAULT_CONTENT_NEGOTIATION_CLASS',
+           'DEFAULT_METADATA_CLASS',
+           'DEFAULT_VERSIONING_CLASS',
+           'DEFAULT_PAGINATION_CLASS',
+           'DEFAULT_FILTER_BACKENDS',
+           'DEFAULT_SCHEMA_CLASS',
+           'EXCEPTION_HANDLER',
+           'TEST_REQUEST_RENDERER_CLASSES',
+           'UNAUTHENTICATED_USER',
+           'UNAUTHENTICATED_TOKEN',
+           'VIEW_NAME_FUNCTION',
+           'VIEW_DESCRIPTION_FUNCTION'
+       ]
+       
+       
+       # List of settings that have been removed
+    1: REMOVED_SETTINGS = [
+           'PAGINATE_BY', 'PAGINATE_BY_PARAM', 'MAX_PAGINATE_BY',
+       ]
+       
+       
+    1: def perform_import(val, setting_name):
+           """
+           If the given setting is a string import notation,
+           then perform the necessary import or imports.
+           """
+   13:     if val is None:
+    3:         return None
+   10:     elif isinstance(val, str):
+    4:         return import_from_string(val, setting_name)
+    6:     elif isinstance(val, (list, tuple)):
+   20:         return [import_from_string(item, setting_name) for item in val]
+           return val
+       
+       
+    1: def import_from_string(val, setting_name):
+           """
+           Attempt to import a class from a string representation.
+           """
+   12:     try:
+   12:         return import_string(val)
+           except ImportError as e:
+               msg = "Could not import '%s' for API setting '%s'. %s: %s." % (val, setting_name, e.__class__.__name__, e)
+               raise ImportError(msg)
+       
+       
+    2: class APISettings:
+    1:     """
+           A settings object that allows REST Framework settings to be accessed as
+           properties. For example:
+       
+               from rest_framework.settings import api_settings
+               print(api_settings.DEFAULT_RENDERER_CLASSES)
+       
+           Any setting with string import paths will be automatically resolved
+           and return the class, rather than the string literal.
+       
+           Note:
+           This is an internal class that is only compatible with settings namespaced
+           under the REST_FRAMEWORK name. It is not intended to be used by 3rd-party
+           apps, and test helpers like `override_settings` may not work as expected.
+           """
+    1:     def __init__(self, user_settings=None, defaults=None, import_strings=None):
+    1:         if user_settings:
+                   self._user_settings = self.__check_user_settings(user_settings)
+    1:         self.defaults = defaults or DEFAULTS
+    1:         self.import_strings = import_strings or IMPORT_STRINGS
+    1:         self._cached_attrs = set()
+       
+    2:     @property
+    2:     def user_settings(self):
+   24:         if not hasattr(self, '_user_settings'):
+    1:             self._user_settings = getattr(settings, 'REST_FRAMEWORK', {})
+   24:         return self._user_settings
+       
+    1:     def __getattr__(self, attr):
+   25:         if attr not in self.defaults:
+    1:             raise AttributeError("Invalid API setting: '%s'" % attr)
+       
+   24:         try:
+                   # Check if present in user settings
+   24:             val = self.user_settings[attr]
+   23:         except KeyError:
+                   # Fall back to defaults
+   23:             val = self.defaults[attr]
+       
+               # Coerce import strings into classes
+   24:         if attr in self.import_strings:
+   13:             val = perform_import(val, attr)
+       
+               # Cache the result
+   24:         self._cached_attrs.add(attr)
+   24:         setattr(self, attr, val)
+   24:         return val
+       
+    1:     def __check_user_settings(self, user_settings):
+               SETTINGS_DOC = "https://www.django-rest-framework.org/api-guide/settings/"
+               for setting in REMOVED_SETTINGS:
+                   if setting in user_settings:
+                       raise RuntimeError("The '%s' setting has been removed. Please refer to '%s' for available settings." % (setting, SETTINGS_DOC))
+               return user_settings
+       
+    1:     def reload(self):
+               for attr in self._cached_attrs:
+                   delattr(self, attr)
+               self._cached_attrs.clear()
+               if hasattr(self, '_user_settings'):
+                   delattr(self, '_user_settings')
+       
+       
+    1: api_settings = APISettings(None, DEFAULTS, IMPORT_STRINGS)
+       
+       
+    1: def reload_api_settings(*args, **kwargs):
+    4:     setting = kwargs['setting']
+    4:     if setting == 'REST_FRAMEWORK':
+               api_settings.reload()
+       
+       
+    1: setting_changed.connect(reload_api_settings)

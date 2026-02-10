@@ -1,0 +1,29 @@
+    2: class BaseDatabaseValidation:
+    1:     """Encapsulate backend-specific validation."""
+       
+    1:     def __init__(self, connection):
+    1:         self.connection = connection
+       
+    1:     def check(self, **kwargs):
+    1:         return []
+       
+    1:     def check_field(self, field, **kwargs):
+  123:         errors = []
+               # Backends may implement a check_field_type() method.
+  123:         if (
+  123:             hasattr(self, "check_field_type")
+                   and
+                   # Ignore any related fields.
+                   not getattr(field, "remote_field", None)
+               ):
+                   # Ignore fields with unsupported features.
+                   db_supports_all_required_features = all(
+                       getattr(self.connection.features, feature, False)
+                       for feature in field.model._meta.required_db_features
+                   )
+                   if db_supports_all_required_features:
+                       field_type = field.db_type(self.connection)
+                       # Ignore non-concrete fields.
+                       if field_type is not None:
+                           errors.extend(self.check_field_type(field, field_type))
+  123:         return errors
