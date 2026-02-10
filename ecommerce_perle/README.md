@@ -126,3 +126,5 @@ python manage.py seed_demo --reset
 - En `render.yaml`, `WHATSAPP_PHONE` está como `sync: false` para evitar hardcodear números.
 - En Create-from-Blueprint, Render no inyecta valor por defecto para ese env var.
 - Resultado: si no defines `WHATSAPP_PHONE`, la UI oculta links/FAB de WhatsApp (comportamiento esperado).
+
+Codex review test
