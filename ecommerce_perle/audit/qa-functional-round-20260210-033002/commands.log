@@ -2331,3 +2331,17 @@ Artifacts written under audit/qa-functional-round-20260210-033002
  .../timestamp.txt                                  |    1 +
  869 files changed, 288658 insertions(+)
 
+[2026-02-10T03:44:02-05:00] $ . .venv/bin/activate && python manage.py test (final regression)
+Creating test database for alias 'default'...
+/home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/.venv/lib/python3.11/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/staticfiles/
+  mw_instance = middleware(adapted_handler)
+........................
+----------------------------------------------------------------------
+Ran 24 tests in 3.062s
+
+OK
+Destroying test database for alias 'default'...
+Found 24 test(s).
+System check identified no issues (0 silenced).
+exit_code=0
+

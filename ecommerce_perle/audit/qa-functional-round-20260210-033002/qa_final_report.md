@@ -16,7 +16,7 @@
 - Build/checks: `migrate`, `seed_demo`, `check`, `check --deploy`.
 - Smoke E2E funcional (client): home/catalog/cart/checkout/confirm/legal/admin.
 - Bug hunt: inválidos, límites, IDs inexistentes, doble submit.
-- Regresión: suite completa `python manage.py test`.
+- Regresión: suite completa `python manage.py test` (post-fix y corrida final).
 - Coverage operacional: `python -m trace --count --summary manage.py test`.
 
 ## Cobertura
