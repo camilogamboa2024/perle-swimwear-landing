@@ -1,0 +1,97 @@
+    1: """
+       Content negotiation deals with selecting an appropriate renderer given the
+       incoming request.  Typically this will be based on the request's Accept header.
+       """
+    1: from django.http import Http404
+       
+    1: from rest_framework import exceptions
+    1: from rest_framework.settings import api_settings
+    1: from rest_framework.utils.mediatypes import (
+           _MediaType, media_type_matches, order_by_precedence
+       )
+       
+       
+    2: class BaseContentNegotiation:
+    1:     def select_parser(self, request, parsers):
+               raise NotImplementedError('.select_parser() must be implemented')
+       
+    1:     def select_renderer(self, request, renderers, format_suffix=None):
+               raise NotImplementedError('.select_renderer() must be implemented')
+       
+       
+    2: class DefaultContentNegotiation(BaseContentNegotiation):
+    1:     settings = api_settings
+       
+    1:     def select_parser(self, request, parsers):
+               """
+               Given a list of parsers and a media type, return the appropriate
+               parser to handle the incoming request.
+               """
+   17:         for parser in parsers:
+   17:             if media_type_matches(parser.media_type, request.content_type):
+   17:                 return parser
+               return None
+       
+    1:     def select_renderer(self, request, renderers, format_suffix=None):
+               """
+               Given a request and a list of renderers, return a two-tuple of:
+               (renderer, media type).
+               """
+               # Allow URL style format override.  eg. "?format=json
+   23:         format_query_param = self.settings.URL_FORMAT_OVERRIDE
+   23:         format = format_suffix or request.query_params.get(format_query_param)
+       
+   23:         if format:
+                   renderers = self.filter_renderers(renderers, format)
+       
+   23:         accepts = self.get_accept_list(request)
+       
+               # Check the acceptable media types against each renderer,
+               # attempting more specific media types first
+               # NB. The inner loop here isn't as bad as it first looks :)
+               #     Worst case is we're looping over len(accept_list) * len(self.renderers)
+   23:         for media_type_set in order_by_precedence(accepts):
+   23:             for renderer in renderers:
+   23:                 for media_type in media_type_set:
+   23:                     if media_type_matches(renderer.media_type, media_type):
+                               # Return the most specific media type as accepted.
+   23:                         media_type_wrapper = _MediaType(media_type)
+                               if (
+   46:                             _MediaType(renderer.media_type).precedence >
+   23:                             media_type_wrapper.precedence
+                               ):
+                                   # Eg client requests '*/*'
+                                   # Accepted media type is 'application/json'
+   46:                             full_media_type = ';'.join(
+   46:                                 (renderer.media_type,) +
+   69:                                 tuple(
+                                           f'{key}={value}'
+   23:                                     for key, value in media_type_wrapper.params.items()
+                                       )
+                                   )
+   23:                             return renderer, full_media_type
+                               else:
+                                   # Eg client requests 'application/json; indent=8'
+                                   # Accepted media type is 'application/json; indent=8'
+                                   return renderer, media_type
+       
+               raise exceptions.NotAcceptable(available_renderers=renderers)
+       
+    1:     def filter_renderers(self, renderers, format):
+               """
+               If there is a '.json' style format suffix, filter the renderers
+               so that we only negotiation against those that accept that format.
+               """
+               renderers = [renderer for renderer in renderers
+                            if renderer.format == format]
+               if not renderers:
+                   raise Http404
+               return renderers
+       
+    1:     def get_accept_list(self, request):
+               """
+               Given the incoming request, return a tokenized list of media
+               type strings.
+               """
+   23:         header = request.META.get('HTTP_ACCEPT', '*/*')
+   69:         return [token.strip() for token in header.split(',')]

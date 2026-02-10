@@ -1,0 +1,75 @@
+    1: import django.contrib.admin.models
+    1: from django.conf import settings
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    1:         ("contenttypes", "__first__"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name="LogEntry",
+    1:             fields=[
+    1:                 (
+    1:                     "id",
+    2:                     models.AutoField(
+    1:                         verbose_name="ID",
+    1:                         serialize=False,
+    1:                         auto_created=True,
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 (
+    1:                     "action_time",
+    1:                     models.DateTimeField(auto_now=True, verbose_name="action time"),
+                       ),
+    1:                 (
+    1:                     "object_id",
+    1:                     models.TextField(null=True, verbose_name="object id", blank=True),
+                       ),
+    1:                 (
+    1:                     "object_repr",
+    1:                     models.CharField(max_length=200, verbose_name="object repr"),
+                       ),
+    1:                 (
+    1:                     "action_flag",
+    1:                     models.PositiveSmallIntegerField(verbose_name="action flag"),
+                       ),
+    1:                 (
+    1:                     "change_message",
+    1:                     models.TextField(verbose_name="change message", blank=True),
+                       ),
+    1:                 (
+    1:                     "content_type",
+    2:                     models.ForeignKey(
+    1:                         on_delete=models.SET_NULL,
+    1:                         blank=True,
+    1:                         null=True,
+    1:                         to="contenttypes.ContentType",
+    1:                         verbose_name="content type",
+                           ),
+                       ),
+    1:                 (
+    1:                     "user",
+    2:                     models.ForeignKey(
+    1:                         to=settings.AUTH_USER_MODEL,
+    1:                         on_delete=models.CASCADE,
+    1:                         verbose_name="user",
+                           ),
+                       ),
+                   ],
+    1:             options={
+    1:                 "ordering": ["-action_time"],
+    1:                 "db_table": "django_admin_log",
+    1:                 "verbose_name": "log entry",
+    1:                 "verbose_name_plural": "log entries",
+                   },
+    1:             bases=(models.Model,),
+    1:             managers=[
+    1:                 ("objects", django.contrib.admin.models.LogEntryManager()),
+                   ],
+               ),
+           ]

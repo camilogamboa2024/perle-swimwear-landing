@@ -1,0 +1,345 @@
+    1: import copy
+    1: from collections.abc import Mapping
+       
+       
+    2: class OrderedSet:
+    1:     """
+           A set which keeps the ordering of the inserted items.
+           """
+       
+    1:     def __init__(self, iterable=None):
+   74:         self.dict = dict.fromkeys(iterable or ())
+       
+    1:     def add(self, item):
+   24:         self.dict[item] = None
+       
+    1:     def remove(self, item):
+   45:         del self.dict[item]
+       
+    1:     def discard(self, item):
+   45:         try:
+   45:             self.remove(item)
+   45:         except KeyError:
+   45:             pass
+       
+    1:     def __iter__(self):
+   74:         return iter(self.dict)
+       
+    1:     def __reversed__(self):
+               return reversed(self.dict)
+       
+    1:     def __contains__(self, item):
+               return item in self.dict
+       
+    1:     def __bool__(self):
+   45:         return bool(self.dict)
+       
+    1:     def __len__(self):
+   22:         return len(self.dict)
+       
+    1:     def __repr__(self):
+               data = repr(list(self.dict)) if self.dict else ""
+               return f"{self.__class__.__qualname__}({data})"
+       
+       
+    2: class MultiValueDictKeyError(KeyError):
+    1:     pass
+       
+       
+    2: class MultiValueDict(dict):
+    1:     """
+           A subclass of dictionary customized to handle multiple values for the
+           same key.
+       
+           >>> d = MultiValueDict({'name': ['Adrian', 'Simon'], 'position': ['Developer']})
+           >>> d['name']
+           'Simon'
+           >>> d.getlist('name')
+           ['Adrian', 'Simon']
+           >>> d.getlist('doesnotexist')
+           []
+           >>> d.getlist('doesnotexist', ['Adrian', 'Simon'])
+           ['Adrian', 'Simon']
+           >>> d.get('lastname', 'nonexistent')
+           'nonexistent'
+           >>> d.setlist('lastname', ['Holovaty', 'Willison'])
+       
+           This class exists to solve the irritating problem raised by cgi.parse_qs,
+           which returns a list for every key, even though most web forms submit
+           single name-value pairs.
+           """
+       
+    1:     def __init__(self, key_to_list_mapping=()):
+   82:         super().__init__(key_to_list_mapping)
+       
+    1:     def __repr__(self):
+               return "<%s: %s>" % (self.__class__.__name__, super().__repr__())
+       
+    1:     def __getitem__(self, key):
+               """
+               Return the last data value for this key, or [] if it's an empty list;
+               raise KeyError if not found.
+               """
+   38:         try:
+   38:             list_ = super().__getitem__(key)
+   38:         except KeyError:
+   38:             raise MultiValueDictKeyError(key)
+               try:
+                   return list_[-1]
+               except IndexError:
+                   return []
+       
+    1:     def __setitem__(self, key, value):
+               super().__setitem__(key, [value])
+       
+    1:     def __copy__(self):
+               return self.__class__([(k, v[:]) for k, v in self.lists()])
+       
+    1:     def __deepcopy__(self, memo):
+               result = self.__class__()
+               memo[id(self)] = result
+               for key, value in dict.items(self):
+                   dict.__setitem__(
+                       result, copy.deepcopy(key, memo), copy.deepcopy(value, memo)
+                   )
+               return result
+       
+    1:     def __getstate__(self):
+               return {**self.__dict__, "_data": {k: self._getlist(k) for k in self}}
+       
+    1:     def __setstate__(self, obj_dict):
+               data = obj_dict.pop("_data", {})
+               for k, v in data.items():
+                   self.setlist(k, v)
+               self.__dict__.update(obj_dict)
+       
+    1:     def get(self, key, default=None):
+               """
+               Return the last data value for the passed key. If key doesn't exist
+               or value is an empty list, return `default`.
+               """
+   38:         try:
+   38:             val = self[key]
+   38:         except KeyError:
+   38:             return default
+               if val == []:
+                   return default
+               return val
+       
+    1:     def _getlist(self, key, default=None, force_list=False):
+               """
+               Return a list of values for the key.
+       
+               Used internally to manipulate values list. If force_list is True,
+               return a new copy of values.
+               """
+  638:         try:
+  638:             values = super().__getitem__(key)
+               except KeyError:
+                   if default is None:
+                       return []
+                   return default
+               else:
+  638:             if force_list:
+  205:                 values = list(values) if values is not None else None
+  638:             return values
+       
+    1:     def getlist(self, key, default=None):
+               """
+               Return the list of values for the key. If key doesn't exist, return a
+               default value.
+               """
+  205:         return self._getlist(key, default, force_list=True)
+       
+    1:     def setlist(self, key, list_):
+  433:         super().__setitem__(key, list_)
+       
+    1:     def setdefault(self, key, default=None):
+               if key not in self:
+                   self[key] = default
+                   # Do not return default here because __setitem__() may store
+                   # another value -- QueryDict.__setitem__() does. Look it up.
+               return self[key]
+       
+    1:     def setlistdefault(self, key, default_list=None):
+  433:         if key not in self:
+  433:             if default_list is None:
+  433:                 default_list = []
+  433:             self.setlist(key, default_list)
+                   # Do not return default_list here because setlist() may store
+                   # another value -- QueryDict.setlist() does. Look it up.
+  433:         return self._getlist(key)
+       
+    1:     def appendlist(self, key, value):
+               """Append an item to the internal list associated with key."""
+  433:         self.setlistdefault(key).append(value)
+       
+    1:     def items(self):
+               """
+               Yield (key, value) pairs, where value is the last item in the list
+               associated with the key.
+               """
+               for key in self:
+                   yield key, self[key]
+       
+    1:     def lists(self):
+               """Yield (key, list) pairs."""
+               return iter(super().items())
+       
+    1:     def values(self):
+               """Yield the last value on every key list."""
+               for key in self:
+                   yield self[key]
+       
+    1:     def copy(self):
+               """Return a shallow copy of this object."""
+               return copy.copy(self)
+       
+    1:     def update(self, *args, **kwargs):
+               """Extend rather than replace existing key lists."""
+               if len(args) > 1:
+                   raise TypeError("update expected at most 1 argument, got %d" % len(args))
+               if args:
+                   arg = args[0]
+                   if isinstance(arg, MultiValueDict):
+                       for key, value_list in arg.lists():
+                           self.setlistdefault(key).extend(value_list)
+                   else:
+                       if isinstance(arg, Mapping):
+                           arg = arg.items()
+                       for key, value in arg:
+                           self.setlistdefault(key).append(value)
+               for key, value in kwargs.items():
+                   self.setlistdefault(key).append(value)
+       
+    1:     def dict(self):
+               """Return current object as a dict with singular values."""
+               return {key: self[key] for key in self}
+       
+       
+    2: class ImmutableList(tuple):
+    1:     """
+           A tuple-like object that raises useful errors when it is asked to mutate.
+       
+           Example::
+       
+               >>> a = ImmutableList(range(5), warning="You cannot mutate this.")
+               >>> a[3] = '4'
+               Traceback (most recent call last):
+                   ...
+               AttributeError: You cannot mutate this.
+           """
+       
+    1:     def __new__(cls, *args, warning="ImmutableList object is immutable.", **kwargs):
+ 1907:         self = tuple.__new__(cls, *args, **kwargs)
+ 1907:         self.warning = warning
+ 1907:         return self
+       
+    1:     def complain(self, *args, **kwargs):
+               raise AttributeError(self.warning)
+       
+           # All list mutation functions complain.
+    1:     __delitem__ = complain
+    1:     __delslice__ = complain
+    1:     __iadd__ = complain
+    1:     __imul__ = complain
+    1:     __setitem__ = complain
+    1:     __setslice__ = complain
+    1:     append = complain
+    1:     extend = complain
+    1:     insert = complain
+    1:     pop = complain
+    1:     remove = complain
+    1:     sort = complain
+    1:     reverse = complain
+       
+       
+    2: class DictWrapper(dict):
+    1:     """
+           Wrap accesses to a dictionary so that certain values (those starting with
+           the specified prefix) are passed through a function before being returned.
+           The prefix is removed before looking up the real value.
+       
+           Used by the SQL construction code to ensure that values are correctly
+           quoted before being used.
+           """
+       
+    1:     def __init__(self, data, func, prefix):
+  922:         super().__init__(data)
+  922:         self.func = func
+  922:         self.prefix = prefix
+       
+    1:     def __getitem__(self, key):
+               """
+               Retrieve the real value after stripping the prefix string (if
+               present). If the prefix is present, pass the value through self.func
+               before returning, otherwise return the raw value.
+               """
+  360:         use_func = key.startswith(self.prefix)
+  360:         key = key.removeprefix(self.prefix)
+  360:         value = super().__getitem__(key)
+  360:         if use_func:
+                   return self.func(value)
+  360:         return value
+       
+       
+    2: class CaseInsensitiveMapping(Mapping):
+    1:     """
+           Mapping allowing case-insensitive key lookups. Original case of keys is
+           preserved for iteration and string representation.
+       
+           Example::
+       
+               >>> ci_map = CaseInsensitiveMapping({'name': 'Jane'})
+               >>> ci_map['Name']
+               Jane
+               >>> ci_map['NAME']
+               Jane
+               >>> ci_map['name']
+               Jane
+               >>> ci_map  # original case preserved
+               {'name': 'Jane'}
+           """
+       
+    1:     def __init__(self, data):
+               self._store = {k.lower(): (k, v) for k, v in self._unpack_items(data)}
+       
+    1:     def __getitem__(self, key):
+  459:         return self._store[key.lower()][1]
+       
+    1:     def __len__(self):
+               return len(self._store)
+       
+    1:     def __eq__(self, other):
+               return isinstance(other, Mapping) and {
+                   k.lower(): v for k, v in self.items()
+               } == {k.lower(): v for k, v in other.items()}
+       
+    1:     def __iter__(self):
+               return (original_key for original_key, value in self._store.values())
+       
+    1:     def __repr__(self):
+               return repr({key: value for key, value in self._store.values()})
+       
+    1:     def copy(self):
+               return self
+       
+    2:     @staticmethod
+    2:     def _unpack_items(data):
+               # Explicitly test for dict first as the common case for performance,
+               # avoiding abc's __instancecheck__ and _abc_instancecheck for the
+               # general Mapping case.
+               if isinstance(data, (dict, Mapping)):
+                   yield from data.items()
+                   return
+               for i, elem in enumerate(data):
+                   if len(elem) != 2:
+                       raise ValueError(
+                           "dictionary update sequence element #{} has length {}; "
+                           "2 is required.".format(i, len(elem))
+                       )
+                   if not isinstance(elem[0], str):
+                       raise ValueError(
+                           "Element key %r invalid, only strings are allowed" % elem[0]
+                       )
+                   yield elem

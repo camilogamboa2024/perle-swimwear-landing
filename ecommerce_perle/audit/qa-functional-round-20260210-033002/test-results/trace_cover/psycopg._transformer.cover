@@ -1,0 +1,21 @@
+    1: """
+       Helper object to transform values between Python and PostgreSQL
+       
+       This module exports the requested implementation to the rest of the package.
+       """
+       
+       # Copyright (C) 2023 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from . import abc
+    1: from ._cmodule import _psycopg
+       
+    1: Transformer: type[abc.Transformer]
+       
+    1: if _psycopg:
+    1:     Transformer = _psycopg.Transformer
+       else:
+           from . import _py_transformer
+       
+           Transformer = _py_transformer.Transformer

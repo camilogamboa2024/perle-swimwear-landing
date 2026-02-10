@@ -1,0 +1,131 @@
+    1: import asyncio
+    1: import contextlib
+    1: import contextvars
+    1: import threading
+    1: from typing import Any, Dict, Union
+       
+       
+    2: class _CVar:
+    1:     """Storage utility for Local."""
+       
+    1:     def __init__(self) -> None:
+   54:         self._data: "contextvars.ContextVar[Dict[str, Any]]" = contextvars.ContextVar(
+   27:             "asgiref.local"
+               )
+       
+    1:     def __getattr__(self, key):
+  716:         storage_object = self._data.get({})
+  716:         try:
+  716:             return storage_object[key]
+   31:         except KeyError:
+   31:             raise AttributeError(f"{self!r} object has no attribute {key!r}")
+       
+    1:     def __setattr__(self, key: str, value: Any) -> None:
+  128:         if key == "_data":
+   27:             return super().__setattr__(key, value)
+       
+  101:         storage_object = self._data.get({}).copy()
+  101:         storage_object[key] = value
+  101:         self._data.set(storage_object)
+       
+    1:     def __delattr__(self, key: str) -> None:
+   43:         storage_object = self._data.get({}).copy()
+   43:         if key in storage_object:
+   43:             del storage_object[key]
+   43:             self._data.set(storage_object)
+               else:
+                   raise AttributeError(f"{self!r} object has no attribute {key!r}")
+       
+       
+    2: class Local:
+    1:     """Local storage for async tasks.
+       
+           This is a namespace object (similar to `threading.local`) where data is
+           also local to the current async task (if there is one).
+       
+           In async threads, local means in the same sense as the `contextvars`
+           module - i.e. a value set in an async frame will be visible:
+       
+           - to other async code `await`-ed from this frame.
+           - to tasks spawned using `asyncio` utilities (`create_task`, `wait_for`,
+             `gather` and probably others).
+           - to code scheduled in a sync thread using `sync_to_async`
+       
+           In "sync" threads (a thread with no async event loop running), the
+           data is thread-local, but additionally shared with async code executed
+           via the `async_to_sync` utility, which schedules async code in a new thread
+           and copies context across to that thread.
+       
+           If `thread_critical` is True, then the local will only be visible per-thread,
+           behaving exactly like `threading.local` if the thread is sync, and as
+           `contextvars` if the thread is async. This allows genuinely thread-sensitive
+           code (such as DB handles) to be kept stricly to their initial thread and
+           disable the sharing across `sync_to_async` and `async_to_sync` wrapped calls.
+       
+           Unlike plain `contextvars` objects, this utility is threadsafe.
+           """
+       
+    1:     def __init__(self, thread_critical: bool = False) -> None:
+   28:         self._thread_critical = thread_critical
+   28:         self._thread_lock = threading.RLock()
+       
+   28:         self._storage: "Union[threading.local, _CVar]"
+       
+   28:         if thread_critical:
+                   # Thread-local storage
+    1:             self._storage = threading.local()
+               else:
+                   # Contextvar storage
+   27:             self._storage = _CVar()
+       
+    2:     @contextlib.contextmanager
+    2:     def _lock_storage(self):
+               # Thread safe access to storage
+ 2922:         if self._thread_critical:
+ 2062:             is_async = True
+ 2062:             try:
+                       # this is a test for are we in a async or sync
+                       # thread - will raise RuntimeError if there is
+                       # no current loop
+ 2062:                 asyncio.get_running_loop()
+ 2062:             except RuntimeError:
+ 2062:                 is_async = False
+ 2062:             if not is_async:
+                       # We are in a sync thread, the storage is
+                       # just the plain thread local (i.e, "global within
+                       # this thread" - it doesn't matter where you are
+                       # in a call stack you see the same storage)
+ 2062:                 yield self._storage
+                   else:
+                       # We are in an async thread - storage is still
+                       # local to this thread, but additionally should
+                       # behave like a context var (is only visible with
+                       # the same async call stack)
+       
+                       # Ensure context exists in the current thread
+                       if not hasattr(self._storage, "cvar"):
+                           self._storage.cvar = _CVar()
+       
+                       # self._storage is a thread local, so the members
+                       # can't be accessed in another thread (we don't
+                       # need any locks)
+                       yield self._storage.cvar
+               else:
+                   # Lock for thread_critical=False as other threads
+                   # can access the exact same storage object
+ 1720:             with self._thread_lock:
+  860:                 yield self._storage
+       
+    1:     def __getattr__(self, key):
+ 5554:         with self._lock_storage() as storage:
+ 2777:             return getattr(storage, key)
+       
+    1:     def __setattr__(self, key, value):
+  186:         if key in ("_local", "_storage", "_thread_critical", "_thread_lock"):
+   84:             return super().__setattr__(key, value)
+  204:         with self._lock_storage() as storage:
+  102:             setattr(storage, key, value)
+       
+    1:     def __delattr__(self, key):
+   86:         with self._lock_storage() as storage:
+   43:             delattr(storage, key)

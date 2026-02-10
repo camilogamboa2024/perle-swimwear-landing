@@ -1,0 +1,120 @@
+    1: from django.db.models.expressions import Func
+    1: from django.db.models.fields import FloatField, IntegerField
+       
+    1: __all__ = [
+           "CumeDist",
+           "DenseRank",
+           "FirstValue",
+           "Lag",
+           "LastValue",
+           "Lead",
+           "NthValue",
+           "Ntile",
+           "PercentRank",
+           "Rank",
+           "RowNumber",
+       ]
+       
+       
+    2: class CumeDist(Func):
+    1:     function = "CUME_DIST"
+    1:     output_field = FloatField()
+    1:     window_compatible = True
+       
+       
+    2: class DenseRank(Func):
+    1:     function = "DENSE_RANK"
+    1:     output_field = IntegerField()
+    1:     window_compatible = True
+       
+       
+    2: class FirstValue(Func):
+    1:     arity = 1
+    1:     function = "FIRST_VALUE"
+    1:     window_compatible = True
+       
+       
+    2: class LagLeadFunction(Func):
+    1:     window_compatible = True
+       
+    1:     def __init__(self, expression, offset=1, default=None, **extra):
+               if expression is None:
+                   raise ValueError(
+                       "%s requires a non-null source expression." % self.__class__.__name__
+                   )
+               if offset is None or offset <= 0:
+                   raise ValueError(
+                       "%s requires a positive integer for the offset."
+                       % self.__class__.__name__
+                   )
+               args = (expression, offset)
+               if default is not None:
+                   args += (default,)
+               super().__init__(*args, **extra)
+       
+    1:     def _resolve_output_field(self):
+               sources = self.get_source_expressions()
+               return sources[0].output_field
+       
+       
+    2: class Lag(LagLeadFunction):
+    1:     function = "LAG"
+       
+       
+    2: class LastValue(Func):
+    1:     arity = 1
+    1:     function = "LAST_VALUE"
+    1:     window_compatible = True
+       
+       
+    2: class Lead(LagLeadFunction):
+    1:     function = "LEAD"
+       
+       
+    2: class NthValue(Func):
+    1:     function = "NTH_VALUE"
+    1:     window_compatible = True
+       
+    1:     def __init__(self, expression, nth=1, **extra):
+               if expression is None:
+                   raise ValueError(
+                       "%s requires a non-null source expression." % self.__class__.__name__
+                   )
+               if nth is None or nth <= 0:
+                   raise ValueError(
+                       "%s requires a positive integer as for nth." % self.__class__.__name__
+                   )
+               super().__init__(expression, nth, **extra)
+       
+    1:     def _resolve_output_field(self):
+               sources = self.get_source_expressions()
+               return sources[0].output_field
+       
+       
+    2: class Ntile(Func):
+    1:     function = "NTILE"
+    1:     output_field = IntegerField()
+    1:     window_compatible = True
+       
+    1:     def __init__(self, num_buckets=1, **extra):
+               if num_buckets <= 0:
+                   raise ValueError("num_buckets must be greater than 0.")
+               super().__init__(num_buckets, **extra)
+       
+       
+    2: class PercentRank(Func):
+    1:     function = "PERCENT_RANK"
+    1:     output_field = FloatField()
+    1:     window_compatible = True
+       
+       
+    2: class Rank(Func):
+    1:     function = "RANK"
+    1:     output_field = IntegerField()
+    1:     window_compatible = True
+       
+       
+    2: class RowNumber(Func):
+    1:     function = "ROW_NUMBER"
+    1:     output_field = IntegerField()
+    1:     window_compatible = True

@@ -1,0 +1,65 @@
+    1: """
+       Adapters for the UUID type.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from typing import TYPE_CHECKING
+    1: from collections.abc import Callable
+       
+    1: from .. import _oids
+    1: from ..pq import Format
+    1: from ..abc import AdaptContext
+    1: from ..adapt import Buffer, Dumper, Loader
+       
+    1: if TYPE_CHECKING:
+           import uuid
+       
+       # Importing the uuid module is slow, so import it only on request.
+    1: UUID: Callable[..., uuid.UUID] = None  # type: ignore[assignment]
+       
+       
+    2: class UUIDDumper(Dumper):
+    1:     oid = _oids.UUID_OID
+       
+    1:     def dump(self, obj: uuid.UUID) -> Buffer | None:
+               return obj.hex.encode()
+       
+       
+    2: class UUIDBinaryDumper(UUIDDumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: uuid.UUID) -> Buffer | None:
+               return obj.bytes
+       
+       
+    2: class UUIDLoader(Loader):
+    1:     def __init__(self, oid: int, context: AdaptContext | None = None):
+               super().__init__(oid, context)
+               global UUID
+               if UUID is None:
+                   from uuid import UUID
+       
+    1:     def load(self, data: Buffer) -> uuid.UUID:
+               if isinstance(data, memoryview):
+                   data = bytes(data)
+               return UUID(data.decode())
+       
+       
+    2: class UUIDBinaryLoader(UUIDLoader):
+    1:     format = Format.BINARY
+       
+    1:     def load(self, data: Buffer) -> uuid.UUID:
+               if isinstance(data, memoryview):
+                   data = bytes(data)
+               return UUID(bytes=data)
+       
+       
+    1: def register_default_adapters(context: AdaptContext) -> None:
+    1:     adapters = context.adapters
+    1:     adapters.register_dumper("uuid.UUID", UUIDDumper)
+    1:     adapters.register_dumper("uuid.UUID", UUIDBinaryDumper)
+    1:     adapters.register_loader("uuid", UUIDLoader)
+    1:     adapters.register_loader("uuid", UUIDBinaryLoader)

@@ -1,0 +1,26 @@
+    1: from django.contrib import admin
+       
+    1: from .models import Category, Product, ProductImage, ProductVariant
+       
+       
+    2: class ProductVariantInline(admin.TabularInline):
+    1:     model = ProductVariant
+    1:     extra = 1
+       
+       
+    2: class ProductImageInline(admin.TabularInline):
+    1:     model = ProductImage
+    1:     extra = 1
+       
+       
+    3: @admin.register(Product)
+    2: class ProductAdmin(admin.ModelAdmin):
+    1:     list_display = ('name', 'category', 'is_active', 'created_at')
+    1:     list_filter = ('is_active', 'category')
+    1:     search_fields = ('name', 'slug')
+    1:     inlines = [ProductVariantInline, ProductImageInline]
+       
+       
+    1: admin.site.register(Category)
+    1: admin.site.register(ProductVariant)
+    1: admin.site.register(ProductImage)

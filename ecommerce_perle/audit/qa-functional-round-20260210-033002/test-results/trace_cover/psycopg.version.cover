@@ -1,0 +1,12 @@
+    1: """
+       psycopg distribution version file.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from importlib import metadata
+       
+    1: try:
+    1:     __version__ = metadata.version("psycopg")
+       except metadata.PackageNotFoundError:
+           __version__ = "0.0.0.0"

@@ -1,0 +1,204 @@
+    1: import django.contrib.auth.models
+    1: from django.contrib.auth import validators
+    1: from django.db import migrations, models
+    1: from django.utils import timezone
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("contenttypes", "__first__"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name="Permission",
+    1:             fields=[
+    1:                 (
+    1:                     "id",
+    2:                     models.AutoField(
+    1:                         verbose_name="ID",
+    1:                         serialize=False,
+    1:                         auto_created=True,
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 ("name", models.CharField(max_length=50, verbose_name="name")),
+    1:                 (
+    1:                     "content_type",
+    2:                     models.ForeignKey(
+    1:                         to="contenttypes.ContentType",
+    1:                         on_delete=models.CASCADE,
+    1:                         verbose_name="content type",
+                           ),
+                       ),
+    1:                 ("codename", models.CharField(max_length=100, verbose_name="codename")),
+                   ],
+    1:             options={
+    1:                 "ordering": [
+                           "content_type__app_label",
+                           "content_type__model",
+                           "codename",
+                       ],
+    1:                 "unique_together": {("content_type", "codename")},
+    1:                 "verbose_name": "permission",
+    1:                 "verbose_name_plural": "permissions",
+                   },
+    1:             managers=[
+    1:                 ("objects", django.contrib.auth.models.PermissionManager()),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name="Group",
+    1:             fields=[
+    1:                 (
+    1:                     "id",
+    2:                     models.AutoField(
+    1:                         verbose_name="ID",
+    1:                         serialize=False,
+    1:                         auto_created=True,
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 (
+    1:                     "name",
+    1:                     models.CharField(unique=True, max_length=80, verbose_name="name"),
+                       ),
+    1:                 (
+    1:                     "permissions",
+    2:                     models.ManyToManyField(
+    1:                         to="auth.Permission", verbose_name="permissions", blank=True
+                           ),
+                       ),
+                   ],
+    1:             options={
+    1:                 "verbose_name": "group",
+    1:                 "verbose_name_plural": "groups",
+                   },
+    1:             managers=[
+    1:                 ("objects", django.contrib.auth.models.GroupManager()),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name="User",
+    1:             fields=[
+    1:                 (
+    1:                     "id",
+    2:                     models.AutoField(
+    1:                         verbose_name="ID",
+    1:                         serialize=False,
+    1:                         auto_created=True,
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 ("password", models.CharField(max_length=128, verbose_name="password")),
+    1:                 (
+    1:                     "last_login",
+    2:                     models.DateTimeField(
+    1:                         default=timezone.now, verbose_name="last login"
+                           ),
+                       ),
+    1:                 (
+    1:                     "is_superuser",
+    2:                     models.BooleanField(
+    1:                         default=False,
+                               help_text=(
+    1:                             "Designates that this user has all permissions without "
+                                   "explicitly assigning them."
+                               ),
+    1:                         verbose_name="superuser status",
+                           ),
+                       ),
+    1:                 (
+    1:                     "username",
+    2:                     models.CharField(
+                               help_text=(
+    1:                             "Required. 30 characters or fewer. Letters, digits and "
+                                   "@/./+/-/_ only."
+                               ),
+    1:                         unique=True,
+    1:                         max_length=30,
+    1:                         verbose_name="username",
+    1:                         validators=[validators.UnicodeUsernameValidator()],
+                           ),
+                       ),
+    1:                 (
+    1:                     "first_name",
+    2:                     models.CharField(
+    1:                         max_length=30, verbose_name="first name", blank=True
+                           ),
+                       ),
+    1:                 (
+    1:                     "last_name",
+    2:                     models.CharField(
+    1:                         max_length=30, verbose_name="last name", blank=True
+                           ),
+                       ),
+    1:                 (
+    1:                     "email",
+    2:                     models.EmailField(
+    1:                         max_length=75, verbose_name="email address", blank=True
+                           ),
+                       ),
+    1:                 (
+    1:                     "is_staff",
+    2:                     models.BooleanField(
+    1:                         default=False,
+                               help_text=(
+    1:                             "Designates whether the user can log into this admin site."
+                               ),
+    1:                         verbose_name="staff status",
+                           ),
+                       ),
+    1:                 (
+    1:                     "is_active",
+    2:                     models.BooleanField(
+    1:                         default=True,
+    1:                         verbose_name="active",
+                               help_text=(
+    1:                             "Designates whether this user should be treated as active. "
+                                   "Unselect this instead of deleting accounts."
+                               ),
+                           ),
+                       ),
+    1:                 (
+    1:                     "date_joined",
+    2:                     models.DateTimeField(
+    1:                         default=timezone.now, verbose_name="date joined"
+                           ),
+                       ),
+    1:                 (
+    1:                     "groups",
+    2:                     models.ManyToManyField(
+    1:                         to="auth.Group",
+    1:                         verbose_name="groups",
+    1:                         blank=True,
+    1:                         related_name="user_set",
+    1:                         related_query_name="user",
+                               help_text=(
+    1:                             "The groups this user belongs to. A user will get all "
+                                   "permissions granted to each of their groups."
+                               ),
+                           ),
+                       ),
+    1:                 (
+    1:                     "user_permissions",
+    2:                     models.ManyToManyField(
+    1:                         to="auth.Permission",
+    1:                         verbose_name="user permissions",
+    1:                         blank=True,
+    1:                         help_text="Specific permissions for this user.",
+    1:                         related_name="user_set",
+    1:                         related_query_name="user",
+                           ),
+                       ),
+                   ],
+    1:             options={
+    1:                 "swappable": "AUTH_USER_MODEL",
+    1:                 "verbose_name": "user",
+    1:                 "verbose_name_plural": "users",
+                   },
+    1:             managers=[
+    1:                 ("objects", django.contrib.auth.models.UserManager()),
+                   ],
+               ),
+           ]

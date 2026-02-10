@@ -1,0 +1,10 @@
+    1: from django.apps import AppConfig
+       
+       
+    2: class RestFrameworkConfig(AppConfig):
+    1:     name = 'rest_framework'
+    1:     verbose_name = "Django REST framework"
+       
+    1:     def ready(self):
+               # Add System checks
+    1:         from .checks import pagination_system_check  # NOQA

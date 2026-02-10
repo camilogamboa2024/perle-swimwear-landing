@@ -1,0 +1,27 @@
+    1: from django.conf import DEFAULT_STORAGE_ALIAS
+    1: from django.utils.functional import LazyObject
+       
+    1: from .base import Storage
+    1: from .filesystem import FileSystemStorage
+    1: from .handler import InvalidStorageError, StorageHandler
+    1: from .memory import InMemoryStorage
+       
+    1: __all__ = (
+           "FileSystemStorage",
+           "InMemoryStorage",
+           "Storage",
+           "DefaultStorage",
+           "default_storage",
+           "InvalidStorageError",
+           "StorageHandler",
+           "storages",
+       )
+       
+       
+    2: class DefaultStorage(LazyObject):
+    1:     def _setup(self):
+               self._wrapped = storages[DEFAULT_STORAGE_ALIAS]
+       
+       
+    1: storages = StorageHandler()
+    1: default_storage = DefaultStorage()

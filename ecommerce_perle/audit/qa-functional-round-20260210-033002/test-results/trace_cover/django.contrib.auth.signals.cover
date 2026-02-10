@@ -1,0 +1,5 @@
+    1: from django.dispatch import Signal
+       
+    1: user_logged_in = Signal()
+    1: user_login_failed = Signal()
+    1: user_logged_out = Signal()

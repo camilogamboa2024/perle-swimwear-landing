@@ -1,0 +1,65 @@
+    1: from django.db import transaction
+    1: from django.db.models import F
+       
+    1: from apps.inventory.models import InventoryMovement, StockLevel
+    1: from apps.orders.models import Order, OrderItem, OrderStatusHistory
+    1: from apps.orders.services import calculate_cart_totals
+    1: from .whatsapp import build_whatsapp_message
+       
+       
+    2: class CheckoutError(ValueError):
+    1:     """Business-rule errors that should be exposed as controlled 4xx responses."""
+       
+       
+    2: @transaction.atomic
+    2: def create_order_from_cart(*, customer, address, cart, coupon=None, payment_method='whatsapp', session_key=''):
+   11:     items = list(cart.items.select_related('variant', 'variant__product'))
+   11:     if not items:
+    3:         raise CheckoutError('El carrito está vacío')
+       
+   16:     order = Order.objects.create(
+    8:         customer=customer,
+    8:         address=address,
+    8:         currency=cart.currency,
+    8:         coupon=coupon,
+    8:         payment_method=payment_method,
+    8:         session_key=session_key or cart.session_key,
+           )
+       
+   12:     for item in items:
+    8:         if not item.variant.is_active:
+                   raise CheckoutError(f'Variante no disponible para SKU {item.variant.sku}')
+    8:         try:
+    8:             stock = StockLevel.objects.select_for_update().get(variant=item.variant)
+    2:         except StockLevel.DoesNotExist as exc:
+    2:             raise CheckoutError(f'Sin stock configurado para SKU {item.variant.sku}') from exc
+    6:         if stock.available < item.quantity:
+    2:             raise CheckoutError(f'Sin stock para SKU {item.variant.sku}')
+       
+    4:         stock.available = F('available') - item.quantity
+    4:         stock.save(update_fields=['available', 'updated_at'])
+    8:         InventoryMovement.objects.create(
+    4:             variant=item.variant,
+    4:             movement_type=InventoryMovement.OUT,
+    4:             quantity=-item.quantity,
+    4:             reason=f'Order #{order.id}',
+               )
+    4:         line_total = item.quantity * item.variant.price_cop
+    8:         OrderItem.objects.create(
+    4:             order=order,
+    4:             variant=item.variant,
+    4:             quantity=item.quantity,
+    4:             unit_price=item.variant.price_cop,
+    4:             line_total=line_total,
+               )
+       
+    4:     totals = calculate_cart_totals(cart, coupon)
+    4:     order.subtotal = totals['subtotal']
+    4:     order.discount_total = totals['discount_total']
+    4:     order.grand_total = totals['grand_total']
+    4:     order.whatsapp_message = build_whatsapp_message(order)
+    4:     order.save(update_fields=['subtotal', 'discount_total', 'grand_total', 'whatsapp_message'])
+       
+    4:     OrderStatusHistory.objects.create(order=order, from_status='', to_status=order.status)
+    4:     cart.items.all().delete()
+    4:     return order

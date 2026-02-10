@@ -1,0 +1,46 @@
+    1: """
+       psycopg raw queries cursors
+       """
+       
+       # Copyright (C) 2023 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from typing import TYPE_CHECKING
+       
+    1: from .abc import ConnectionType
+    1: from .rows import Row
+    1: from .cursor import Cursor
+    1: from ._queries import PostgresRawQuery
+    1: from ._cursor_base import BaseCursor
+    1: from .cursor_async import AsyncCursor
+    1: from ._server_cursor import ServerCursor
+    1: from ._server_cursor_async import AsyncServerCursor
+       
+    1: if TYPE_CHECKING:
+           from typing import Any  # noqa: F401
+       
+           from .connection import Connection  # noqa: F401
+           from .connection_async import AsyncConnection  # noqa: F401
+       
+       
+    2: class RawCursorMixin(BaseCursor[ConnectionType, Row]):
+    1:     _query_cls = PostgresRawQuery
+       
+       
+    2: class RawCursor(RawCursorMixin["Connection[Any]", Row], Cursor[Row]):
+    1:     __module__ = "psycopg"
+       
+       
+    2: class AsyncRawCursor(RawCursorMixin["AsyncConnection[Any]", Row], AsyncCursor[Row]):
+    1:     __module__ = "psycopg"
+       
+       
+    2: class RawServerCursor(RawCursorMixin["Connection[Any]", Row], ServerCursor[Row]):
+    1:     __module__ = "psycopg"
+       
+       
+    3: class AsyncRawServerCursor(
+    1:     RawCursorMixin["AsyncConnection[Any]", Row], AsyncServerCursor[Row]
+       ):
+    1:     __module__ = "psycopg"

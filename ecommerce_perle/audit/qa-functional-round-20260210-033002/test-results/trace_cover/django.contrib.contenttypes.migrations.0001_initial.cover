@@ -1,0 +1,45 @@
+    1: import django.contrib.contenttypes.models
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = []
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name="ContentType",
+    1:             fields=[
+    1:                 (
+    1:                     "id",
+    2:                     models.AutoField(
+    1:                         verbose_name="ID",
+    1:                         serialize=False,
+    1:                         auto_created=True,
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 ("name", models.CharField(max_length=100)),
+    1:                 ("app_label", models.CharField(max_length=100)),
+    1:                 (
+    1:                     "model",
+    2:                     models.CharField(
+    1:                         max_length=100, verbose_name="python model class name"
+                           ),
+                       ),
+                   ],
+    1:             options={
+    1:                 "ordering": ("name",),
+    1:                 "db_table": "django_content_type",
+    1:                 "verbose_name": "content type",
+    1:                 "verbose_name_plural": "content types",
+                   },
+    1:             bases=(models.Model,),
+    1:             managers=[
+    1:                 ("objects", django.contrib.contenttypes.models.ContentTypeManager()),
+                   ],
+               ),
+    2:         migrations.AlterUniqueTogether(
+    1:             name="contenttype",
+    1:             unique_together={("app_label", "model")},
+               ),
+           ]

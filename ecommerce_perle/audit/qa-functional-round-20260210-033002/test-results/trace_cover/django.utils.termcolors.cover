@@ -1,0 +1,221 @@
+    1: """
+       termcolors.py
+       """
+       
+    1: color_names = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
+   10: foreground = {color_names[x]: "3%s" % x for x in range(8)}
+   10: background = {color_names[x]: "4%s" % x for x in range(8)}
+       
+    1: RESET = "0"
+    1: opt_dict = {
+    1:     "bold": "1",
+    1:     "underscore": "4",
+    1:     "blink": "5",
+    1:     "reverse": "7",
+    1:     "conceal": "8",
+       }
+       
+       
+    1: def colorize(text="", opts=(), **kwargs):
+           """
+           Return your text, enclosed in ANSI graphics codes.
+       
+           Depends on the keyword arguments 'fg' and 'bg', and the contents of
+           the opts tuple/list.
+       
+           Return the RESET code if no parameters are given.
+       
+           Valid colors:
+               'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'
+       
+           Valid options:
+               'bold'
+               'underscore'
+               'blink'
+               'reverse'
+               'conceal'
+               'noreset' - string will not be auto-terminated with the RESET code
+       
+           Examples:
+               colorize('hello', fg='red', bg='blue', opts=('blink',))
+               colorize()
+               colorize('goodbye', opts=('underscore',))
+               print(colorize('first line', fg='red', opts=('noreset',)))
+               print('this should be red too')
+               print(colorize('and so should this'))
+               print('this should not be red')
+           """
+           code_list = []
+           if text == "" and len(opts) == 1 and opts[0] == "reset":
+               return "\x1b[%sm" % RESET
+           for k, v in kwargs.items():
+               if k == "fg":
+                   code_list.append(foreground[v])
+               elif k == "bg":
+                   code_list.append(background[v])
+           for o in opts:
+               if o in opt_dict:
+                   code_list.append(opt_dict[o])
+           if "noreset" not in opts:
+               text = "%s\x1b[%sm" % (text or "", RESET)
+           return "%s%s" % (("\x1b[%sm" % ";".join(code_list)), text or "")
+       
+       
+    1: def make_style(opts=(), **kwargs):
+           """
+           Return a function with default parameters for colorize()
+       
+           Example:
+               bold_red = make_style(opts=('bold',), fg='red')
+               print(bold_red('hello'))
+               KEYWORD = make_style(fg='yellow')
+               COMMENT = make_style(fg='blue', opts=('bold',))
+           """
+           return lambda text: colorize(text, opts, **kwargs)
+       
+       
+    1: NOCOLOR_PALETTE = "nocolor"
+    1: DARK_PALETTE = "dark"
+    1: LIGHT_PALETTE = "light"
+       
+    1: PALETTES = {
+   18:     NOCOLOR_PALETTE: {
+    1:         "ERROR": {},
+    1:         "SUCCESS": {},
+    1:         "WARNING": {},
+    1:         "NOTICE": {},
+    1:         "SQL_FIELD": {},
+    1:         "SQL_COLTYPE": {},
+    1:         "SQL_KEYWORD": {},
+    1:         "SQL_TABLE": {},
+    1:         "HTTP_INFO": {},
+    1:         "HTTP_SUCCESS": {},
+    1:         "HTTP_REDIRECT": {},
+    1:         "HTTP_NOT_MODIFIED": {},
+    1:         "HTTP_BAD_REQUEST": {},
+    1:         "HTTP_NOT_FOUND": {},
+    1:         "HTTP_SERVER_ERROR": {},
+    1:         "MIGRATE_HEADING": {},
+    1:         "MIGRATE_LABEL": {},
+           },
+   18:     DARK_PALETTE: {
+    1:         "ERROR": {"fg": "red", "opts": ("bold",)},
+    1:         "SUCCESS": {"fg": "green", "opts": ("bold",)},
+    1:         "WARNING": {"fg": "yellow", "opts": ("bold",)},
+    1:         "NOTICE": {"fg": "red"},
+    1:         "SQL_FIELD": {"fg": "green", "opts": ("bold",)},
+    1:         "SQL_COLTYPE": {"fg": "green"},
+    1:         "SQL_KEYWORD": {"fg": "yellow"},
+    1:         "SQL_TABLE": {"opts": ("bold",)},
+    1:         "HTTP_INFO": {"opts": ("bold",)},
+    1:         "HTTP_SUCCESS": {},
+    1:         "HTTP_REDIRECT": {"fg": "green"},
+    1:         "HTTP_NOT_MODIFIED": {"fg": "cyan"},
+    1:         "HTTP_BAD_REQUEST": {"fg": "red", "opts": ("bold",)},
+    1:         "HTTP_NOT_FOUND": {"fg": "yellow"},
+    1:         "HTTP_SERVER_ERROR": {"fg": "magenta", "opts": ("bold",)},
+    1:         "MIGRATE_HEADING": {"fg": "cyan", "opts": ("bold",)},
+    1:         "MIGRATE_LABEL": {"opts": ("bold",)},
+           },
+   18:     LIGHT_PALETTE: {
+    1:         "ERROR": {"fg": "red", "opts": ("bold",)},
+    1:         "SUCCESS": {"fg": "green", "opts": ("bold",)},
+    1:         "WARNING": {"fg": "yellow", "opts": ("bold",)},
+    1:         "NOTICE": {"fg": "red"},
+    1:         "SQL_FIELD": {"fg": "green", "opts": ("bold",)},
+    1:         "SQL_COLTYPE": {"fg": "green"},
+    1:         "SQL_KEYWORD": {"fg": "blue"},
+    1:         "SQL_TABLE": {"opts": ("bold",)},
+    1:         "HTTP_INFO": {"opts": ("bold",)},
+    1:         "HTTP_SUCCESS": {},
+    1:         "HTTP_REDIRECT": {"fg": "green", "opts": ("bold",)},
+    1:         "HTTP_NOT_MODIFIED": {"fg": "green"},
+    1:         "HTTP_BAD_REQUEST": {"fg": "red", "opts": ("bold",)},
+    1:         "HTTP_NOT_FOUND": {"fg": "red"},
+    1:         "HTTP_SERVER_ERROR": {"fg": "magenta", "opts": ("bold",)},
+    1:         "MIGRATE_HEADING": {"fg": "cyan", "opts": ("bold",)},
+    1:         "MIGRATE_LABEL": {"opts": ("bold",)},
+           },
+       }
+    1: DEFAULT_PALETTE = DARK_PALETTE
+       
+       
+    1: def parse_color_setting(config_string):
+           """Parse a DJANGO_COLORS environment variable to produce the system palette
+       
+           The general form of a palette definition is:
+       
+               "palette;role=fg;role=fg/bg;role=fg,option,option;role=fg/bg,option,option"
+       
+           where:
+               palette is a named palette; one of 'light', 'dark', or 'nocolor'.
+               role is a named style used by Django
+               fg is a foreground color.
+               bg is a background color.
+               option is a display options.
+       
+           Specifying a named palette is the same as manually specifying the individual
+           definitions for each role. Any individual definitions following the palette
+           definition will augment the base palette definition.
+       
+           Valid roles:
+               'error', 'success', 'warning', 'notice', 'sql_field', 'sql_coltype',
+               'sql_keyword', 'sql_table', 'http_info', 'http_success',
+               'http_redirect', 'http_not_modified', 'http_bad_request',
+               'http_not_found', 'http_server_error', 'migrate_heading',
+               'migrate_label'
+       
+           Valid colors:
+               'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'
+       
+           Valid options:
+               'bold', 'underscore', 'blink', 'reverse', 'conceal', 'noreset'
+           """
+    1:     if not config_string:
+               return PALETTES[DEFAULT_PALETTE]
+       
+           # Split the color configuration into parts
+    1:     parts = config_string.lower().split(";")
+    1:     palette = PALETTES[NOCOLOR_PALETTE].copy()
+    2:     for part in parts:
+    1:         if part in PALETTES:
+                   # A default palette has been specified
+    1:             palette.update(PALETTES[part])
+               elif "=" in part:
+                   # Process a palette defining string
+                   definition = {}
+       
+                   # Break the definition into the role,
+                   # plus the list of specific instructions.
+                   # The role must be in upper case
+                   role, instructions = part.split("=")
+                   role = role.upper()
+       
+                   styles = instructions.split(",")
+                   styles.reverse()
+       
+                   # The first instruction can contain a slash
+                   # to break apart fg/bg.
+                   colors = styles.pop().split("/")
+                   colors.reverse()
+                   fg = colors.pop()
+                   if fg in color_names:
+                       definition["fg"] = fg
+                   if colors and colors[-1] in color_names:
+                       definition["bg"] = colors[-1]
+       
+                   # All remaining instructions are options
+                   opts = tuple(s for s in styles if s in opt_dict)
+                   if opts:
+                       definition["opts"] = opts
+       
+                   # The nocolor palette has all available roles.
+                   # Use that palette as the basis for determining
+                   # if the role is valid.
+                   if role in PALETTES[NOCOLOR_PALETTE] and definition:
+                       palette[role] = definition
+       
+           # If there are no colors specified, return the empty palette.
+    1:     if palette == PALETTES[NOCOLOR_PALETTE]:
+    1:         return None
+           return palette

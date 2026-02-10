@@ -1,0 +1,52 @@
+    1: from django.contrib.admin.decorators import action, display, register
+    1: from django.contrib.admin.filters import (
+           AllValuesFieldListFilter,
+           BooleanFieldListFilter,
+           ChoicesFieldListFilter,
+           DateFieldListFilter,
+           EmptyFieldListFilter,
+           FieldListFilter,
+           ListFilter,
+           RelatedFieldListFilter,
+           RelatedOnlyFieldListFilter,
+           SimpleListFilter,
+       )
+    1: from django.contrib.admin.options import (
+           HORIZONTAL,
+           VERTICAL,
+           ModelAdmin,
+           ShowFacets,
+           StackedInline,
+           TabularInline,
+       )
+    1: from django.contrib.admin.sites import AdminSite, site
+    1: from django.utils.module_loading import autodiscover_modules
+       
+    1: __all__ = [
+           "action",
+           "display",
+           "register",
+           "ModelAdmin",
+           "HORIZONTAL",
+           "VERTICAL",
+           "StackedInline",
+           "TabularInline",
+           "AdminSite",
+           "site",
+           "ListFilter",
+           "SimpleListFilter",
+           "FieldListFilter",
+           "BooleanFieldListFilter",
+           "RelatedFieldListFilter",
+           "ChoicesFieldListFilter",
+           "DateFieldListFilter",
+           "AllValuesFieldListFilter",
+           "EmptyFieldListFilter",
+           "RelatedOnlyFieldListFilter",
+           "ShowFacets",
+           "autodiscover",
+       ]
+       
+       
+    1: def autodiscover():
+    1:     autodiscover_modules("admin", register_to=site)

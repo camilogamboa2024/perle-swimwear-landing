@@ -1,0 +1,26 @@
+       # This file is distributed under the same license as the Django package.
+       #
+    1: DATE_FORMAT = r"j \d\e F \d\e Y"
+    1: TIME_FORMAT = "H:i"
+    1: DATETIME_FORMAT = r"j \d\e F \d\e Y \a \l\a\s H:i"
+    1: YEAR_MONTH_FORMAT = r"F \d\e Y"
+    1: MONTH_DAY_FORMAT = r"j \d\e F"
+    1: SHORT_DATE_FORMAT = "d/m/Y"
+    1: SHORT_DATETIME_FORMAT = "d/m/Y H:i"
+    1: FIRST_DAY_OF_WEEK = 1
+    1: DATE_INPUT_FORMATS = [
+           "%d/%m/%Y",  # '25/10/2006'
+           "%d/%m/%y",  # '25/10/06'
+           "%Y%m%d",  # '20061025'
+       ]
+    1: DATETIME_INPUT_FORMATS = [
+           "%d/%m/%Y %H:%M:%S",
+           "%d/%m/%Y %H:%M:%S.%f",
+           "%d/%m/%Y %H:%M",
+           "%d/%m/%y %H:%M:%S",
+           "%d/%m/%y %H:%M:%S.%f",
+           "%d/%m/%y %H:%M",
+       ]
+    1: DECIMAL_SEPARATOR = ","
+    1: THOUSAND_SEPARATOR = "."
+    1: NUMBER_GROUPING = 3

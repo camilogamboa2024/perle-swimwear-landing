@@ -1,0 +1,67 @@
+    1: """
+       Caching framework.
+       
+       This package defines set of cache backends that all conform to a simple API.
+       In a nutshell, a cache is a set of values -- which can be any object that
+       may be pickled -- identified by string keys.  For the complete API, see
+       the abstract BaseCache class in django.core.cache.backends.base.
+       
+       Client code should use the `cache` variable defined here to access the default
+       cache backend and look up non-default cache backends in the `caches` dict-like
+       object.
+       
+       See docs/topics/cache.txt for information on the public API.
+       """
+       
+    1: from django.core import signals
+    1: from django.core.cache.backends.base import (
+           BaseCache,
+           CacheKeyWarning,
+           InvalidCacheBackendError,
+           InvalidCacheKey,
+       )
+    1: from django.utils.connection import BaseConnectionHandler, ConnectionProxy
+    1: from django.utils.module_loading import import_string
+       
+    1: __all__ = [
+           "cache",
+           "caches",
+           "DEFAULT_CACHE_ALIAS",
+           "InvalidCacheBackendError",
+           "CacheKeyWarning",
+           "BaseCache",
+           "InvalidCacheKey",
+       ]
+       
+    1: DEFAULT_CACHE_ALIAS = "default"
+       
+       
+    2: class CacheHandler(BaseConnectionHandler):
+    1:     settings_name = "CACHES"
+    1:     exception_class = InvalidCacheBackendError
+       
+    1:     def create_connection(self, alias):
+    1:         params = self.settings[alias].copy()
+    1:         backend = params.pop("BACKEND")
+    1:         location = params.pop("LOCATION", "")
+    1:         try:
+    1:             backend_cls = import_string(backend)
+               except ImportError as e:
+                   raise InvalidCacheBackendError(
+                       "Could not find backend '%s': %s" % (backend, e)
+                   ) from e
+    1:         return backend_cls(location, params)
+       
+       
+    1: caches = CacheHandler()
+       
+    1: cache = ConnectionProxy(caches, DEFAULT_CACHE_ALIAS)
+       
+       
+    1: def close_caches(**kwargs):
+           # Some caches need to do a cleanup at the end of a request cycle. If not
+           # implemented in a particular backend cache.close() is a no-op.
+   43:     caches.close_all()
+       
+       
+    1: signals.request_finished.connect(close_caches)

@@ -1,0 +1,26 @@
+    1: from django.contrib.auth import validators
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("auth", "0006_require_contenttypes_0002"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.AlterField(
+    1:             model_name="user",
+    1:             name="username",
+    2:             field=models.CharField(
+    1:                 error_messages={"unique": "A user with that username already exists."},
+                       help_text=(
+    1:                     "Required. 30 characters or fewer. Letters, digits and @/./+/-/_ "
+                           "only."
+                       ),
+    1:                 max_length=30,
+    1:                 unique=True,
+    1:                 validators=[validators.UnicodeUsernameValidator()],
+    1:                 verbose_name="username",
+                   ),
+               ),
+           ]

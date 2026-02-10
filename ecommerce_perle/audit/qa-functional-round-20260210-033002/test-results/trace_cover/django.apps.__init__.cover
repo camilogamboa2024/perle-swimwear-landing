@@ -1,0 +1,4 @@
+    1: from .config import AppConfig
+    1: from .registry import apps
+       
+    1: __all__ = ["AppConfig", "apps"]

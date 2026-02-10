@@ -1,0 +1,48 @@
+    1: """
+       This module allows importing AbstractBaseSession even
+       when django.contrib.sessions is not in INSTALLED_APPS.
+       """
+       
+    1: from django.db import models
+    1: from django.utils.translation import gettext_lazy as _
+       
+       
+    2: class BaseSessionManager(models.Manager):
+    1:     def encode(self, session_dict):
+               """
+               Return the given session dictionary serialized and encoded as a string.
+               """
+               session_store_class = self.model.get_session_store_class()
+               return session_store_class().encode(session_dict)
+       
+    1:     def save(self, session_key, session_dict, expire_date):
+               s = self.model(session_key, self.encode(session_dict), expire_date)
+               if session_dict:
+                   s.save()
+               else:
+                   s.delete()  # Clear sessions with no data.
+               return s
+       
+       
+    2: class AbstractBaseSession(models.Model):
+    1:     session_key = models.CharField(_("session key"), max_length=40, primary_key=True)
+    1:     session_data = models.TextField(_("session data"))
+    1:     expire_date = models.DateTimeField(_("expire date"), db_index=True)
+       
+    1:     objects = BaseSessionManager()
+       
+    2:     class Meta:
+    1:         abstract = True
+    1:         verbose_name = _("session")
+    1:         verbose_name_plural = _("sessions")
+       
+    1:     def __str__(self):
+               return self.session_key
+       
+    2:     @classmethod
+    2:     def get_session_store_class(cls):
+               raise NotImplementedError
+       
+    1:     def get_decoded(self):
+               session_store_class = self.get_session_store_class()
+               return session_store_class().decode(self.session_data)

@@ -1,0 +1,249 @@
+    1: """
+       Protocol objects representing different implementations of the same classes.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, Union
+    1: from collections.abc import Callable, Generator, Mapping, Sequence
+       
+    1: from . import pq
+    1: from ._enums import PyFormat as PyFormat
+    1: from ._compat import LiteralString, Template, TypeVar
+       
+    1: if TYPE_CHECKING:
+           from . import sql
+           from .rows import Row, RowMaker
+           from .pq.abc import PGresult
+           from .waiting import Ready, Wait
+           from ._adapters_map import AdaptersMap
+           from ._connection_base import BaseConnection
+       
+    1: NoneType: type = type(None)
+       
+       # An object implementing the buffer protocol
+    1: Buffer: TypeAlias = Union[bytes, bytearray, memoryview]
+       
+    1: QueryNoTemplate: TypeAlias = Union[LiteralString, bytes, "sql.SQL", "sql.Composed"]
+    1: Query: TypeAlias = Union[QueryNoTemplate, Template]
+    1: Params: TypeAlias = Union[Sequence[Any], Mapping[str, Any]]
+    1: ConnectionType = TypeVar("ConnectionType", bound="BaseConnection[Any]")
+    1: PipelineCommand: TypeAlias = Callable[[], None]
+    1: DumperKey: TypeAlias = Union[type, tuple["DumperKey", ...]]
+    1: ConnParam: TypeAlias = Union[str, int, None]
+    1: ConnDict: TypeAlias = dict[str, ConnParam]
+    1: ConnMapping: TypeAlias = Mapping[str, ConnParam]
+       
+       
+       # Waiting protocol types
+       
+    1: RV = TypeVar("RV")
+       
+    1: PQGenConn: TypeAlias = Generator[tuple[int, "Wait"], "Ready | int", RV]
+    1: """Generator for processes where the connection file number can change.
+       
+       This can happen in connection and reset, but not in normal querying.
+       """
+       
+    1: PQGen: TypeAlias = Generator["Wait", "Ready | int", RV]
+    1: """Generator for processes where the connection file number won't change.
+       """
+       
+       
+    2: class WaitFunc(Protocol):
+    1:     """
+           Wait on the connection which generated `PQgen` and return its final result.
+           """
+       
+    1:     def __call__(self, gen: PQGen[RV], fileno: int, interval: float = ...) -> RV: ...
+       
+       
+       # Adaptation types
+       
+    1: DumpFunc: TypeAlias = Callable[[Any], Buffer | None]
+    1: LoadFunc: TypeAlias = Callable[[Buffer], Any]
+       
+       
+    2: class AdaptContext(Protocol):
+    1:     """
+           A context describing how types are adapted.
+       
+           Example of `!AdaptContext` are `~psycopg.Connection`, `~psycopg.Cursor`,
+           `~psycopg.adapt.Transformer`, `~psycopg.adapt.AdaptersMap`.
+       
+           Note that this is a `~typing.Protocol`, so objects implementing
+           `!AdaptContext` don't need to explicitly inherit from this class.
+       
+           """
+       
+    2:     @property
+    2:     def adapters(self) -> AdaptersMap:
+               """The adapters configuration that this object uses."""
+               ...
+       
+    2:     @property
+    2:     def connection(self) -> BaseConnection[Any] | None:
+               """The connection used by this object, if available.
+       
+               :rtype: `~psycopg.Connection` or `~psycopg.AsyncConnection` or `!None`
+               """
+               ...
+       
+       
+    2: class Dumper(Protocol):
+    1:     """
+           Convert Python objects of type `!cls` to PostgreSQL representation.
+           """
+       
+    1:     format: pq.Format
+    1:     """
+           The format that this class `dump()` method produces,
+           `~psycopg.pq.Format.TEXT` or `~psycopg.pq.Format.BINARY`.
+       
+           This is a class attribute.
+           """
+       
+    1:     oid: int
+    1:     """The oid to pass to the server, if known; 0 otherwise (class attribute)."""
+       
+    1:     def __init__(self, cls: type, context: AdaptContext | None = None): ...
+       
+    1:     def dump(self, obj: Any) -> Buffer | None:
+               """Convert the object `!obj` to PostgreSQL representation.
+       
+               :param obj: the object to convert.
+               """
+               ...
+       
+    1:     def quote(self, obj: Any) -> Buffer:
+               """Convert the object `!obj` to escaped representation.
+       
+               :param obj: the object to convert.
+               """
+               ...
+       
+    1:     def get_key(self, obj: Any, format: PyFormat) -> DumperKey:
+               """Return an alternative key to upgrade the dumper to represent `!obj`.
+       
+               :param obj: The object to convert
+               :param format: The format to convert to
+       
+               Normally the type of the object is all it takes to define how to dump
+               the object to the database. For instance, a Python `~datetime.date` can
+               be simply converted into a PostgreSQL :sql:`date`.
+       
+               In a few cases, just the type is not enough. For example:
+       
+               - A Python `~datetime.datetime` could be represented as a
+                 :sql:`timestamptz` or a :sql:`timestamp`, according to whether it
+                 specifies a `!tzinfo` or not.
+       
+               - A Python int could be stored as several Postgres types: int2, int4,
+                 int8, numeric. If a type too small is used, it may result in an
+                 overflow. If a type too large is used, PostgreSQL may not want to
+                 cast it to a smaller type.
+       
+               - Python lists should be dumped according to the type they contain to
+                 convert them to e.g. array of strings, array of ints (and which
+                 size of int?...)
+       
+               In these cases, a dumper can implement `!get_key()` and return a new
+               class, or sequence of classes, that can be used to identify the same
+               dumper again. If the mechanism is not needed, the method should return
+               the same `!cls` object passed in the constructor.
+       
+               If a dumper implements `get_key()` it should also implement
+               `upgrade()`.
+       
+               """
+               ...
+       
+    1:     def upgrade(self, obj: Any, format: PyFormat) -> Dumper:
+               """Return a new dumper to manage `!obj`.
+       
+               :param obj: The object to convert
+               :param format: The format to convert to
+       
+               Once `Transformer.get_dumper()` has been notified by `get_key()` that
+               this Dumper class cannot handle `!obj` itself, it will invoke
+               `!upgrade()`, which should return a new `Dumper` instance, which will
+               be reused for every objects for which `!get_key()` returns the same
+               result.
+               """
+               ...
+       
+       
+    2: class Loader(Protocol):
+    1:     """
+           Convert PostgreSQL values with type OID `!oid` to Python objects.
+           """
+       
+    1:     format: pq.Format
+    1:     """
+           The format that this class `load()` method can convert,
+           `~psycopg.pq.Format.TEXT` or `~psycopg.pq.Format.BINARY`.
+       
+           This is a class attribute.
+           """
+       
+    1:     def __init__(self, oid: int, context: AdaptContext | None = None): ...
+       
+    1:     def load(self, data: Buffer) -> Any:
+               """
+               Convert the data returned by the database into a Python object.
+       
+               :param data: the data to convert.
+               """
+               ...
+       
+       
+    2: class Transformer(Protocol):
+    1:     types: tuple[int, ...] | None
+    1:     formats: list[pq.Format] | None
+       
+    1:     def __init__(self, context: AdaptContext | None = None): ...
+       
+    2:     @classmethod
+    2:     def from_context(cls, context: AdaptContext | None) -> Transformer: ...
+       
+    2:     @property
+    2:     def connection(self) -> BaseConnection[Any] | None: ...
+       
+    2:     @property
+    2:     def encoding(self) -> str: ...
+       
+    2:     @property
+    2:     def adapters(self) -> AdaptersMap: ...
+       
+    2:     @property
+    2:     def pgresult(self) -> PGresult | None: ...
+       
+    1:     def set_pgresult(
+               self,
+               result: PGresult | None,
+               *,
+    1:         set_loaders: bool = True,
+    1:         format: pq.Format | None = None,
+           ) -> None: ...
+       
+    1:     def set_dumper_types(self, types: Sequence[int], format: pq.Format) -> None: ...
+       
+    1:     def set_loader_types(self, types: Sequence[int], format: pq.Format) -> None: ...
+       
+    1:     def dump_sequence(
+               self, params: Sequence[Any], formats: Sequence[PyFormat]
+           ) -> Sequence[Buffer | None]: ...
+       
+    1:     def as_literal(self, obj: Any) -> bytes: ...
+       
+    1:     def get_dumper(self, obj: Any, format: PyFormat) -> Dumper: ...
+       
+    1:     def load_rows(self, row0: int, row1: int, make_row: RowMaker[Row]) -> list[Row]: ...
+       
+    1:     def load_row(self, row: int, make_row: RowMaker[Row]) -> Row: ...
+       
+    1:     def load_sequence(self, record: Sequence[Buffer | None]) -> tuple[Any, ...]: ...
+       
+    1:     def get_loader(self, oid: int, format: pq.Format) -> Loader: ...

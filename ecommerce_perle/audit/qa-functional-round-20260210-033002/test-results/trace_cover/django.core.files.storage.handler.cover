@@ -1,0 +1,46 @@
+    1: from django.conf import settings
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.utils.functional import cached_property
+    1: from django.utils.module_loading import import_string
+       
+       
+    2: class InvalidStorageError(ImproperlyConfigured):
+    1:     pass
+       
+       
+    2: class StorageHandler:
+    1:     def __init__(self, backends=None):
+               # backends is an optional dict of storage backend definitions
+               # (structured like settings.STORAGES).
+    1:         self._backends = backends
+    1:         self._storages = {}
+       
+    2:     @cached_property
+    2:     def backends(self):
+    1:         if self._backends is None:
+    1:             self._backends = settings.STORAGES.copy()
+    1:         return self._backends
+       
+    1:     def __getitem__(self, alias):
+    1:         try:
+    1:             return self._storages[alias]
+    1:         except KeyError:
+    1:             try:
+    1:                 params = self.backends[alias]
+                   except KeyError:
+                       raise InvalidStorageError(
+                           f"Could not find config for '{alias}' in settings.STORAGES."
+                       )
+    1:             storage = self.create_storage(params)
+    1:             self._storages[alias] = storage
+    1:             return storage
+       
+    1:     def create_storage(self, params):
+    1:         params = params.copy()
+    1:         backend = params.pop("BACKEND")
+    1:         options = params.pop("OPTIONS", {})
+    1:         try:
+    1:             storage_cls = import_string(backend)
+               except ImportError as e:
+                   raise InvalidStorageError(f"Could not find backend {backend!r}: {e}") from e
+    1:         return storage_cls(**options)

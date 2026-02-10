@@ -1,0 +1,39 @@
+    1: from django.views.generic.base import RedirectView, TemplateView, View
+    1: from django.views.generic.dates import (
+           ArchiveIndexView,
+           DateDetailView,
+           DayArchiveView,
+           MonthArchiveView,
+           TodayArchiveView,
+           WeekArchiveView,
+           YearArchiveView,
+       )
+    1: from django.views.generic.detail import DetailView
+    1: from django.views.generic.edit import CreateView, DeleteView, FormView, UpdateView
+    1: from django.views.generic.list import ListView
+       
+    1: __all__ = [
+           "View",
+           "TemplateView",
+           "RedirectView",
+           "ArchiveIndexView",
+           "YearArchiveView",
+           "MonthArchiveView",
+           "WeekArchiveView",
+           "DayArchiveView",
+           "TodayArchiveView",
+           "DateDetailView",
+           "DetailView",
+           "FormView",
+           "CreateView",
+           "UpdateView",
+           "DeleteView",
+           "ListView",
+           "GenericViewError",
+       ]
+       
+       
+    2: class GenericViewError(Exception):
+    1:     """A problem in a generic view."""
+       
+    1:     pass

@@ -1,0 +1,178 @@
+    1: """
+       Query subclasses which provide extra functionality beyond simple data retrieval.
+       """
+       
+    1: from django.core.exceptions import FieldError
+    1: from django.db.models.sql.constants import (
+           GET_ITERATOR_CHUNK_SIZE,
+           NO_RESULTS,
+           ROW_COUNT,
+       )
+    1: from django.db.models.sql.query import Query
+       
+    1: __all__ = ["DeleteQuery", "UpdateQuery", "InsertQuery", "AggregateQuery"]
+       
+       
+    2: class DeleteQuery(Query):
+    1:     """A DELETE SQL query."""
+       
+    1:     compiler = "SQLDeleteCompiler"
+       
+    1:     def do_query(self, table, where, using):
+    5:         self.alias_map = {table: self.alias_map[table]}
+    5:         self.where = where
+    5:         return self.get_compiler(using).execute_sql(ROW_COUNT)
+       
+    1:     def delete_batch(self, pk_list, using):
+               """
+               Set up and execute delete queries for all the objects in pk_list.
+       
+               More than one physical query may be executed if there are a
+               lot of values in pk_list.
+               """
+               # number of objects deleted
+    5:         num_deleted = 0
+    5:         field = self.get_meta().pk
+   10:         for offset in range(0, len(pk_list), GET_ITERATOR_CHUNK_SIZE):
+    5:             self.clear_where()
+   10:             self.add_filter(
+    5:                 f"{field.attname}__in",
+    5:                 pk_list[offset : offset + GET_ITERATOR_CHUNK_SIZE],
+                   )
+   10:             num_deleted += self.do_query(
+    5:                 self.get_meta().db_table, self.where, using=using
+                   )
+    5:         return num_deleted
+       
+       
+    2: class UpdateQuery(Query):
+    1:     """An UPDATE SQL query."""
+       
+    1:     compiler = "SQLUpdateCompiler"
+       
+    1:     def __init__(self, *args, **kwargs):
+               super().__init__(*args, **kwargs)
+               self._setup_query()
+       
+    1:     def _setup_query(self):
+               """
+               Run on initialization and at the end of chaining. Any attributes that
+               would normally be set in __init__() should go here instead.
+               """
+   52:         self.values = []
+   52:         self.related_ids = None
+   52:         self.related_updates = {}
+       
+    1:     def clone(self):
+               obj = super().clone()
+               obj.related_updates = self.related_updates.copy()
+               return obj
+       
+    1:     def update_batch(self, pk_list, values, using):
+               self.add_update_values(values)
+               for offset in range(0, len(pk_list), GET_ITERATOR_CHUNK_SIZE):
+                   self.clear_where()
+                   self.add_filter(
+                       "pk__in", pk_list[offset : offset + GET_ITERATOR_CHUNK_SIZE]
+                   )
+                   self.get_compiler(using).execute_sql(NO_RESULTS)
+       
+    1:     def add_update_values(self, values):
+               """
+               Convert a dictionary of field name to value mappings into an update
+               query. This is the entry point for the public update() method on
+               querysets.
+               """
+    1:         values_seq = []
+    2:         for name, val in values.items():
+    1:             field = self.get_meta().get_field(name)
+    1:             direct = (
+    1:                 not (field.auto_created and not field.concrete) or not field.concrete
+                   )
+    1:             model = field.model._meta.concrete_model
+    1:             if field.name == "pk" and model._meta.is_composite_pk:
+                       raise FieldError(
+                           "Composite primary key fields must be updated individually."
+                       )
+    1:             if not direct or (field.is_relation and field.many_to_many):
+                       raise FieldError(
+                           "Cannot update model field %r (only non-relations and "
+                           "foreign keys permitted)." % field
+                       )
+    1:             if model is not self.get_meta().concrete_model:
+                       self.add_related_update(model, field, val)
+                       continue
+    1:             values_seq.append((field, model, val))
+    1:         return self.add_update_fields(values_seq)
+       
+    1:     def add_update_fields(self, values_seq):
+               """
+               Append a sequence of (field, model, value) triples to the internal list
+               that will be used to generate the UPDATE query. Might be more usefully
+               called add_update_targets() to hint at the extra information here.
+               """
+  160:         for field, model, val in values_seq:
+                   # Omit generated fields.
+  108:             if field.generated:
+                       continue
+  108:             if hasattr(val, "resolve_expression"):
+                       # Resolve expressions here so that annotations are no longer needed
+    4:                 val = val.resolve_expression(self, allow_joins=False, for_save=True)
+  108:             self.values.append((field, model, val))
+       
+    1:     def add_related_update(self, model, field, value):
+               """
+               Add (name, value) to an update query for an ancestor model.
+       
+               Update are coalesced so that only one update query per ancestor is run.
+               """
+               self.related_updates.setdefault(model, []).append((field, None, value))
+       
+    1:     def get_related_updates(self):
+               """
+               Return a list of query objects: one for each update required to an
+               ancestor model. Each query will have the same filtering conditions as
+               the current query but will only update a single table.
+               """
+   52:         if not self.related_updates:
+   52:             return []
+               result = []
+               for model, values in self.related_updates.items():
+                   query = UpdateQuery(model)
+                   query.values = values
+                   if self.related_ids is not None:
+                       query.add_filter("pk__in", self.related_ids[model])
+                   result.append(query)
+               return result
+       
+       
+    2: class InsertQuery(Query):
+    1:     compiler = "SQLInsertCompiler"
+       
+    1:     def __init__(
+    1:         self, *args, on_conflict=None, update_fields=None, unique_fields=None, **kwargs
+           ):
+  218:         super().__init__(*args, **kwargs)
+  218:         self.fields = []
+  218:         self.objs = []
+  218:         self.on_conflict = on_conflict
+  218:         self.update_fields = update_fields or []
+  218:         self.unique_fields = unique_fields or []
+       
+    1:     def insert_values(self, fields, objs, raw=False):
+  218:         self.fields = fields
+  218:         self.objs = objs
+  218:         self.raw = raw
+       
+       
+    2: class AggregateQuery(Query):
+    1:     """
+           Take another query as a parameter to the FROM clause and only select the
+           elements in the provided list.
+           """
+       
+    1:     compiler = "SQLAggregateCompiler"
+       
+    1:     def __init__(self, model, inner_query):
+               self.inner_query = inner_query
+               super().__init__(model)

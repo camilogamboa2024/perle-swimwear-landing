@@ -1,0 +1,8 @@
+20 objects imported automatically (use -v 2 for details).
+
+PERF_CHECK_START
+/ 200 queries= 3
+/api/products/ 200 queries= 3
+/api/cart/ 200 queries= 13
+/checkout/api/checkout/confirm/ 201 queries= 23
+PERF_CHECK_END

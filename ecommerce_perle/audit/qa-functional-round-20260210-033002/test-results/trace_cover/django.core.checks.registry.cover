@@ -1,0 +1,118 @@
+    1: from collections.abc import Iterable
+    1: from itertools import chain
+       
+    1: from django.utils.inspect import func_accepts_kwargs
+       
+       
+    2: class Tags:
+    1:     """
+           Built-in tags for internal checks.
+           """
+       
+    1:     admin = "admin"
+    1:     async_support = "async_support"
+    1:     caches = "caches"
+    1:     commands = "commands"
+    1:     compatibility = "compatibility"
+    1:     database = "database"
+    1:     files = "files"
+    1:     models = "models"
+    1:     security = "security"
+    1:     signals = "signals"
+    1:     sites = "sites"
+    1:     staticfiles = "staticfiles"
+    1:     templates = "templates"
+    1:     translation = "translation"
+    1:     urls = "urls"
+       
+       
+    2: class CheckRegistry:
+    1:     def __init__(self):
+    1:         self.registered_checks = set()
+    1:         self.deployment_checks = set()
+       
+    1:     def register(self, check=None, *tags, **kwargs):
+               """
+               Can be used as a function or a decorator. Register given function
+               `f` labeled with given `tags`. The function should receive **kwargs
+               and return list of Errors and Warnings.
+       
+               Example::
+       
+                   registry = CheckRegistry()
+                   @registry.register('mytag', 'anothertag')
+                   def my_check(app_configs, **kwargs):
+                       # ... perform checks and collect `errors` ...
+                       return errors
+                   # or
+                   registry.register(my_check, 'mytag', 'anothertag')
+               """
+       
+   48:         def inner(check):
+   48:             if not func_accepts_kwargs(check):
+                       raise TypeError(
+                           "Check functions must accept keyword arguments (**kwargs)."
+                       )
+   48:             check.tags = tags
+   48:             checks = (
+   48:                 self.deployment_checks
+   48:                 if kwargs.get("deploy")
+   28:                 else self.registered_checks
+                   )
+   48:             checks.add(check)
+   48:             return check
+       
+   48:         if callable(check):
+    9:             return inner(check)
+               else:
+   39:             if check:
+   39:                 tags += (check,)
+   39:             return inner
+       
+    1:     def run_checks(
+               self,
+    1:         app_configs=None,
+    1:         tags=None,
+    1:         include_deployment_checks=False,
+    1:         databases=None,
+           ):
+               """
+               Run all registered checks and return list of Errors and Warnings.
+               """
+    1:         errors = []
+    1:         checks = self.get_checks(include_deployment_checks)
+       
+    1:         if tags is not None:
+                   checks = [check for check in checks if not set(check.tags).isdisjoint(tags)]
+       
+   29:         for check in checks:
+   28:             new_errors = check(app_configs=app_configs, databases=databases)
+   28:             if not isinstance(new_errors, Iterable):
+                       raise TypeError(
+                           "The function %r did not return a list. All functions "
+                           "registered with the checks registry must return a list." % check,
+                       )
+   28:             errors.extend(new_errors)
+    1:         return errors
+       
+    1:     def tag_exists(self, tag, include_deployment_checks=False):
+               return tag in self.tags_available(include_deployment_checks)
+       
+    1:     def tags_available(self, deployment_checks=False):
+               return set(
+                   chain.from_iterable(
+                       check.tags for check in self.get_checks(deployment_checks)
+                   )
+               )
+       
+    1:     def get_checks(self, include_deployment_checks=False):
+    1:         checks = list(self.registered_checks)
+    1:         if include_deployment_checks:
+                   checks.extend(self.deployment_checks)
+    1:         return checks
+       
+       
+    1: registry = CheckRegistry()
+    1: register = registry.register
+    1: run_checks = registry.run_checks
+    1: tag_exists = registry.tag_exists

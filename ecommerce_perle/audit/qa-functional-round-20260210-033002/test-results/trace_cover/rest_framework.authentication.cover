@@ -1,0 +1,232 @@
+    1: """
+       Provides various authentication policies.
+       """
+    1: import base64
+    1: import binascii
+       
+    1: from django.contrib.auth import authenticate, get_user_model
+    1: from django.middleware.csrf import CsrfViewMiddleware
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: from rest_framework import HTTP_HEADER_ENCODING, exceptions
+       
+       
+    1: def get_authorization_header(request):
+           """
+           Return request's 'Authorization:' header, as a bytestring.
+       
+           Hide some test client ickyness where the header can be unicode.
+           """
+    3:     auth = request.META.get('HTTP_AUTHORIZATION', b'')
+    3:     if isinstance(auth, str):
+               # Work around django test client oddness
+               auth = auth.encode(HTTP_HEADER_ENCODING)
+    3:     return auth
+       
+       
+    2: class CSRFCheck(CsrfViewMiddleware):
+    1:     def _reject(self, request, reason):
+               # Return the failure reason instead of an HttpResponse
+    4:         return reason
+       
+       
+    2: class BaseAuthentication:
+    1:     """
+           All authentication classes should extend BaseAuthentication.
+           """
+       
+    1:     def authenticate(self, request):
+               """
+               Authenticate the request and return a two-tuple of (user, token).
+               """
+               raise NotImplementedError(".authenticate() must be overridden.")
+       
+    1:     def authenticate_header(self, request):
+               """
+               Return a string to be used as the value of the `WWW-Authenticate`
+               header in a `401 Unauthenticated` response, or `None` if the
+               authentication scheme should return `403 Permission Denied` responses.
+               """
+               pass
+       
+       
+    2: class BasicAuthentication(BaseAuthentication):
+    1:     """
+           HTTP Basic authentication against username/password.
+           """
+    1:     www_authenticate_realm = 'api'
+       
+    1:     def authenticate(self, request):
+               """
+               Returns a `User` if a correct username and password have been supplied
+               using HTTP Basic authentication.  Otherwise returns `None`.
+               """
+    3:         auth = get_authorization_header(request).split()
+       
+    3:         if not auth or auth[0].lower() != b'basic':
+    3:             return None
+       
+               if len(auth) == 1:
+                   msg = _('Invalid basic header. No credentials provided.')
+                   raise exceptions.AuthenticationFailed(msg)
+               elif len(auth) > 2:
+                   msg = _('Invalid basic header. Credentials string should not contain spaces.')
+                   raise exceptions.AuthenticationFailed(msg)
+       
+               try:
+                   try:
+                       auth_decoded = base64.b64decode(auth[1]).decode('utf-8')
+                   except UnicodeDecodeError:
+                       auth_decoded = base64.b64decode(auth[1]).decode('latin-1')
+       
+                   userid, password = auth_decoded.split(':', 1)
+               except (TypeError, ValueError, UnicodeDecodeError, binascii.Error):
+                   msg = _('Invalid basic header. Credentials not correctly base64 encoded.')
+                   raise exceptions.AuthenticationFailed(msg)
+       
+               return self.authenticate_credentials(userid, password, request)
+       
+    1:     def authenticate_credentials(self, userid, password, request=None):
+               """
+               Authenticate the userid and password against username and password
+               with optional request for context.
+               """
+               credentials = {
+                   get_user_model().USERNAME_FIELD: userid,
+                   'password': password
+               }
+               user = authenticate(request=request, **credentials)
+       
+               if user is None:
+                   raise exceptions.AuthenticationFailed(_('Invalid username/password.'))
+       
+               if not user.is_active:
+                   raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+       
+               return (user, None)
+       
+    1:     def authenticate_header(self, request):
+               return 'Basic realm="%s"' % self.www_authenticate_realm
+       
+       
+    2: class SessionAuthentication(BaseAuthentication):
+    1:     """
+           Use Django's session framework for authentication.
+           """
+       
+    1:     def authenticate(self, request):
+               """
+               Returns a `User` if the request session currently has a logged in user.
+               Otherwise returns `None`.
+               """
+       
+               # Get the session-based user from the underlying HttpRequest object
+   19:         user = getattr(request._request, 'user', None)
+       
+               # Unauthenticated, CSRF validation not required
+   19:         if not user or not user.is_active:
+   19:             return None
+       
+               self.enforce_csrf(request)
+       
+               # CSRF passed with authenticated user
+               return (user, None)
+       
+    1:     def enforce_csrf(self, request):
+               """
+               Enforce CSRF validation for session based authentication.
+               """
+   20:         def dummy_get_response(request):  # pragma: no cover
+                   return None
+       
+   20:         check = CSRFCheck(dummy_get_response)
+               # populates request.META['CSRF_COOKIE'], which is used in process_view()
+   20:         check.process_request(request)
+   20:         reason = check.process_view(request, None, (), {})
+   20:         if reason:
+                   # CSRF failed, bail with explicit error message
+    4:             raise exceptions.PermissionDenied('CSRF Failed: %s' % reason)
+       
+       
+    2: class TokenAuthentication(BaseAuthentication):
+    1:     """
+           Simple token based authentication.
+       
+           Clients should authenticate by passing the token key in the "Authorization"
+           HTTP header, prepended with the string "Token ".  For example:
+       
+               Authorization: Token 401f7ac837da42b97f613d789819ff93537bee6a
+           """
+       
+    1:     keyword = 'Token'
+    1:     model = None
+       
+    1:     def get_model(self):
+               if self.model is not None:
+                   return self.model
+               from rest_framework.authtoken.models import Token
+               return Token
+       
+    1:     """
+           A custom token model may be used, but must have the following properties.
+       
+           * key -- The string identifying the token
+           * user -- The user to which the token belongs
+           """
+       
+    1:     def authenticate(self, request):
+               auth = get_authorization_header(request).split()
+       
+               if not auth or auth[0].lower() != self.keyword.lower().encode():
+                   return None
+       
+               if len(auth) == 1:
+                   msg = _('Invalid token header. No credentials provided.')
+                   raise exceptions.AuthenticationFailed(msg)
+               elif len(auth) > 2:
+                   msg = _('Invalid token header. Token string should not contain spaces.')
+                   raise exceptions.AuthenticationFailed(msg)
+       
+               try:
+                   token = auth[1].decode()
+               except UnicodeError:
+                   msg = _('Invalid token header. Token string should not contain invalid characters.')
+                   raise exceptions.AuthenticationFailed(msg)
+       
+               return self.authenticate_credentials(token)
+       
+    1:     def authenticate_credentials(self, key):
+               model = self.get_model()
+               try:
+                   token = model.objects.select_related('user').get(key=key)
+               except model.DoesNotExist:
+                   raise exceptions.AuthenticationFailed(_('Invalid token.'))
+       
+               if not token.user.is_active:
+                   raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+       
+               return (token.user, token)
+       
+    1:     def authenticate_header(self, request):
+               return self.keyword
+       
+       
+    2: class RemoteUserAuthentication(BaseAuthentication):
+    1:     """
+           REMOTE_USER authentication.
+       
+           To use this, set up your web server to perform authentication, which will
+           set the REMOTE_USER environment variable. You will need to have
+           'django.contrib.auth.backends.RemoteUserBackend in your
+           AUTHENTICATION_BACKENDS setting
+           """
+       
+           # Name of request header to grab username from.  This will be the key as
+           # used in the request.META dictionary, i.e. the normalization of headers to
+           # all uppercase and the addition of "HTTP_" prefix apply.
+    1:     header = "REMOTE_USER"
+       
+    1:     def authenticate(self, request):
+               user = authenticate(request=request, remote_user=request.META.get(self.header))
+               if user and user.is_active:
+                   return (user, None)

@@ -1,0 +1,14 @@
+    1: from django.db import connections
+       
+    1: from . import Tags, register
+       
+       
+    2: @register(Tags.database)
+    2: def check_database_backends(databases=None, **kwargs):
+    1:     if databases is None:
+               return []
+    1:     issues = []
+    2:     for alias in databases:
+    1:         conn = connections[alias]
+    1:         issues.extend(conn.validation.check(**kwargs))
+    1:     return issues

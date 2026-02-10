@@ -1,0 +1,19 @@
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("admin", "0002_logentry_remove_auto_add"),
+           ]
+       
+           # No database changes; adds choices to action_flag.
+    1:     operations = [
+    2:         migrations.AlterField(
+    1:             model_name="logentry",
+    1:             name="action_flag",
+    2:             field=models.PositiveSmallIntegerField(
+    1:                 choices=[(1, "Addition"), (2, "Change"), (3, "Deletion")],
+    1:                 verbose_name="action flag",
+                   ),
+               ),
+           ]

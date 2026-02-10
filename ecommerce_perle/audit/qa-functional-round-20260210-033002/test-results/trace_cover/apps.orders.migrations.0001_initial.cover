@@ -1,0 +1,86 @@
+    1: import uuid
+    1: from django.db import migrations, models
+    1: import django.db.models.deletion
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     initial = True
+       
+    1:     dependencies = [
+    1:         ('catalog', '0001_initial'),
+    1:         ('customers', '0001_initial'),
+           ]
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name='Coupon',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('code', models.CharField(max_length=40, unique=True)),
+    1:                 ('percentage', models.PositiveSmallIntegerField(default=0)),
+    1:                 ('is_active', models.BooleanField(default=True)),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name='Cart',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('session_key', models.CharField(blank=True, db_index=True, max_length=50)),
+    1:                 ('currency', models.CharField(default='COP', max_length=3)),
+    1:                 ('created_at', models.DateTimeField(auto_now_add=True)),
+    1:                 ('customer', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='customers.customer')),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name='Order',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('public_id', models.UUIDField(db_index=True, default=uuid.uuid4, editable=False, unique=True)),
+    1:                 ('session_key', models.CharField(blank=True, db_index=True, max_length=50)),
+    1:                 ('status', models.CharField(choices=[('pending', 'Pendiente'), ('confirmed', 'Confirmado'), ('paid', 'Pagado'), ('cancelled', 'Cancelado')], db_index=True, default='pending', max_length=20)),
+    1:                 ('payment_method', models.CharField(choices=[('whatsapp', 'WhatsApp'), ('manual', 'Manual'), ('wompi', 'Wompi'), ('stripe', 'Stripe')], default='whatsapp', max_length=20)),
+    1:                 ('whatsapp_message', models.TextField(blank=True)),
+    1:                 ('subtotal', models.PositiveIntegerField(default=0)),
+    1:                 ('discount_total', models.PositiveIntegerField(default=0)),
+    1:                 ('grand_total', models.PositiveIntegerField(default=0)),
+    1:                 ('currency', models.CharField(default='COP', max_length=3)),
+    1:                 ('paid_at', models.DateTimeField(blank=True, null=True)),
+    1:                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
+    1:                 ('address', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='customers.address')),
+    1:                 ('coupon', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='orders.coupon')),
+    1:                 ('customer', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='customers.customer')),
+                   ],
+    1:             options={'indexes': [models.Index(fields=['status', 'created_at'], name='orders_orde_status_8ffe9c_idx')]},
+               ),
+    2:         migrations.CreateModel(
+    1:             name='OrderStatusHistory',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('from_status', models.CharField(blank=True, max_length=20)),
+    1:                 ('to_status', models.CharField(max_length=20)),
+    1:                 ('changed_at', models.DateTimeField(auto_now_add=True)),
+    1:                 ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='status_history', to='orders.order')),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name='OrderItem',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('quantity', models.PositiveIntegerField()),
+    1:                 ('unit_price', models.PositiveIntegerField()),
+    1:                 ('line_total', models.PositiveIntegerField()),
+    1:                 ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='orders.order')),
+    1:                 ('variant', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='catalog.productvariant')),
+                   ],
+               ),
+    2:         migrations.CreateModel(
+    1:             name='CartItem',
+    1:             fields=[
+    1:                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+    1:                 ('quantity', models.PositiveIntegerField(default=1)),
+    1:                 ('cart', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='orders.cart')),
+    1:                 ('variant', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='catalog.productvariant')),
+                   ],
+    1:             options={'unique_together': {('cart', 'variant')}},
+               ),
+           ]

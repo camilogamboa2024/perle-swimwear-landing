@@ -1,0 +1,259 @@
+    1: """
+       libpq enum definitions for psycopg
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from enum import IntEnum, IntFlag, auto
+       
+       # Check in src/interfaces/libpq/libpq-fe.h for updates.
+       
+       
+    2: class ConnStatus(IntEnum):
+    1:     """
+           Current status of the connection.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     OK = 0
+    1:     """The connection is in a working state."""
+    1:     BAD = auto()
+    1:     """The connection is closed."""
+       
+    1:     STARTED = auto()
+    1:     MADE = auto()
+    1:     AWAITING_RESPONSE = auto()
+    1:     AUTH_OK = auto()
+    1:     SETENV = auto()
+    1:     SSL_STARTUP = auto()
+    1:     NEEDED = auto()
+    1:     CHECK_WRITABLE = auto()
+    1:     CONSUME = auto()
+    1:     GSS_STARTUP = auto()
+    1:     CHECK_TARGET = auto()
+    1:     CHECK_STANDBY = auto()
+    1:     ALLOCATED = auto()  # Only for cancel connections.
+    1:     AUTHENTICATING = auto()
+       
+       
+    2: class PollingStatus(IntEnum):
+    1:     """
+           The status of the socket during a connection.
+       
+           If ``READING`` or ``WRITING`` you may select before polling again.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     FAILED = 0
+    1:     """Connection attempt failed."""
+    1:     READING = auto()
+    1:     """Will have to wait before reading new data."""
+    1:     WRITING = auto()
+    1:     """Will have to wait before writing new data."""
+    1:     OK = auto()
+    1:     """Connection completed."""
+       
+    1:     ACTIVE = auto()
+       
+       
+    2: class ExecStatus(IntEnum):
+    1:     """
+           The status of a command.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     EMPTY_QUERY = 0
+    1:     """The string sent to the server was empty."""
+       
+    1:     COMMAND_OK = auto()
+    1:     """Successful completion of a command returning no data."""
+       
+    1:     TUPLES_OK = auto()
+    1:     """
+           Successful completion of a command returning data (such as a SELECT or SHOW).
+           """
+       
+    1:     COPY_OUT = auto()
+    1:     """Copy Out (from server) data transfer started."""
+       
+    1:     COPY_IN = auto()
+    1:     """Copy In (to server) data transfer started."""
+       
+    1:     BAD_RESPONSE = auto()
+    1:     """The server's response was not understood."""
+       
+    1:     NONFATAL_ERROR = auto()
+    1:     """A nonfatal error (a notice or warning) occurred."""
+       
+    1:     FATAL_ERROR = auto()
+    1:     """A fatal error occurred."""
+       
+    1:     COPY_BOTH = auto()
+    1:     """
+           Copy In/Out (to and from server) data transfer started.
+       
+           This feature is currently used only for streaming replication, so this
+           status should not occur in ordinary applications.
+           """
+       
+    1:     SINGLE_TUPLE = auto()
+    1:     """
+           The PGresult contains a single result tuple from the current command.
+       
+           This status occurs only when single-row mode has been selected for the
+           query.
+           """
+       
+    1:     PIPELINE_SYNC = auto()
+    1:     """
+           The PGresult represents a synchronization point in pipeline mode,
+           requested by PQpipelineSync.
+       
+           This status occurs only when pipeline mode has been selected.
+           """
+       
+    1:     PIPELINE_ABORTED = auto()
+    1:     """
+           The PGresult represents a pipeline that has received an error from the server.
+       
+           PQgetResult must be called repeatedly, and each time it will return this
+           status code until the end of the current pipeline, at which point it will
+           return PGRES_PIPELINE_SYNC and normal processing can resume.
+           """
+    1:     TUPLES_CHUNK = auto()
+    1:     """The PGresult contains several result tuples from the current command.
+       
+           This status occurs only when chunked mode has been selected for the query.
+           """
+       
+       
+    2: class TransactionStatus(IntEnum):
+    1:     """
+           The transaction status of a connection.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     IDLE = 0
+    1:     """Connection ready, no transaction active."""
+       
+    1:     ACTIVE = auto()
+    1:     """A command is in progress."""
+       
+    1:     INTRANS = auto()
+    1:     """Connection idle in an open transaction."""
+       
+    1:     INERROR = auto()
+    1:     """An error happened in the current transaction."""
+       
+    1:     UNKNOWN = auto()
+    1:     """Unknown connection state, broken connection."""
+       
+       
+    2: class Ping(IntEnum):
+    1:     """Response from a ping attempt."""
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     OK = 0
+    1:     """
+           The server is running and appears to be accepting connections.
+           """
+       
+    1:     REJECT = auto()
+    1:     """
+           The server is running but is in a state that disallows connections.
+           """
+       
+    1:     NO_RESPONSE = auto()
+    1:     """
+           The server could not be contacted.
+           """
+       
+    1:     NO_ATTEMPT = auto()
+    1:     """
+           No attempt was made to contact the server.
+           """
+       
+       
+    2: class PipelineStatus(IntEnum):
+    1:     """Pipeline mode status of the libpq connection."""
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     OFF = 0
+    1:     """
+           The libpq connection is *not* in pipeline mode.
+           """
+    1:     ON = auto()
+    1:     """
+           The libpq connection is in pipeline mode.
+           """
+    1:     ABORTED = auto()
+    1:     """
+           The libpq connection is in pipeline mode and an error occurred while
+           processing the current pipeline. The aborted flag is cleared when
+           PQgetResult returns a result of type PGRES_PIPELINE_SYNC.
+           """
+       
+       
+    2: class DiagnosticField(IntEnum):
+    1:     """
+           Fields in an error report.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+           # from src/include/postgres_ext.h
+       
+    1:     SEVERITY = ord("S")
+    1:     SEVERITY_NONLOCALIZED = ord("V")
+    1:     SQLSTATE = ord("C")
+    1:     MESSAGE_PRIMARY = ord("M")
+    1:     MESSAGE_DETAIL = ord("D")
+    1:     MESSAGE_HINT = ord("H")
+    1:     STATEMENT_POSITION = ord("P")
+    1:     INTERNAL_POSITION = ord("p")
+    1:     INTERNAL_QUERY = ord("q")
+    1:     CONTEXT = ord("W")
+    1:     SCHEMA_NAME = ord("s")
+    1:     TABLE_NAME = ord("t")
+    1:     COLUMN_NAME = ord("c")
+    1:     DATATYPE_NAME = ord("d")
+    1:     CONSTRAINT_NAME = ord("n")
+    1:     SOURCE_FILE = ord("F")
+    1:     SOURCE_LINE = ord("L")
+    1:     SOURCE_FUNCTION = ord("R")
+       
+       
+    2: class Format(IntEnum):
+    1:     """
+           Enum representing the format of a query argument or return value.
+       
+           These values are only the ones managed by the libpq. `~psycopg` may also
+           support automatically-chosen values: see `psycopg.adapt.PyFormat`.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     TEXT = 0
+    1:     """Text parameter."""
+    1:     BINARY = 1
+    1:     """Binary parameter."""
+       
+       
+    2: class Trace(IntFlag):
+    1:     """
+           Enum to control tracing of the client/server communication.
+           """
+       
+    1:     __module__ = "psycopg.pq"
+       
+    1:     SUPPRESS_TIMESTAMPS = 1
+    1:     """Do not include timestamps in messages."""
+       
+    1:     REGRESS_MODE = 2
+    1:     """Redact some fields, e.g. OIDs, from messages."""

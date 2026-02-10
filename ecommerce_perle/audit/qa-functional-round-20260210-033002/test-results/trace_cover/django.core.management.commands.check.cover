@@ -1,0 +1,88 @@
+    1: from django.apps import apps
+    1: from django.core import checks
+    1: from django.core.checks.registry import registry
+    1: from django.core.management.base import BaseCommand, CommandError
+    1: from django.db import connections
+       
+       
+    2: class Command(BaseCommand):
+    1:     help = "Checks the entire Django project for potential problems."
+       
+    1:     requires_system_checks = []
+       
+    1:     def add_arguments(self, parser):
+    1:         parser.add_argument("args", metavar="app_label", nargs="*")
+    2:         parser.add_argument(
+    1:             "--tag",
+    1:             "-t",
+    1:             action="append",
+    1:             dest="tags",
+    1:             help="Run only checks labeled with given tag.",
+               )
+    2:         parser.add_argument(
+    1:             "--list-tags",
+    1:             action="store_true",
+                   help=(
+    1:                 "List available tags. Specify --deploy to include available deployment "
+                       "tags."
+                   ),
+               )
+    2:         parser.add_argument(
+    1:             "--deploy",
+    1:             action="store_true",
+    1:             help="Check deployment settings.",
+               )
+    2:         parser.add_argument(
+    1:             "--fail-level",
+    1:             default="ERROR",
+    1:             choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
+                   help=(
+    1:                 "Message level that will cause the command to exit with a "
+                       "non-zero status. Default is ERROR."
+                   ),
+               )
+    2:         parser.add_argument(
+    1:             "--database",
+    1:             action="append",
+    1:             choices=tuple(connections),
+    1:             dest="databases",
+    1:             help="Run database related checks against these aliases.",
+               )
+       
+    1:     def handle(self, *app_labels, **options):
+    1:         include_deployment_checks = options["deploy"]
+    1:         if options["list_tags"]:
+                   self.stdout.write(
+                       "\n".join(sorted(registry.tags_available(include_deployment_checks)))
+                   )
+                   return
+       
+    1:         if app_labels:
+                   app_configs = [apps.get_app_config(app_label) for app_label in app_labels]
+               else:
+    1:             app_configs = None
+       
+    1:         tags = options["tags"]
+    1:         if tags:
+                   try:
+                       invalid_tag = next(
+                           tag
+                           for tag in tags
+                           if not checks.tag_exists(tag, include_deployment_checks)
+                       )
+                   except StopIteration:
+                       # no invalid tags
+                       pass
+                   else:
+                       raise CommandError(
+                           'There is no system check with the "%s" tag.' % invalid_tag
+                       )
+       
+    2:         self.check(
+    1:             app_configs=app_configs,
+    1:             tags=tags,
+    1:             display_num_errors=True,
+    1:             include_deployment_checks=include_deployment_checks,
+    1:             fail_level=getattr(checks, options["fail_level"]),
+    1:             databases=options["databases"],
+               )

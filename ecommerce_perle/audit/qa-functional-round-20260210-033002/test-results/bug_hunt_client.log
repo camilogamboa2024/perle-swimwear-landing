@@ -1,0 +1,24 @@
+Bad Request: /api/cart/items/
+Bad Request: /api/cart/items/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Not Found: /api/cart/items/999999/
+Not Found: /api/cart/items/999999/
+Not Found: /product/not-existing-product-slug/
+Bad Request: /checkout/api/checkout/confirm/
+20 objects imported automatically (use -v 2 for details).
+
+BUG_HUNT_START
+quantity_0_status 400
+quantity_neg_status 400
+invalid_email_status 400
+missing_fields_status 400
+patch_missing_status 404
+delete_missing_status 404
+fuzz_query_status 200
+product_404_status 404
+add_ok_status 201
+first_checkout_status 201
+second_checkout_status 400
+second_checkout_body {'error': 'El carrito está vacío'}
+BUG_HUNT_END

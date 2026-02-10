@@ -1,0 +1,180 @@
+    1: import contextlib
+    1: from collections.abc import Mapping, MutableMapping
+       
+    1: from django.utils.encoding import force_str
+       
+    1: from rest_framework.utils import json
+       
+       
+    2: class ReturnDict(dict):
+    1:     """
+           Return object from `serializer.data` for the `Serializer` class.
+           Includes a backlink to the serializer instance for renderers
+           to use if they need richer field information.
+           """
+       
+    1:     def __init__(self, *args, **kwargs):
+   14:         self.serializer = kwargs.pop('serializer')
+   14:         super().__init__(*args, **kwargs)
+       
+    1:     def copy(self):
+               return ReturnDict(self, serializer=self.serializer)
+       
+    1:     def __repr__(self):
+               return dict.__repr__(self)
+       
+    1:     def __reduce__(self):
+               # Pickling these objects will drop the .serializer backlink,
+               # but preserve the raw data.
+               return (dict, (dict(self),))
+       
+           # These are basically copied from OrderedDict, with `serializer` added.
+    1:     def __or__(self, other):
+               if not isinstance(other, dict):
+                   return NotImplemented
+               new = self.__class__(self, serializer=self.serializer)
+               new.update(other)
+               return new
+       
+    1:     def __ror__(self, other):
+               if not isinstance(other, dict):
+                   return NotImplemented
+               new = self.__class__(other, serializer=self.serializer)
+               new.update(self)
+               return new
+       
+       
+    2: class ReturnList(list):
+    1:     """
+           Return object from `serializer.data` for the `SerializerList` class.
+           Includes a backlink to the serializer instance for renderers
+           to use if they need richer field information.
+           """
+       
+    1:     def __init__(self, *args, **kwargs):
+   12:         self.serializer = kwargs.pop('serializer')
+   12:         super().__init__(*args, **kwargs)
+       
+    1:     def __repr__(self):
+               return list.__repr__(self)
+       
+    1:     def __reduce__(self):
+               # Pickling these objects will drop the .serializer backlink,
+               # but preserve the raw data.
+               return (list, (list(self),))
+       
+       
+    2: class BoundField:
+    1:     """
+           A field object that also includes `.value` and `.error` properties.
+           Returned when iterating over a serializer instance,
+           providing an API similar to Django forms and form fields.
+           """
+       
+    1:     def __init__(self, field, value, errors, prefix=''):
+               self._field = field
+               self._prefix = prefix
+               self.value = value
+               self.errors = errors
+               self.name = prefix + self.field_name
+       
+    1:     def __getattr__(self, attr_name):
+               return getattr(self._field, attr_name)
+       
+    2:     @property
+    2:     def _proxy_class(self):
+               return self._field.__class__
+       
+    1:     def __repr__(self):
+               return '<%s value=%s errors=%s>' % (
+                   self.__class__.__name__, self.value, self.errors
+               )
+       
+    1:     def as_form_field(self):
+               value = '' if (self.value is None or self.value is False) else self.value
+               return self.__class__(self._field, value, self.errors, self._prefix)
+       
+       
+    2: class JSONBoundField(BoundField):
+    1:     def as_form_field(self):
+               value = self.value
+               # When HTML form input is used and the input is not valid
+               # value will be a JSONString, rather than a JSON primitive.
+               if not getattr(value, 'is_json_string', False):
+                   with contextlib.suppress(TypeError, ValueError):
+                       value = json.dumps(
+                           self.value,
+                           sort_keys=True,
+                           indent=4,
+                           separators=(',', ': '),
+                       )
+               return self.__class__(self._field, value, self.errors, self._prefix)
+       
+       
+    2: class NestedBoundField(BoundField):
+    1:     """
+           This `BoundField` additionally implements __iter__ and __getitem__
+           in order to support nested bound fields. This class is the type of
+           `BoundField` that is used for serializer fields.
+           """
+       
+    1:     def __init__(self, field, value, errors, prefix=''):
+               if value is None or value == '' or not isinstance(value, Mapping):
+                   value = {}
+               super().__init__(field, value, errors, prefix)
+       
+    1:     def __iter__(self):
+               for field in self.fields.values():
+                   yield self[field.field_name]
+       
+    1:     def __getitem__(self, key):
+               field = self.fields[key]
+               value = self.value.get(key) if self.value else None
+               error = self.errors.get(key) if isinstance(self.errors, dict) else None
+               if hasattr(field, 'fields'):
+                   return NestedBoundField(field, value, error, prefix=self.name + '.')
+               elif getattr(field, '_is_jsonfield', False):
+                   return JSONBoundField(field, value, error, prefix=self.name + '.')
+               return BoundField(field, value, error, prefix=self.name + '.')
+       
+    1:     def as_form_field(self):
+               values = {}
+               for key, value in self.value.items():
+                   if isinstance(value, (list, dict)):
+                       values[key] = value
+                   else:
+                       values[key] = '' if (value is None or value is False) else force_str(value)
+               return self.__class__(self._field, values, self.errors, self._prefix)
+       
+       
+    2: class BindingDict(MutableMapping):
+    1:     """
+           This dict-like object is used to store fields on a serializer.
+       
+           This ensures that whenever fields are added to the serializer we call
+           `field.bind()` so that the `field_name` and `parent` attributes
+           can be set correctly.
+           """
+       
+    1:     def __init__(self, serializer):
+   59:         self.serializer = serializer
+   59:         self.fields = {}
+       
+    1:     def __setitem__(self, key, field):
+  338:         self.fields[key] = field
+  338:         field.bind(field_name=key, parent=self.serializer)
+       
+    1:     def __getitem__(self, key):
+  396:         return self.fields[key]
+       
+    1:     def __delitem__(self, key):
+               del self.fields[key]
+       
+    1:     def __iter__(self):
+   74:         return iter(self.fields)
+       
+    1:     def __len__(self):
+               return len(self.fields)
+       
+    1:     def __repr__(self):
+               return dict.__repr__(self.fields)

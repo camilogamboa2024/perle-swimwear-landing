@@ -1,0 +1,21 @@
+    1: from django.db import migrations, models
+    1: from django.utils import timezone
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("admin", "0001_initial"),
+           ]
+       
+           # No database changes; removes auto_add and adds default/editable.
+    1:     operations = [
+    2:         migrations.AlterField(
+    1:             model_name="logentry",
+    1:             name="action_time",
+    2:             field=models.DateTimeField(
+    1:                 verbose_name="action time",
+    1:                 default=timezone.now,
+    1:                 editable=False,
+                   ),
+               ),
+           ]

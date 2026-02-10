@@ -1,0 +1,31 @@
+    1: from django.apps import AppConfig
+    1: from django.core import checks
+    1: from django.db.models.query_utils import DeferredAttribute
+    1: from django.db.models.signals import post_migrate
+    1: from django.utils.translation import gettext_lazy as _
+       
+    1: from . import get_user_model
+    1: from .checks import check_middleware, check_models_permissions, check_user_model
+    1: from .management import create_permissions
+    1: from .signals import user_logged_in
+       
+       
+    2: class AuthConfig(AppConfig):
+    1:     default_auto_field = "django.db.models.AutoField"
+    1:     name = "django.contrib.auth"
+    1:     verbose_name = _("Authentication and Authorization")
+       
+    1:     def ready(self):
+    2:         post_migrate.connect(
+    1:             create_permissions,
+    1:             dispatch_uid="django.contrib.auth.management.create_permissions",
+               )
+    1:         last_login_field = getattr(get_user_model(), "last_login", None)
+               # Register the handler only if UserModel.last_login is a field.
+    1:         if isinstance(last_login_field, DeferredAttribute):
+    1:             from .models import update_last_login
+       
+    1:             user_logged_in.connect(update_last_login, dispatch_uid="update_last_login")
+    1:         checks.register(check_user_model, checks.Tags.models)
+    1:         checks.register(check_models_permissions, checks.Tags.models)
+    1:         checks.register(check_middleware)

@@ -1,0 +1,25 @@
+    1: from django.core.exceptions import SuspiciousOperation
+       
+       
+    2: class DisallowedModelAdminLookup(SuspiciousOperation):
+    1:     """Invalid filter was passed to admin view via URL querystring"""
+       
+    1:     pass
+       
+       
+    2: class DisallowedModelAdminToField(SuspiciousOperation):
+    1:     """Invalid to_field was passed to admin view via URL query string"""
+       
+    1:     pass
+       
+       
+    2: class AlreadyRegistered(Exception):
+    1:     """The model is already registered."""
+       
+    1:     pass
+       
+       
+    2: class NotRegistered(Exception):
+    1:     """The model is not registered."""
+       
+    1:     pass

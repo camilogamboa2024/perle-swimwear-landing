@@ -1,0 +1,272 @@
+    1: """
+       Settings and configuration for Django.
+       
+       Read values from the module specified by the DJANGO_SETTINGS_MODULE environment
+       variable, and then from django.conf.global_settings; see the global_settings.py
+       for a list of all possible variables.
+       """
+       
+    1: import importlib
+    1: import os
+    1: import time
+    1: import traceback
+    1: import warnings
+    1: from pathlib import Path
+       
+    1: import django
+    1: from django.conf import global_settings
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.utils.deprecation import RemovedInDjango60Warning
+    1: from django.utils.functional import LazyObject, empty
+       
+    1: ENVIRONMENT_VARIABLE = "DJANGO_SETTINGS_MODULE"
+    1: DEFAULT_STORAGE_ALIAS = "default"
+    1: STATICFILES_STORAGE_ALIAS = "staticfiles"
+       
+       # RemovedInDjango60Warning.
+    1: FORMS_URLFIELD_ASSUME_HTTPS_DEPRECATED_MSG = (
+    1:     "The FORMS_URLFIELD_ASSUME_HTTPS transitional setting is deprecated."
+       )
+       
+       
+    2: class SettingsReference(str):
+    1:     """
+           String subclass which references a current settings value. It's treated as
+           the value in memory but serializes to a settings.NAME attribute reference.
+           """
+       
+    1:     def __new__(self, value, setting_name):
+   34:         return str.__new__(self, value)
+       
+    1:     def __init__(self, value, setting_name):
+   34:         self.setting_name = setting_name
+       
+       
+    2: class LazySettings(LazyObject):
+    1:     """
+           A lazy proxy for either global Django settings or a custom settings object.
+           The user can manually configure settings prior to using them. Otherwise,
+           Django uses the settings module pointed to by DJANGO_SETTINGS_MODULE.
+           """
+       
+    1:     def _setup(self, name=None):
+               """
+               Load the settings module pointed to by the environment variable. This
+               is used the first time settings are needed, if the user hasn't
+               configured settings manually.
+               """
+    1:         settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
+    1:         if not settings_module:
+                   desc = ("setting %s" % name) if name else "settings"
+                   raise ImproperlyConfigured(
+                       "Requested %s, but settings are not configured. "
+                       "You must either define the environment variable %s "
+                       "or call settings.configure() before accessing settings."
+                       % (desc, ENVIRONMENT_VARIABLE)
+                   )
+       
+    1:         self._wrapped = Settings(settings_module)
+       
+    1:     def __repr__(self):
+               # Hardcode the class name as otherwise it yields 'Settings'.
+               if self._wrapped is empty:
+                   return "<LazySettings [Unevaluated]>"
+               return '<LazySettings "%(settings_module)s">' % {
+                   "settings_module": self._wrapped.SETTINGS_MODULE,
+               }
+       
+    1:     def __getattr__(self, name):
+               """Return the value of a setting and cache it in self.__dict__."""
+  415:         if (_wrapped := self._wrapped) is empty:
+    1:             self._setup(name)
+    1:             _wrapped = self._wrapped
+  415:         val = getattr(_wrapped, name)
+       
+               # Special case some settings which require further modification.
+               # This is done here for performance reasons so the modified value is cached.
+  217:         if name in {"MEDIA_URL", "STATIC_URL"} and val is not None:
+    5:             val = self._add_script_prefix(val)
+  212:         elif name == "SECRET_KEY" and not val:
+                   raise ImproperlyConfigured("The SECRET_KEY setting must not be empty.")
+       
+  217:         self.__dict__[name] = val
+  217:         return val
+       
+    1:     def __setattr__(self, name, value):
+               """
+               Set the value of setting. Clear all cached values if _wrapped changes
+               (@override_settings does this) or clear single values when set.
+               """
+   12:         if name == "_wrapped":
+    6:             self.__dict__.clear()
+               else:
+    6:             self.__dict__.pop(name, None)
+   12:         super().__setattr__(name, value)
+       
+    1:     def __delattr__(self, name):
+               """Delete a setting and clear it from cache if needed."""
+               super().__delattr__(name)
+               self.__dict__.pop(name, None)
+       
+    1:     def configure(self, default_settings=global_settings, **options):
+               """
+               Called to manually configure the settings. The 'default_settings'
+               parameter sets where to retrieve any unspecified values from (its
+               argument must support attribute access (__getattr__)).
+               """
+               if self._wrapped is not empty:
+                   raise RuntimeError("Settings already configured.")
+               holder = UserSettingsHolder(default_settings)
+               for name, value in options.items():
+                   if not name.isupper():
+                       raise TypeError("Setting %r must be uppercase." % name)
+                   setattr(holder, name, value)
+               self._wrapped = holder
+       
+    2:     @staticmethod
+    2:     def _add_script_prefix(value):
+               """
+               Add SCRIPT_NAME prefix to relative paths.
+       
+               Useful when the app is being served at a subpath and manually prefixing
+               subpath to STATIC_URL and MEDIA_URL in settings is inconvenient.
+               """
+               # Don't apply prefix to absolute paths and URLs.
+    5:         if value.startswith(("http://", "https://", "/")):
+    4:             return value
+    1:         from django.urls import get_script_prefix
+       
+    1:         return "%s%s" % (get_script_prefix(), value)
+       
+    2:     @property
+    2:     def configured(self):
+               """Return True if the settings have already been configured."""
+  262:         return self._wrapped is not empty
+       
+    1:     def _show_deprecation_warning(self, message, category):
+               stack = traceback.extract_stack()
+               # Show a warning if the setting is used outside of Django.
+               # Stack index: -1 this line, -2 the property, -3 the
+               # LazyObject __getattribute__(), -4 the caller.
+               filename, _, _, _ = stack[-4]
+               if not filename.startswith(os.path.dirname(django.__file__)):
+                   warnings.warn(message, category, stacklevel=2)
+       
+       
+    2: class Settings:
+    1:     def __init__(self, settings_module):
+               # update this dict from global settings (but only for ALL_CAPS settings)
+  155:         for setting in dir(global_settings):
+  154:             if setting.isupper():
+  145:                 setattr(self, setting, getattr(global_settings, setting))
+       
+               # store the settings module in case someone later cares
+    1:         self.SETTINGS_MODULE = settings_module
+       
+    1:         mod = importlib.import_module(self.SETTINGS_MODULE)
+       
+    1:         tuple_settings = (
+                   "ALLOWED_HOSTS",
+                   "INSTALLED_APPS",
+                   "TEMPLATE_DIRS",
+                   "LOCALE_PATHS",
+                   "SECRET_KEY_FALLBACKS",
+               )
+    1:         self._explicit_settings = set()
+   52:         for setting in dir(mod):
+   51:             if setting.isupper():
+   38:                 setting_value = getattr(mod, setting)
+       
+   40:                 if setting in tuple_settings and not isinstance(
+    2:                     setting_value, (list, tuple)
+                       ):
+                           raise ImproperlyConfigured(
+                               "The %s setting must be a list or a tuple." % setting
+                           )
+   38:                 setattr(self, setting, setting_value)
+   38:                 self._explicit_settings.add(setting)
+       
+    1:         if self.is_overridden("FORMS_URLFIELD_ASSUME_HTTPS"):
+                   warnings.warn(
+                       FORMS_URLFIELD_ASSUME_HTTPS_DEPRECATED_MSG,
+                       RemovedInDjango60Warning,
+                   )
+       
+    1:         if hasattr(time, "tzset") and self.TIME_ZONE:
+                   # When we can, attempt to validate the timezone. If we can't find
+                   # this file, no check happens and it's harmless.
+    1:             zoneinfo_root = Path("/usr/share/zoneinfo")
+    1:             zone_info_file = zoneinfo_root.joinpath(*self.TIME_ZONE.split("/"))
+    1:             if zoneinfo_root.exists() and not zone_info_file.exists():
+                       raise ValueError("Incorrect timezone setting: %s" % self.TIME_ZONE)
+                   # Move the time zone info into os.environ. See ticket #2315 for why
+                   # we don't do this unconditionally (breaks Windows).
+    1:             os.environ["TZ"] = self.TIME_ZONE
+    1:             time.tzset()
+       
+    1:     def is_overridden(self, setting):
+   20:         return setting in self._explicit_settings
+       
+    1:     def __repr__(self):
+               return '<%(cls)s "%(settings_module)s">' % {
+                   "cls": self.__class__.__name__,
+                   "settings_module": self.SETTINGS_MODULE,
+               }
+       
+       
+    2: class UserSettingsHolder:
+    1:     """Holder for user configured settings."""
+       
+           # SETTINGS_MODULE doesn't make much sense in the manually configured
+           # (standalone) case.
+    1:     SETTINGS_MODULE = None
+       
+    1:     def __init__(self, default_settings):
+               """
+               Requests for configuration variables not in this class are satisfied
+               from the module specified in default_settings (if possible).
+               """
+    2:         self.__dict__["_deleted"] = set()
+    2:         self.default_settings = default_settings
+       
+    1:     def __getattr__(self, name):
+  102:         if not name.isupper() or name in self._deleted:
+                   raise AttributeError
+  102:         return getattr(self.default_settings, name)
+       
+    1:     def __setattr__(self, name, value):
+    4:         self._deleted.discard(name)
+    4:         if name == "FORMS_URLFIELD_ASSUME_HTTPS":
+                   warnings.warn(
+                       FORMS_URLFIELD_ASSUME_HTTPS_DEPRECATED_MSG,
+                       RemovedInDjango60Warning,
+                   )
+    4:         super().__setattr__(name, value)
+       
+    1:     def __delattr__(self, name):
+               self._deleted.add(name)
+               if hasattr(self, name):
+                   super().__delattr__(name)
+       
+    1:     def __dir__(self):
+               return sorted(
+                   s
+                   for s in [*self.__dict__, *dir(self.default_settings)]
+                   if s not in self._deleted
+               )
+       
+    1:     def is_overridden(self, setting):
+               deleted = setting in self._deleted
+               set_locally = setting in self.__dict__
+               set_on_default = getattr(
+                   self.default_settings, "is_overridden", lambda s: False
+               )(setting)
+               return deleted or set_locally or set_on_default
+       
+    1:     def __repr__(self):
+               return "<%(cls)s>" % {
+                   "cls": self.__class__.__name__,
+               }
+       
+       
+    1: settings = LazySettings()

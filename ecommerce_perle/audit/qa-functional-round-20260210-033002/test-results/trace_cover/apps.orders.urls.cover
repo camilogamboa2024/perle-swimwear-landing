@@ -1,0 +1,11 @@
+    1: from django.urls import path
+    1: from .views import CartApiView, CartClearApiView, CartItemDetailApiView, CartItemsApiView, cart_page, order_confirmation
+       
+    1: urlpatterns = [
+    1:     path('cart/', cart_page, name='cart-page'),
+    1:     path('orders/confirmation/<uuid:public_id>/', order_confirmation, name='order-confirmation'),
+    1:     path('api/cart/', CartApiView.as_view(), name='api-cart'),
+    1:     path('api/cart/items/', CartItemsApiView.as_view(), name='api-cart-items'),
+    1:     path('api/cart/items/<int:item_id>/', CartItemDetailApiView.as_view(), name='api-cart-item-detail'),
+    1:     path('api/cart/clear/', CartClearApiView.as_view(), name='api-cart-clear'),
+       ]

@@ -1,0 +1,30 @@
+    1: from urllib.parse import quote_plus
+       
+       
+    1: def build_whatsapp_message(order):
+    4:     lines = [
+    4:         'Hola Perle Swimwear ✨',
+    4:         f'Quiero confirmar mi pedido #{order.id}',
+    4:         '',
+    4:         'Items:'
+           ]
+    8:     for item in order.items.select_related('variant__product').all():
+    8:         lines.append(
+    4:             f"- {item.variant.product.name} | Talla {item.variant.size} | Color {item.variant.color} | x{item.quantity} | ${item.line_total:,} COP"
+               )
+    8:     lines += [
+    4:         '',
+    4:         f'Subtotal: ${order.subtotal:,} COP',
+    4:         f'Descuento: ${order.discount_total:,} COP',
+    4:         f'Total: ${order.grand_total:,} COP',
+    4:         '',
+    4:         f'Entrega: {order.address.line1}, {order.address.city}, {order.address.state}',
+    4:         f'Contacto: {order.customer.phone or order.customer.email}',
+    4:         '',
+    4:         'Gracias 💖',
+           ]
+    4:     return '\n'.join(lines)
+       
+       
+    1: def build_whatsapp_url(message, phone_number):
+           return f'https://wa.me/{phone_number}?text={quote_plus(message)}'

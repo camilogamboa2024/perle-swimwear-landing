@@ -1,0 +1,286 @@
+    1: import logging
+       
+    1: from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+       
+    1: from django.core.exceptions import ImproperlyConfigured
+    1: from django.http import (
+           HttpResponse,
+           HttpResponseGone,
+           HttpResponseNotAllowed,
+           HttpResponsePermanentRedirect,
+           HttpResponseRedirect,
+       )
+    1: from django.template.response import TemplateResponse
+    1: from django.urls import reverse
+    1: from django.utils.decorators import classonlymethod
+    1: from django.utils.functional import classproperty
+    1: from django.utils.log import log_response
+       
+    1: logger = logging.getLogger("django.request")
+       
+       
+    2: class ContextMixin:
+    1:     """
+           A default context mixin that passes the keyword arguments received by
+           get_context_data() as the template context.
+           """
+       
+    1:     extra_context = None
+       
+    1:     def get_context_data(self, **kwargs):
+               kwargs.setdefault("view", self)
+               if self.extra_context is not None:
+                   kwargs.update(self.extra_context)
+               return kwargs
+       
+       
+    2: class View:
+    1:     """
+           Intentionally simple parent class for all views. Only implements
+           dispatch-by-method and simple sanity checking.
+           """
+       
+    1:     http_method_names = [
+               "get",
+               "post",
+               "put",
+               "patch",
+               "delete",
+               "head",
+               "options",
+               "trace",
+           ]
+       
+    1:     def __init__(self, **kwargs):
+               """
+               Constructor. Called in the URLconf; can contain helpful extra
+               keyword arguments, and other things.
+               """
+               # Go through keyword arguments, and either save their values to our
+               # instance, or raise an error.
+   23:         for key, value in kwargs.items():
+                   setattr(self, key, value)
+       
+    2:     @classproperty
+    2:     def view_is_async(cls):
+  286:         handlers = [
+  107:             getattr(cls, method)
+  234:             for method in cls.http_method_names
+  341:             if (method != "options" and hasattr(cls, method))
+               ]
+   26:         if not handlers:
+                   return False
+   26:         is_async = iscoroutinefunction(handlers[0])
+  133:         if not all(iscoroutinefunction(h) == is_async for h in handlers[1:]):
+                   raise ImproperlyConfigured(
+                       f"{cls.__qualname__} HTTP handlers must either be all sync or all "
+                       "async."
+                   )
+   26:         return is_async
+       
+    2:     @classonlymethod
+    2:     def as_view(cls, **initkwargs):
+               """Main entry point for a request-response process."""
+   45:         for key in initkwargs:
+   19:             if key in cls.http_method_names:
+                       raise TypeError(
+                           "The method name %s is not accepted as a keyword argument "
+                           "to %s()." % (key, cls.__name__)
+                       )
+   19:             if not hasattr(cls, key):
+                       raise TypeError(
+                           "%s() received an invalid keyword %r. as_view "
+                           "only accepts arguments that are already "
+                           "attributes of the class." % (cls.__name__, key)
+                       )
+       
+   26:         def view(request, *args, **kwargs):
+   23:             self = cls(**initkwargs)
+   23:             self.setup(request, *args, **kwargs)
+   23:             if not hasattr(self, "request"):
+                       raise AttributeError(
+                           "%s instance has no 'request' attribute. Did you override "
+                           "setup() and forget to call super()?" % cls.__name__
+                       )
+   23:             return self.dispatch(request, *args, **kwargs)
+       
+   26:         view.view_class = cls
+   26:         view.view_initkwargs = initkwargs
+       
+               # __name__ and __qualname__ are intentionally left unchanged as
+               # view_class should be used to robustly determine the name of the view
+               # instead.
+   26:         view.__doc__ = cls.__doc__
+   26:         view.__module__ = cls.__module__
+   26:         view.__annotations__ = cls.dispatch.__annotations__
+               # Copy possible attributes set by decorators, e.g. @csrf_exempt, from
+               # the dispatch method.
+   26:         view.__dict__.update(cls.dispatch.__dict__)
+       
+               # Mark the callback if the view class is async.
+   26:         if cls.view_is_async:
+                   markcoroutinefunction(view)
+       
+   26:         return view
+       
+    1:     def setup(self, request, *args, **kwargs):
+               """Initialize attributes shared by all view methods."""
+   23:         if hasattr(self, "get") and not hasattr(self, "head"):
+    3:             self.head = self.get
+   23:         self.request = request
+   23:         self.args = args
+   23:         self.kwargs = kwargs
+       
+    1:     def dispatch(self, request, *args, **kwargs):
+               # Try to dispatch to the right method; if a method doesn't exist,
+               # defer to the error handler. Also defer to the error handler if the
+               # request method isn't on the approved list.
+               if request.method.lower() in self.http_method_names:
+                   handler = getattr(
+                       self, request.method.lower(), self.http_method_not_allowed
+                   )
+               else:
+                   handler = self.http_method_not_allowed
+               return handler(request, *args, **kwargs)
+       
+    1:     def http_method_not_allowed(self, request, *args, **kwargs):
+               response = HttpResponseNotAllowed(self._allowed_methods())
+               log_response(
+                   "Method Not Allowed (%s): %s",
+                   request.method,
+                   request.path,
+                   response=response,
+                   request=request,
+               )
+       
+               if self.view_is_async:
+       
+                   async def func():
+                       return response
+       
+                   return func()
+               else:
+                   return response
+       
+    1:     def options(self, request, *args, **kwargs):
+               """Handle responding to requests for the OPTIONS HTTP verb."""
+               response = HttpResponse()
+               response.headers["Allow"] = ", ".join(self._allowed_methods())
+               response.headers["Content-Length"] = "0"
+       
+               if self.view_is_async:
+       
+                   async def func():
+                       return response
+       
+                   return func()
+               else:
+                   return response
+       
+    1:     def _allowed_methods(self):
+  230:         return [m.upper() for m in self.http_method_names if hasattr(self, m)]
+       
+       
+    2: class TemplateResponseMixin:
+    1:     """A mixin that can be used to render a template."""
+       
+    1:     template_name = None
+    1:     template_engine = None
+    1:     response_class = TemplateResponse
+    1:     content_type = None
+       
+    1:     def render_to_response(self, context, **response_kwargs):
+               """
+               Return a response, using the `response_class` for this view, with a
+               template rendered with the given context.
+       
+               Pass response_kwargs to the constructor of the response class.
+               """
+               response_kwargs.setdefault("content_type", self.content_type)
+               return self.response_class(
+                   request=self.request,
+                   template=self.get_template_names(),
+                   context=context,
+                   using=self.template_engine,
+                   **response_kwargs,
+               )
+       
+    1:     def get_template_names(self):
+               """
+               Return a list of template names to be used for the request. Must return
+               a list. May not be called if render_to_response() is overridden.
+               """
+               if self.template_name is None:
+                   raise ImproperlyConfigured(
+                       "TemplateResponseMixin requires either a definition of "
+                       "'template_name' or an implementation of 'get_template_names()'"
+                   )
+               else:
+                   return [self.template_name]
+       
+       
+    2: class TemplateView(TemplateResponseMixin, ContextMixin, View):
+    1:     """
+           Render a template. Pass keyword arguments from the URLconf to the context.
+           """
+       
+    1:     def get(self, request, *args, **kwargs):
+               context = self.get_context_data(**kwargs)
+               return self.render_to_response(context)
+       
+       
+    2: class RedirectView(View):
+    1:     """Provide a redirect on any GET request."""
+       
+    1:     permanent = False
+    1:     url = None
+    1:     pattern_name = None
+    1:     query_string = False
+       
+    1:     def get_redirect_url(self, *args, **kwargs):
+               """
+               Return the URL redirect to. Keyword arguments from the URL pattern
+               match generating the redirect request are provided as kwargs to this
+               method.
+               """
+               if self.url:
+                   url = self.url % kwargs
+               elif self.pattern_name:
+                   url = reverse(self.pattern_name, args=args, kwargs=kwargs)
+               else:
+                   return None
+       
+               args = self.request.META.get("QUERY_STRING", "")
+               if args and self.query_string:
+                   url = "%s?%s" % (url, args)
+               return url
+       
+    1:     def get(self, request, *args, **kwargs):
+               url = self.get_redirect_url(*args, **kwargs)
+               if url:
+                   if self.permanent:
+                       return HttpResponsePermanentRedirect(url)
+                   else:
+                       return HttpResponseRedirect(url)
+               else:
+                   response = HttpResponseGone()
+                   log_response("Gone: %s", request.path, response=response, request=request)
+                   return response
+       
+    1:     def head(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)
+       
+    1:     def post(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)
+       
+    1:     def options(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)
+       
+    1:     def delete(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)
+       
+    1:     def put(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)
+       
+    1:     def patch(self, request, *args, **kwargs):
+               return self.get(request, *args, **kwargs)

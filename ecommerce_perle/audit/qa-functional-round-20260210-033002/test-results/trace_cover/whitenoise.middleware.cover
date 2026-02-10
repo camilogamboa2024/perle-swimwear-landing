@@ -1,0 +1,199 @@
+    1: from __future__ import annotations
+       
+    1: import os
+    1: from posixpath import basename
+    1: from urllib.parse import urlparse
+       
+    1: from django.conf import settings
+    1: from django.contrib.staticfiles import finders
+    1: from django.contrib.staticfiles.storage import staticfiles_storage
+    1: from django.http import FileResponse
+       
+    1: from whitenoise.base import WhiteNoise
+    1: from whitenoise.string_utils import ensure_leading_trailing_slash
+       
+    1: __all__ = ["WhiteNoiseMiddleware"]
+       
+       
+    2: class WhiteNoiseFileResponse(FileResponse):
+    1:     """
+           Wrap Django's FileResponse to prevent setting any default headers. For the
+           most part these just duplicate work already done by WhiteNoise but in some
+           cases (e.g. the content-disposition header introduced in Django 3.0) they
+           are actively harmful.
+           """
+       
+    1:     def set_headers(self, *args, **kwargs):
+               pass
+       
+       
+    2: class WhiteNoiseMiddleware(WhiteNoise):
+    1:     """
+           Wrap WhiteNoise to allow it to function as Django middleware, rather
+           than WSGI middleware.
+           """
+       
+    1:     def __init__(self, get_response=None, settings=settings):
+   18:         self.get_response = get_response
+       
+   18:         try:
+   18:             autorefresh: bool = settings.WHITENOISE_AUTOREFRESH
+   18:         except AttributeError:
+   18:             autorefresh = settings.DEBUG
+   18:         try:
+   18:             max_age = settings.WHITENOISE_MAX_AGE
+   18:         except AttributeError:
+   18:             if settings.DEBUG:
+                       max_age = 0
+                   else:
+   18:                 max_age = 60
+   18:         try:
+   18:             allow_all_origins = settings.WHITENOISE_ALLOW_ALL_ORIGINS
+   18:         except AttributeError:
+   18:             allow_all_origins = True
+   18:         try:
+   18:             charset = settings.WHITENOISE_CHARSET
+   18:         except AttributeError:
+   18:             charset = "utf-8"
+   18:         try:
+   18:             mimetypes = settings.WHITENOISE_MIMETYPES
+   18:         except AttributeError:
+   18:             mimetypes = None
+   18:         try:
+   18:             add_headers_function = settings.WHITENOISE_ADD_HEADERS_FUNCTION
+   18:         except AttributeError:
+   18:             add_headers_function = None
+   18:         try:
+   18:             index_file = settings.WHITENOISE_INDEX_FILE
+   18:         except AttributeError:
+   18:             index_file = None
+   18:         try:
+   18:             immutable_file_test = settings.WHITENOISE_IMMUTABLE_FILE_TEST
+   18:         except AttributeError:
+   18:             immutable_file_test = None
+       
+   36:         super().__init__(
+   18:             application=None,
+   18:             autorefresh=autorefresh,
+   18:             max_age=max_age,
+   18:             allow_all_origins=allow_all_origins,
+   18:             charset=charset,
+   18:             mimetypes=mimetypes,
+   18:             add_headers_function=add_headers_function,
+   18:             index_file=index_file,
+   18:             immutable_file_test=immutable_file_test,
+               )
+       
+   18:         try:
+   18:             self.use_finders = settings.WHITENOISE_USE_FINDERS
+   18:         except AttributeError:
+   18:             self.use_finders = settings.DEBUG
+       
+   18:         try:
+   18:             self.static_prefix = settings.WHITENOISE_STATIC_PREFIX
+   18:         except AttributeError:
+   18:             self.static_prefix = urlparse(settings.STATIC_URL or "").path
+   18:             if settings.FORCE_SCRIPT_NAME:
+                       script_name = settings.FORCE_SCRIPT_NAME.rstrip("/")
+                       if self.static_prefix.startswith(script_name):
+                           self.static_prefix = self.static_prefix[len(script_name) :]
+   18:         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
+       
+   18:         self.static_root = settings.STATIC_ROOT
+   18:         if self.static_root:
+   18:             self.add_files(self.static_root, prefix=self.static_prefix)
+       
+   18:         try:
+   18:             root = settings.WHITENOISE_ROOT
+   18:         except AttributeError:
+   18:             root = None
+   18:         if root:
+                   self.add_files(root)
+       
+   18:         if self.use_finders and not self.autorefresh:
+                   self.add_files_from_finders()
+       
+    1:     def __call__(self, request):
+   43:         if self.autorefresh:
+                   static_file = self.find_file(request.path_info)
+               else:
+   43:             static_file = self.files.get(request.path_info)
+   43:         if static_file is not None:
+                   return self.serve(static_file, request)
+   43:         return self.get_response(request)
+       
+    2:     @staticmethod
+    2:     def serve(static_file, request):
+               response = static_file.get_response(request.method, request.META)
+               status = int(response.status)
+               http_response = WhiteNoiseFileResponse(response.file or (), status=status)
+               # Remove default content-type
+               del http_response["content-type"]
+               for key, value in response.headers:
+                   http_response[key] = value
+               return http_response
+       
+    1:     def add_files_from_finders(self):
+               files = {}
+               for finder in finders.get_finders():
+                   for path, storage in finder.list(None):
+                       prefix = (getattr(storage, "prefix", None) or "").strip("/")
+                       url = "".join(
+                           (
+                               self.static_prefix,
+                               prefix,
+                               "/" if prefix else "",
+                               path.replace("\\", "/"),
+                           )
+                       )
+                       # Use setdefault as only first matching file should be used
+                       files.setdefault(url, storage.path(path))
+               stat_cache = {path: os.stat(path) for path in files.values()}
+               for url, path in files.items():
+                   self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+       
+    1:     def candidate_paths_for_url(self, url):
+               if self.use_finders and url.startswith(self.static_prefix):
+                   path = finders.find(url[len(self.static_prefix) :])
+                   if path:
+                       yield path
+               paths = super().candidate_paths_for_url(url)
+               for path in paths:
+                   yield path
+       
+    1:     def immutable_file_test(self, path, url):
+               """
+               Determine whether given URL represents an immutable file (i.e. a
+               file with a hash of its contents as part of its name) which can
+               therefore be cached forever
+               """
+               if not url.startswith(self.static_prefix):
+                   return False
+               name = url[len(self.static_prefix) :]
+               name_without_hash = self.get_name_without_hash(name)
+               if name == name_without_hash:
+                   return False
+               static_url = self.get_static_url(name_without_hash)
+               # If the static_url function maps the name without hash
+               # back to the original name, then we know we've got a
+               # versioned filename
+               return bool(static_url and basename(static_url) == basename(url))
+       
+    1:     def get_name_without_hash(self, filename):
+               """
+               Removes the version hash from a filename e.g, transforms
+               'css/application.f3ea4bcc2.css' into 'css/application.css'
+       
+               Note: this is specific to the naming scheme used by Django's
+               CachedStaticFilesStorage. You may have to override this if
+               you are using a different static files versioning system
+               """
+               name_with_hash, ext = os.path.splitext(filename)
+               name = os.path.splitext(name_with_hash)[0]
+               return name + ext
+       
+    1:     def get_static_url(self, name):
+               try:
+                   return staticfiles_storage.url(name)
+               except ValueError:
+                   return None

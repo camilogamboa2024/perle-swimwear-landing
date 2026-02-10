@@ -1,0 +1,81 @@
+    1: from django.conf import settings
+    1: from django.db import transaction
+    1: from django.shortcuts import redirect, render
+    1: from django.urls import reverse
+    1: from django.views.decorators.csrf import ensure_csrf_cookie
+    1: from rest_framework import status
+    1: from rest_framework.response import Response
+    1: from rest_framework.throttling import ScopedRateThrottle
+    1: from rest_framework.views import APIView
+       
+    1: from apps.customers.models import Address, Customer
+    1: from apps.orders.models import Coupon
+    1: from apps.orders.views import _get_or_create_cart
+    1: from core.authentication import EnforcedCsrfSessionAuthentication
+    1: from .serializers import CheckoutConfirmSerializer
+    1: from .services import CheckoutError, create_order_from_cart
+    1: from .whatsapp import build_whatsapp_url
+       
+       
+    2: @ensure_csrf_cookie
+    2: def checkout_page(request):
+    5:     return render(request, 'checkout/checkout.html')
+       
+       
+    2: class CheckoutConfirmApiView(APIView):
+    1:     authentication_classes = [EnforcedCsrfSessionAuthentication]
+    1:     throttle_classes = [ScopedRateThrottle]
+    1:     throttle_scope = 'checkout'
+       
+    1:     def post(self, request):
+    5:         serializer = CheckoutConfirmSerializer(data=request.data)
+    5:         serializer.is_valid(raise_exception=True)
+    5:         data = serializer.validated_data
+       
+    5:         cart = _get_or_create_cart(request)
+    5:         coupon = None
+    5:         if data.get('coupon_code'):
+                   coupon = Coupon.objects.filter(code=data['coupon_code'], is_active=True).first()
+       
+    5:         try:
+   10:             with transaction.atomic():
+   10:                 customer, _ = Customer.objects.get_or_create(
+    5:                     email=data['email'],
+    5:                     defaults={'full_name': data['full_name'], 'phone': data.get('phone', '')},
+                       )
+    5:                 customer.full_name = data['full_name']
+    5:                 customer.phone = data.get('phone', '')
+    5:                 customer.save(update_fields=['full_name', 'phone'])
+   10:                 address = Address.objects.create(
+    5:                     customer=customer,
+    5:                     line1=data['line1'],
+    5:                     city=data['city'],
+    5:                     state=data['state'],
+    5:                     country='Colombia',
+    5:                     label='Checkout',
+                       )
+   10:                 order = create_order_from_cart(
+    5:                     customer=customer,
+    5:                     address=address,
+    5:                     cart=cart,
+    5:                     coupon=coupon,
+    5:                     payment_method=data['payment_method'],
+    5:                     session_key=request.session.session_key or '',
+                       )
+    4:         except CheckoutError as exc:
+    4:             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+       
+    1:         whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
+    2:         return Response(
+    1:             {
+    1:                 'order_id': order.id,
+    1:                 'order_public_id': str(order.public_id),
+    1:                 'whatsapp_url': whatsapp_url,
+    1:                 'confirmation_url': reverse('order-confirmation', kwargs={'public_id': order.public_id}),
+                   },
+    1:             status=status.HTTP_201_CREATED,
+               )
+       
+       
+    1: def whatsapp_checkout(request):
+           return redirect('/')

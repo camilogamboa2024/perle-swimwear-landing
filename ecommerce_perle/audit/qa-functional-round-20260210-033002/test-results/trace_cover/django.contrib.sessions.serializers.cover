@@ -1,0 +1,3 @@
+    1: from django.core.signing import JSONSerializer as BaseJSONSerializer
+       
+    1: JSONSerializer = BaseJSONSerializer

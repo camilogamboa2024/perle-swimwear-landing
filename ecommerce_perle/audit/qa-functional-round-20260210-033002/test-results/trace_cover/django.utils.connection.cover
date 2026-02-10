@@ -1,0 +1,85 @@
+    1: from asgiref.local import Local
+       
+    1: from django.conf import settings as django_settings
+    1: from django.utils.functional import cached_property
+       
+       
+    2: class ConnectionProxy:
+    1:     """Proxy for accessing a connection object's attributes."""
+       
+    1:     def __init__(self, connections, alias):
+    2:         self.__dict__["_connections"] = connections
+    2:         self.__dict__["_alias"] = alias
+       
+    1:     def __getattr__(self, item):
+  318:         return getattr(self._connections[self._alias], item)
+       
+    1:     def __setattr__(self, name, value):
+               return setattr(self._connections[self._alias], name, value)
+       
+    1:     def __delattr__(self, name):
+               return delattr(self._connections[self._alias], name)
+       
+    1:     def __contains__(self, key):
+               return key in self._connections[self._alias]
+       
+    1:     def __eq__(self, other):
+               return self._connections[self._alias] == other
+       
+       
+    2: class ConnectionDoesNotExist(Exception):
+    1:     pass
+       
+       
+    2: class BaseConnectionHandler:
+    1:     settings_name = None
+    1:     exception_class = ConnectionDoesNotExist
+    1:     thread_critical = False
+       
+    1:     def __init__(self, settings=None):
+    2:         self._settings = settings
+    2:         self._connections = Local(self.thread_critical)
+       
+    2:     @cached_property
+    2:     def settings(self):
+    2:         self._settings = self.configure_settings(self._settings)
+    2:         return self._settings
+       
+    1:     def configure_settings(self, settings):
+    2:         if settings is None:
+    2:             settings = getattr(django_settings, self.settings_name)
+    2:         return settings
+       
+    1:     def create_connection(self, alias):
+               raise NotImplementedError("Subclasses must implement create_connection().")
+       
+    1:     def __getitem__(self, alias):
+ 2065:         try:
+ 2065:             return getattr(self._connections, alias)
+    2:         except AttributeError:
+    2:             if alias not in self.settings:
+                       raise self.exception_class(f"The connection '{alias}' doesn't exist.")
+    2:         conn = self.create_connection(alias)
+    2:         setattr(self._connections, alias, conn)
+    2:         return conn
+       
+    1:     def __setitem__(self, key, value):
+               setattr(self._connections, key, value)
+       
+    1:     def __delitem__(self, key):
+               delattr(self._connections, key)
+       
+    1:     def __iter__(self):
+  234:         return iter(self.settings)
+       
+    1:     def all(self, initialized_only=False):
+  682:         return [
+   98:             self[alias]
+  196:             for alias in self
+                   # If initialized_only is True, return only initialized connections.
+  192:             if not initialized_only or hasattr(self._connections, alias)
+               ]
+       
+    1:     def close_all(self):
+   88:         for conn in self.all(initialized_only=True):
+   44:             conn.close()

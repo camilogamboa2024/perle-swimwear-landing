@@ -1,0 +1,114 @@
+    1: """
+       psycopg two-phase commit support
+       """
+       
+       # Copyright (C) 2021 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import re
+    1: import datetime as dt
+    1: from base64 import b64decode, b64encode
+    1: from dataclasses import dataclass, replace
+       
+    1: _re_xid = re.compile(r"^(\d+)_([^_]*)_([^_]*)$")
+       
+       
+    3: @dataclass(frozen=True)
+    2: class Xid:
+    1:     """A two-phase commit transaction identifier.
+       
+           The object can also be unpacked as a 3-item tuple (`format_id`, `gtrid`,
+           `bqual`).
+       
+           """
+       
+    1:     format_id: int | None
+    1:     gtrid: str
+    1:     bqual: str | None
+    1:     prepared: dt.datetime | None = None
+    1:     owner: str | None = None
+    1:     database: str | None = None
+       
+    2:     @classmethod
+    2:     def from_string(cls, s: str) -> Xid:
+               """Try to parse an XA triple from the string.
+       
+               This may fail for several reasons. In such case return an unparsed Xid.
+               """
+               try:
+                   return cls._parse_string(s)
+               except Exception:
+                   return Xid(None, s, None)
+       
+    1:     def __str__(self) -> str:
+               return self._as_tid()
+       
+    1:     def __len__(self) -> int:
+               return 3
+       
+    1:     def __getitem__(self, index: int) -> int | str | None:
+               return (self.format_id, self.gtrid, self.bqual)[index]
+       
+    2:     @classmethod
+    2:     def _parse_string(cls, s: str) -> Xid:
+               if not (m := _re_xid.match(s)):
+                   raise ValueError("bad Xid format")
+       
+               format_id = int(m.group(1))
+               gtrid = b64decode(m.group(2)).decode()
+               bqual = b64decode(m.group(3)).decode()
+               return cls.from_parts(format_id, gtrid, bqual)
+       
+    2:     @classmethod
+    2:     def from_parts(cls, format_id: int | None, gtrid: str, bqual: str | None) -> Xid:
+               if format_id is not None:
+                   if bqual is None:
+                       raise TypeError("if format_id is specified, bqual must be too")
+                   if not 0 <= format_id < 0x80000000:
+                       raise ValueError("format_id must be a non-negative 32-bit integer")
+                   if len(bqual) > 64:
+                       raise ValueError("bqual must be not longer than 64 chars")
+                   if len(gtrid) > 64:
+                       raise ValueError("gtrid must be not longer than 64 chars")
+       
+               elif bqual is None:
+                   raise TypeError("if format_id is None, bqual must be None too")
+       
+               return Xid(format_id, gtrid, bqual)
+       
+    1:     def _as_tid(self) -> str:
+               """
+               Return the PostgreSQL transaction_id for this XA xid.
+       
+               PostgreSQL wants just a string, while the DBAPI supports the XA
+               standard and thus a triple. We use the same conversion algorithm
+               implemented by JDBC in order to allow some form of interoperation.
+       
+               see also: the pgjdbc implementation
+                 http://cvs.pgfoundry.org/cgi-bin/cvsweb.cgi/jdbc/pgjdbc/org/
+                   postgresql/xa/RecoveredXid.java?rev=1.2
+               """
+               if self.format_id is None or self.bqual is None:
+                   # Unparsed xid: return the gtrid.
+                   return self.gtrid
+       
+               # XA xid: mash together the components.
+               egtrid = b64encode(self.gtrid.encode()).decode()
+               ebqual = b64encode(self.bqual.encode()).decode()
+       
+               return f"{self.format_id}_{egtrid}_{ebqual}"
+       
+    2:     @classmethod
+    2:     def _get_recover_query(cls) -> str:
+               return "SELECT gid, prepared, owner, database FROM pg_prepared_xacts"
+       
+    2:     @classmethod
+    2:     def _from_record(
+               cls, gid: str, prepared: dt.datetime, owner: str, database: str
+           ) -> Xid:
+               xid = Xid.from_string(gid)
+               return replace(xid, prepared=prepared, owner=owner, database=database)
+       
+       
+    1: Xid.__module__ = "psycopg"

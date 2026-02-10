@@ -1,0 +1,24 @@
+    1: from django.utils.version import get_version
+       
+    1: VERSION = (5, 2, 11, "final", 0)
+       
+    1: __version__ = get_version(VERSION)
+       
+       
+    1: def setup(set_prefix=True):
+           """
+           Configure the settings (this happens as a side effect of accessing the
+           first setting), configure logging and populate the app registry.
+           Set the thread-local urlresolvers script prefix if `set_prefix` is True.
+           """
+    1:     from django.apps import apps
+    1:     from django.conf import settings
+    1:     from django.urls import set_script_prefix
+    1:     from django.utils.log import configure_logging
+       
+    1:     configure_logging(settings.LOGGING_CONFIG, settings.LOGGING)
+    1:     if set_prefix:
+    2:         set_script_prefix(
+    1:             "/" if settings.FORCE_SCRIPT_NAME is None else settings.FORCE_SCRIPT_NAME
+               )
+    1:     apps.populate(settings.INSTALLED_APPS)

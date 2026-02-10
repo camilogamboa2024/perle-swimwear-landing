@@ -1,0 +1,182 @@
+    1: from collections import defaultdict
+    1: from importlib import import_module
+    1: from pkgutil import walk_packages
+       
+    1: from django.apps import apps
+    1: from django.conf import settings
+    1: from django.core.checks import Error, Warning
+    1: from django.template import TemplateDoesNotExist
+    1: from django.template.context import make_context
+    1: from django.template.engine import Engine
+    1: from django.template.library import InvalidTemplateLibrary
+       
+    1: from .base import BaseEngine
+       
+       
+    2: class DjangoTemplates(BaseEngine):
+    1:     app_dirname = "templates"
+       
+    1:     def __init__(self, params):
+    1:         params = params.copy()
+    1:         options = params.pop("OPTIONS").copy()
+    1:         options.setdefault("autoescape", True)
+    1:         options.setdefault("debug", settings.DEBUG)
+    1:         options.setdefault("file_charset", "utf-8")
+    1:         libraries = options.get("libraries", {})
+    1:         options["libraries"] = self.get_templatetag_libraries(libraries)
+    1:         super().__init__(params)
+    1:         self.engine = Engine(self.dirs, self.app_dirs, **options)
+       
+    1:     def check(self, **kwargs):
+    3:         return [
+    1:             *self._check_string_if_invalid_is_string(),
+    1:             *self._check_for_template_tags_with_the_same_name(),
+               ]
+       
+    1:     def _check_string_if_invalid_is_string(self):
+    1:         value = self.engine.string_if_invalid
+    1:         if not isinstance(value, str):
+                   return [
+                       Error(
+                           "'string_if_invalid' in TEMPLATES OPTIONS must be a string but "
+                           "got: %r (%s)." % (value, type(value)),
+                           obj=self,
+                           id="templates.E002",
+                       )
+                   ]
+    1:         return []
+       
+    1:     def _check_for_template_tags_with_the_same_name(self):
+    1:         libraries = defaultdict(set)
+       
+   11:         for module_name, module_path in get_template_tag_modules():
+   10:             libraries[module_name].add(module_path)
+       
+   11:         for module_name, module_path in self.engine.libraries.items():
+   10:             libraries[module_name].add(module_path)
+       
+    1:         errors = []
+       
+   11:         for library_name, items in libraries.items():
+   10:             if len(items) > 1:
+                       items = ", ".join(repr(item) for item in sorted(items))
+                       errors.append(
+                           Warning(
+                               f"{library_name!r} is used for multiple template tag modules: "
+                               f"{items}",
+                               obj=self,
+                               id="templates.W003",
+                           )
+                       )
+       
+    1:         return errors
+       
+    1:     def from_string(self, template_code):
+               return Template(self.engine.from_string(template_code), self)
+       
+    1:     def get_template(self, template_name):
+   20:         try:
+   20:             return Template(self.engine.get_template(template_name), self)
+               except TemplateDoesNotExist as exc:
+                   reraise(exc, self)
+       
+    1:     def get_templatetag_libraries(self, custom_libraries):
+               """
+               Return a collation of template tag libraries from installed
+               applications and the supplied custom_libraries argument.
+               """
+    1:         libraries = get_installed_libraries()
+    1:         libraries.update(custom_libraries)
+    1:         return libraries
+       
+       
+    2: class Template:
+    1:     def __init__(self, template, backend):
+   20:         self.template = template
+   20:         self.backend = backend
+       
+    2:     @property
+    2:     def origin(self):
+               return self.template.origin
+       
+    1:     def render(self, context=None, request=None):
+   40:         context = make_context(
+   20:             context, request, autoescape=self.backend.engine.autoescape
+               )
+   20:         try:
+   20:             return self.template.render(context)
+               except TemplateDoesNotExist as exc:
+                   reraise(exc, self.backend)
+       
+       
+    1: def copy_exception(exc, backend=None):
+           """
+           Create a new TemplateDoesNotExist. Preserve its declared attributes and
+           template debug data but discard __traceback__, __context__, and __cause__
+           to make this object suitable for keeping around (in a cache, for example).
+           """
+           backend = backend or exc.backend
+           new = exc.__class__(*exc.args, tried=exc.tried, backend=backend, chain=exc.chain)
+           if hasattr(exc, "template_debug"):
+               new.template_debug = exc.template_debug
+           return new
+       
+       
+    1: def reraise(exc, backend):
+           """
+           Reraise TemplateDoesNotExist while maintaining template debug information.
+           """
+           new = copy_exception(exc, backend)
+           raise new from exc
+       
+       
+    1: def get_template_tag_modules():
+           """
+           Yield (module_name, module_path) pairs for all installed template tag
+           libraries.
+           """
+    2:     candidates = ["django.templatetags"]
+   58:     candidates.extend(
+   28:         f"{app_config.name}.templatetags" for app_config in apps.get_app_configs()
+           )
+       
+   30:     for candidate in candidates:
+   28:         try:
+   28:             pkg = import_module(candidate)
+   22:         except ImportError:
+                   # No templatetags package defined. This is safe to ignore.
+   22:             continue
+       
+    6:         if hasattr(pkg, "__path__"):
+   26:             for name in get_package_libraries(pkg):
+   20:                 yield name.removeprefix(candidate).lstrip("."), name
+       
+       
+    1: def get_installed_libraries():
+           """
+           Return the built-in template tag libraries and those from installed
+           applications. Libraries are stored in a dictionary where keys are the
+           individual module names, not the full module paths. Example:
+           django.templatetags.i18n is stored as i18n.
+           """
+   23:     return {
+   11:         module_name: full_name for module_name, full_name in get_template_tag_modules()
+           }
+       
+       
+    1: def get_package_libraries(pkg):
+           """
+           Recursively yield template tag libraries defined in submodules of a
+           package.
+           """
+   28:     for entry in walk_packages(pkg.__path__, pkg.__name__ + "."):
+   22:         try:
+   22:             module = import_module(entry[1])
+               except ImportError as e:
+                   raise InvalidTemplateLibrary(
+                       "Invalid template library specified. ImportError raised when "
+                       "trying to load '%s': %s" % (entry[1], e)
+                   ) from e
+       
+   22:         if hasattr(module, "register"):
+   20:             yield entry[1]

@@ -1,0 +1,153 @@
+    1: """
+       Mappings between PostgreSQL and Python encodings.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: import re
+    1: import codecs
+    1: import string
+    1: from typing import TYPE_CHECKING, Any
+    1: from functools import cache
+       
+    1: from .errors import NotSupportedError
+    1: from .pq._enums import ConnStatus
+       
+    1: if TYPE_CHECKING:
+           from ._connection_base import BaseConnection
+       
+    1: OK = ConnStatus.OK
+       
+       
+   36: _py_codecs = {
+    1:     "BIG5": "big5",
+    1:     "EUC_CN": "gb2312",
+    1:     "EUC_JIS_2004": "euc_jis_2004",
+    1:     "EUC_JP": "euc_jp",
+    1:     "EUC_KR": "euc_kr",
+           # "EUC_TW": not available in Python
+    1:     "GB18030": "gb18030",
+    1:     "GBK": "gbk",
+    1:     "ISO_8859_5": "iso8859-5",
+    1:     "ISO_8859_6": "iso8859-6",
+    1:     "ISO_8859_7": "iso8859-7",
+    1:     "ISO_8859_8": "iso8859-8",
+    1:     "JOHAB": "johab",
+    1:     "KOI8R": "koi8-r",
+    1:     "KOI8U": "koi8-u",
+    1:     "LATIN1": "iso8859-1",
+    1:     "LATIN10": "iso8859-16",
+    1:     "LATIN2": "iso8859-2",
+    1:     "LATIN3": "iso8859-3",
+    1:     "LATIN4": "iso8859-4",
+    1:     "LATIN5": "iso8859-9",
+    1:     "LATIN6": "iso8859-10",
+    1:     "LATIN7": "iso8859-13",
+    1:     "LATIN8": "iso8859-14",
+    1:     "LATIN9": "iso8859-15",
+           # "MULE_INTERNAL": not available in Python
+    1:     "SHIFT_JIS_2004": "shift_jis_2004",
+    1:     "SJIS": "shift_jis",
+           # this actually means no encoding, see PostgreSQL docs
+           # it is special-cased by the text loader.
+    1:     "SQL_ASCII": "ascii",
+    1:     "UHC": "cp949",
+    1:     "UTF8": "utf-8",
+    1:     "WIN1250": "cp1250",
+    1:     "WIN1251": "cp1251",
+    1:     "WIN1252": "cp1252",
+    1:     "WIN1253": "cp1253",
+    1:     "WIN1254": "cp1254",
+    1:     "WIN1255": "cp1255",
+    1:     "WIN1256": "cp1256",
+    1:     "WIN1257": "cp1257",
+    1:     "WIN1258": "cp1258",
+    1:     "WIN866": "cp866",
+    1:     "WIN874": "cp874",
+       }
+       
+    1: py_codecs: dict[bytes, str] = {}
+   42: py_codecs.update((k.encode(), v) for k, v in _py_codecs.items())
+       
+       # Add an alias without underscore, for lenient lookups
+   43: py_codecs.update(
+   41:     (k.replace("_", "").encode(), v) for k, v in _py_codecs.items() if "_" in k
+       )
+       
+   42: pg_codecs = {v: k.encode() for k, v in _py_codecs.items()}
+       
+       
+    1: def conn_encoding(conn: BaseConnection[Any] | None) -> str:
+           """
+           Return the Python encoding name of a psycopg connection.
+       
+           Default to utf8 if the connection has no encoding info.
+           """
+           return conn.pgconn._encoding if conn else "utf-8"
+       
+       
+    1: def conninfo_encoding(conninfo: str) -> str:
+           """
+           Return the Python encoding name passed in a conninfo string. Default to utf8.
+       
+           Because the input is likely to come from the user and not normalised by the
+           server, be somewhat lenient (non-case-sensitive lookup, ignore noise chars).
+           """
+           from .conninfo import conninfo_to_dict
+       
+           params = conninfo_to_dict(conninfo)
+           if pgenc := params.get("client_encoding"):
+               try:
+                   return pg2pyenc(str(pgenc).encode())
+               except NotSupportedError:
+                   pass
+       
+           return "utf-8"
+       
+       
+    2: @cache
+    2: def py2pgenc(name: str) -> bytes:
+           """Convert a Python encoding name to PostgreSQL encoding name.
+       
+           Raise LookupError if the Python encoding is unknown.
+           """
+           return pg_codecs[codecs.lookup(name).name]
+       
+       
+    2: @cache
+    2: def pg2pyenc(name: bytes) -> str:
+           """Convert a PostgreSQL encoding name to Python encoding name.
+       
+           Raise NotSupportedError if the PostgreSQL encoding is not supported by
+           Python.
+           """
+           try:
+               return py_codecs[name.replace(b"-", b"").replace(b"_", b"").upper()]
+           except KeyError:
+               sname = name.decode("utf8", "replace")
+               raise NotSupportedError(f"codec not available in Python: {sname!r}")
+       
+       
+    1: def _as_python_identifier(s: str, prefix: str = "f") -> str:
+           """
+           Reduce a string to a valid Python identifier.
+       
+           Replace all non-valid chars with '_' and prefix the value with `!prefix` if
+           the first letter is an '_'.
+           """
+           if not s.isidentifier():
+               if s[0] in "1234567890":
+                   s = prefix + s
+               if not s.isidentifier():
+                   s = _re_clean.sub("_", s)
+           # namedtuple fields cannot start with underscore. So...
+           if s[0] == "_":
+               s = prefix + s
+           return s
+       
+       
+    2: _re_clean = re.compile(
+    1:     f"[^{string.ascii_lowercase}{string.ascii_uppercase}{string.digits}_]"
+       )

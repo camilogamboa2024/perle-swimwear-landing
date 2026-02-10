@@ -1,0 +1,91 @@
+    1: from django.core.exceptions import ValidationError
+    1: from django.core.validators import (
+           MaxLengthValidator,
+           MaxValueValidator,
+           MinLengthValidator,
+           MinValueValidator,
+       )
+    1: from django.utils.deconstruct import deconstructible
+    1: from django.utils.translation import gettext_lazy as _
+    1: from django.utils.translation import ngettext_lazy
+       
+       
+    2: class ArrayMaxLengthValidator(MaxLengthValidator):
+    2:     message = ngettext_lazy(
+    1:         "List contains %(show_value)d item, it should contain no more than "
+               "%(limit_value)d.",
+    1:         "List contains %(show_value)d items, it should contain no more than "
+               "%(limit_value)d.",
+    1:         "show_value",
+           )
+       
+       
+    2: class ArrayMinLengthValidator(MinLengthValidator):
+    2:     message = ngettext_lazy(
+    1:         "List contains %(show_value)d item, it should contain no fewer than "
+               "%(limit_value)d.",
+    1:         "List contains %(show_value)d items, it should contain no fewer than "
+               "%(limit_value)d.",
+    1:         "show_value",
+           )
+       
+       
+    3: @deconstructible
+    2: class KeysValidator:
+    1:     """A validator designed for HStore to require/restrict keys."""
+       
+    1:     messages = {
+    1:         "missing_keys": _("Some keys were missing: %(keys)s"),
+    1:         "extra_keys": _("Some unknown keys were provided: %(keys)s"),
+           }
+    1:     strict = False
+       
+    1:     def __init__(self, keys, strict=False, messages=None):
+               self.keys = set(keys)
+               self.strict = strict
+               if messages is not None:
+                   self.messages = {**self.messages, **messages}
+       
+    1:     def __call__(self, value):
+               keys = set(value)
+               missing_keys = self.keys - keys
+               if missing_keys:
+                   raise ValidationError(
+                       self.messages["missing_keys"],
+                       code="missing_keys",
+                       params={"keys": ", ".join(missing_keys)},
+                   )
+               if self.strict:
+                   extra_keys = keys - self.keys
+                   if extra_keys:
+                       raise ValidationError(
+                           self.messages["extra_keys"],
+                           code="extra_keys",
+                           params={"keys": ", ".join(extra_keys)},
+                       )
+       
+    1:     def __eq__(self, other):
+               return (
+                   isinstance(other, self.__class__)
+                   and self.keys == other.keys
+                   and self.messages == other.messages
+                   and self.strict == other.strict
+               )
+       
+       
+    2: class RangeMaxValueValidator(MaxValueValidator):
+    1:     def compare(self, a, b):
+               return a.upper is None or a.upper > b
+       
+    2:     message = _(
+    1:         "Ensure that the upper bound of the range is not greater than %(limit_value)s."
+           )
+       
+       
+    2: class RangeMinValueValidator(MinValueValidator):
+    1:     def compare(self, a, b):
+               return a.lower is None or a.lower < b
+       
+    2:     message = _(
+    1:         "Ensure that the lower bound of the range is not less than %(limit_value)s."
+           )

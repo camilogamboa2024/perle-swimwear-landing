@@ -1,0 +1,29 @@
+    1: from django.conf import STATICFILES_STORAGE_ALIAS, settings
+    1: from django.contrib.staticfiles.finders import get_finders
+    1: from django.core.checks import Error
+       
+    2: E005 = Error(
+    1:     f"The STORAGES setting must define a '{STATICFILES_STORAGE_ALIAS}' storage.",
+    1:     id="staticfiles.E005",
+       )
+       
+       
+    1: def check_finders(app_configs=None, **kwargs):
+           """Check all registered staticfiles finders."""
+    1:     errors = []
+    3:     for finder in get_finders():
+    2:         try:
+    2:             finder_errors = finder.check()
+    1:         except NotImplementedError:
+    1:             pass
+               else:
+    1:             errors.extend(finder_errors)
+    1:     return errors
+       
+       
+    1: def check_storages(app_configs=None, **kwargs):
+           """Ensure staticfiles is defined in STORAGES setting."""
+    1:     errors = []
+    1:     if STATICFILES_STORAGE_ALIAS not in settings.STORAGES:
+               errors.append(E005)
+    1:     return errors

@@ -1,0 +1,98 @@
+    1: """
+       Adapters for numpy types.
+       """
+       
+       # Copyright (C) 2022 The Psycopg Team
+       
+    1: from typing import Any
+       
+    1: from .. import _oids
+    1: from ..pq import Format
+    1: from ..abc import AdaptContext, Buffer
+    1: from .bool import BoolBinaryDumper, BoolDumper
+    1: from .numeric import Float4BinaryDumper, Float4Dumper, FloatBinaryDumper, FloatDumper
+    1: from .numeric import _IntDumper, dump_int_to_numeric_binary
+    1: from .._struct import pack_int2, pack_int4, pack_int8
+       
+       
+    2: class NPInt16Dumper(_IntDumper):
+    1:     oid = _oids.INT2_OID
+       
+       
+    2: class NPInt32Dumper(_IntDumper):
+    1:     oid = _oids.INT4_OID
+       
+       
+    2: class NPInt64Dumper(_IntDumper):
+    1:     oid = _oids.INT8_OID
+       
+       
+    2: class NPNumericDumper(_IntDumper):
+    1:     oid = _oids.NUMERIC_OID
+       
+       
+       # Binary Dumpers
+       
+       
+    2: class NPInt16BinaryDumper(NPInt16Dumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: Any) -> bytes:
+               return pack_int2(int(obj))
+       
+       
+    2: class NPInt32BinaryDumper(NPInt32Dumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: Any) -> bytes:
+               return pack_int4(int(obj))
+       
+       
+    2: class NPInt64BinaryDumper(NPInt64Dumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: Any) -> bytes:
+               return pack_int8(int(obj))
+       
+       
+    2: class NPNumericBinaryDumper(NPNumericDumper):
+    1:     format = Format.BINARY
+       
+    1:     def dump(self, obj: Any) -> Buffer:
+               return dump_int_to_numeric_binary(int(obj))
+       
+       
+    1: def register_default_adapters(context: AdaptContext) -> None:
+    1:     adapters = context.adapters
+       
+    1:     adapters.register_dumper("numpy.int8", NPInt16Dumper)
+    1:     adapters.register_dumper("numpy.int16", NPInt16Dumper)
+    1:     adapters.register_dumper("numpy.int32", NPInt32Dumper)
+    1:     adapters.register_dumper("numpy.int64", NPInt64Dumper)
+    1:     adapters.register_dumper("numpy.longlong", NPInt64Dumper)
+    1:     adapters.register_dumper("numpy.bool", BoolDumper)
+    1:     adapters.register_dumper("numpy.bool_", BoolDumper)
+    1:     adapters.register_dumper("numpy.uint8", NPInt16Dumper)
+    1:     adapters.register_dumper("numpy.uint16", NPInt32Dumper)
+    1:     adapters.register_dumper("numpy.uint32", NPInt64Dumper)
+    1:     adapters.register_dumper("numpy.uint64", NPNumericDumper)
+    1:     adapters.register_dumper("numpy.ulonglong", NPNumericDumper)
+    1:     adapters.register_dumper("numpy.float16", Float4Dumper)
+    1:     adapters.register_dumper("numpy.float32", Float4Dumper)
+    1:     adapters.register_dumper("numpy.float64", FloatDumper)
+       
+    1:     adapters.register_dumper("numpy.int8", NPInt16BinaryDumper)
+    1:     adapters.register_dumper("numpy.int16", NPInt16BinaryDumper)
+    1:     adapters.register_dumper("numpy.int32", NPInt32BinaryDumper)
+    1:     adapters.register_dumper("numpy.int64", NPInt64BinaryDumper)
+    1:     adapters.register_dumper("numpy.longlong", NPInt64BinaryDumper)
+    1:     adapters.register_dumper("numpy.bool", BoolBinaryDumper)
+    1:     adapters.register_dumper("numpy.bool_", BoolBinaryDumper)
+    1:     adapters.register_dumper("numpy.uint8", NPInt16BinaryDumper)
+    1:     adapters.register_dumper("numpy.uint16", NPInt32BinaryDumper)
+    1:     adapters.register_dumper("numpy.uint32", NPInt64BinaryDumper)
+    1:     adapters.register_dumper("numpy.uint64", NPNumericBinaryDumper)
+    1:     adapters.register_dumper("numpy.ulonglong", NPNumericBinaryDumper)
+    1:     adapters.register_dumper("numpy.float16", Float4BinaryDumper)
+    1:     adapters.register_dumper("numpy.float32", Float4BinaryDumper)
+    1:     adapters.register_dumper("numpy.float64", FloatBinaryDumper)

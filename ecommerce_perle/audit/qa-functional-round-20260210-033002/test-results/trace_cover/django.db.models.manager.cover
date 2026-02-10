@@ -1,0 +1,213 @@
+    1: import copy
+    1: import inspect
+    1: from functools import wraps
+    1: from importlib import import_module
+       
+    1: from django.db import router
+    1: from django.db.models.query import QuerySet
+       
+       
+    2: class BaseManager:
+           # To retain order, track each time a Manager instance is created.
+    1:     creation_counter = 0
+       
+           # Set to True for the 'objects' managers that are automatically created.
+    1:     auto_created = False
+       
+           #: If set to True the manager will be serialized into migrations and will
+           #: thus be available in e.g. RunPython operations.
+    1:     use_in_migrations = False
+       
+    1:     def __new__(cls, *args, **kwargs):
+               # Capture the arguments to make returning them trivial.
+  717:         obj = super().__new__(cls)
+  717:         obj._constructor_args = (args, kwargs)
+  717:         return obj
+       
+    1:     def __init__(self):
+  521:         super().__init__()
+  521:         self._set_creation_counter()
+  521:         self.model = None
+  521:         self.name = None
+  521:         self._db = None
+  521:         self._hints = {}
+       
+    1:     def __str__(self):
+               """Return "app_label.model_label.manager_name"."""
+               return "%s.%s" % (self.model._meta.label, self.name)
+       
+    1:     def __class_getitem__(cls, *args, **kwargs):
+               return cls
+       
+    1:     def deconstruct(self):
+               """
+               Return a 5-tuple of the form (as_manager (True), manager_class,
+               queryset_class, args, kwargs).
+       
+               Raise a ValueError if the manager is dynamically generated.
+               """
+  133:         qs_class = self._queryset_class
+  133:         if getattr(self, "_built_with_as_manager", False):
+                   # using MyQuerySet.as_manager()
+                   return (
+                       True,  # as_manager
+                       None,  # manager_class
+                       "%s.%s" % (qs_class.__module__, qs_class.__name__),  # qs_class
+                       None,  # args
+                       None,  # kwargs
+                   )
+               else:
+  133:             module_name = self.__module__
+  133:             name = self.__class__.__name__
+                   # Make sure it's actually there and not an inner class
+  133:             module = import_module(module_name)
+  133:             if not hasattr(module, name):
+                       raise ValueError(
+                           "Could not find manager %s in %s.\n"
+                           "Please note that you need to inherit from managers you "
+                           "dynamically generated with 'from_queryset()'."
+                           % (name, module_name)
+                       )
+  133:             return (
+  133:                 False,  # as_manager
+  133:                 "%s.%s" % (module_name, name),  # manager_class
+  133:                 None,  # qs_class
+  133:                 self._constructor_args[0],  # args
+  133:                 self._constructor_args[1],  # kwargs
+                   )
+       
+    1:     def check(self, **kwargs):
+   20:         return []
+       
+    2:     @classmethod
+    2:     def _get_queryset_methods(cls, queryset_class):
+    1:         def create_method(name, method):
+  124:             @wraps(method)
+  124:             def manager_method(self, *args, **kwargs):
+  672:                 return getattr(self.get_queryset(), name)(*args, **kwargs)
+       
+   62:             return manager_method
+       
+    1:         new_methods = {}
+  106:         for name, method in inspect.getmembers(
+    1:             queryset_class, predicate=inspect.isfunction
+               ):
+                   # Only copy missing methods.
+  104:             if hasattr(cls, name):
+    5:                 continue
+                   # Only copy public methods or methods with the attribute
+                   # queryset_only=False.
+   99:             queryset_only = getattr(method, "queryset_only", None)
+   99:             if queryset_only or (queryset_only is None and name.startswith("_")):
+   37:                 continue
+                   # Copy the method onto the manager.
+   62:             new_methods[name] = create_method(name, method)
+    1:         return new_methods
+       
+    2:     @classmethod
+    2:     def from_queryset(cls, queryset_class, class_name=None):
+    1:         if class_name is None:
+    1:             class_name = "%sFrom%s" % (cls.__name__, queryset_class.__name__)
+    2:         return type(
+    1:             class_name,
+    1:             (cls,),
+    2:             {
+    1:                 "_queryset_class": queryset_class,
+    1:                 **cls._get_queryset_methods(queryset_class),
+                   },
+               )
+       
+    1:     def contribute_to_class(self, cls, name):
+  351:         self.name = self.name or name
+  351:         self.model = cls
+       
+  351:         setattr(cls, name, ManagerDescriptor(self))
+       
+  351:         cls._meta.add_manager(self)
+       
+    1:     def _set_creation_counter(self):
+               """
+               Set the creation counter value for this instance and increment the
+               class-level copy.
+               """
+  521:         self.creation_counter = BaseManager.creation_counter
+  521:         BaseManager.creation_counter += 1
+       
+    1:     def db_manager(self, using=None, hints=None):
+   40:         obj = copy.copy(self)
+   40:         obj._db = using or self._db
+   40:         obj._hints = hints or self._hints
+   40:         return obj
+       
+    2:     @property
+    2:     def db(self):
+   40:         return self._db or router.db_for_read(self.model, **self._hints)
+       
+           #######################
+           # PROXIES TO QUERYSET #
+           #######################
+       
+    1:     def get_queryset(self):
+               """
+               Return a new QuerySet object. Subclasses can override this method to
+               customize the behavior of the Manager.
+               """
+  727:         return self._queryset_class(model=self.model, using=self._db, hints=self._hints)
+       
+    1:     def all(self):
+               # We can't proxy this method through the `QuerySet` like we do for the
+               # rest of the `QuerySet` methods. This is because `QuerySet.all()`
+               # works by creating a "copy" of the current queryset and in making said
+               # copy, all the cached `prefetch_related` lookups are lost. See the
+               # implementation of `RelatedManager.get_queryset()` for a better
+               # understanding of how this comes into play.
+   74:         return self.get_queryset()
+       
+    1:     def __eq__(self, other):
+               return (
+                   isinstance(other, self.__class__)
+                   and self._constructor_args == other._constructor_args
+               )
+       
+    1:     def __hash__(self):
+               return id(self)
+       
+       
+    2: class Manager(BaseManager.from_queryset(QuerySet)):
+    1:     pass
+       
+       
+    2: class ManagerDescriptor:
+    1:     def __init__(self, manager):
+  351:         self.manager = manager
+       
+    1:     def __get__(self, instance, cls=None):
+  377:         if instance is not None:
+                   raise AttributeError(
+                       "Manager isn't accessible via %s instances" % cls.__name__
+                   )
+       
+  377:         if cls._meta.abstract:
+                   raise AttributeError(
+                       "Manager isn't available; %s is abstract" % (cls._meta.object_name,)
+                   )
+       
+  377:         if cls._meta.swapped:
+                   raise AttributeError(
+                       "Manager isn't available; '%s' has been swapped for '%s'"
+                       % (
+                           cls._meta.label,
+                           cls._meta.swapped,
+                       )
+                   )
+       
+  377:         return cls._meta.managers_map[self.manager.name]
+       
+       
+    2: class EmptyManager(Manager):
+    1:     def __init__(self, model):
+    2:         super().__init__()
+    2:         self.model = model
+       
+    1:     def get_queryset(self):
+               return super().get_queryset().none()

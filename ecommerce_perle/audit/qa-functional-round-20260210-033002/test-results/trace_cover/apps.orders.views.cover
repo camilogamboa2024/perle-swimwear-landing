@@ -1,0 +1,164 @@
+    1: from django.conf import settings
+    1: from django.core.exceptions import ObjectDoesNotExist
+    1: from django.http import Http404
+    1: from django.shortcuts import get_object_or_404, render
+    1: from django.views.decorators.csrf import ensure_csrf_cookie
+    1: from uuid import uuid4
+    1: from rest_framework import status
+    1: from rest_framework.response import Response
+    1: from rest_framework.views import APIView
+       
+    1: from apps.customers.models import Customer
+    1: from apps.checkout.whatsapp import build_whatsapp_url
+    1: from core.authentication import EnforcedCsrfSessionAuthentication
+    1: from .models import Cart, CartItem, Order
+    1: from .serializers import AddCartItemSerializer, CartSerializer, UpdateCartItemSerializer
+       
+       
+    1: def _unique_fallback_customer_email(user_id):
+    1:     base_email = f'user-{user_id}@local.test'
+    1:     if not Customer.objects.filter(email=base_email).exists():
+    1:         return base_email
+           return f'user-{user_id}-{uuid4().hex[:8]}@local.test'
+       
+       
+    1: def _get_or_create_customer_for_user(user):
+    2:     preferred_email = (user.email or '').strip().lower()
+    2:     full_name = user.get_full_name() or user.username or f'user-{user.id}'
+       
+    2:     customer = Customer.objects.filter(user=user).first()
+    2:     if customer:
+               update_fields = []
+               if full_name and customer.full_name != full_name:
+                   customer.full_name = full_name
+                   update_fields.append('full_name')
+               if preferred_email and customer.email != preferred_email:
+                   email_taken = Customer.objects.exclude(pk=customer.pk).filter(email=preferred_email).exists()
+                   if not email_taken:
+                       customer.email = preferred_email
+                       update_fields.append('email')
+               if update_fields:
+                   customer.save(update_fields=update_fields)
+               return customer
+       
+    2:     if preferred_email:
+    2:         existing_by_email = Customer.objects.filter(email=preferred_email).first()
+    2:         if existing_by_email and existing_by_email.user_id in (None, user.id):
+    1:             update_fields = []
+    1:             if existing_by_email.user_id != user.id:
+    1:                 existing_by_email.user = user
+    1:                 update_fields.append('user')
+    1:             if full_name and existing_by_email.full_name != full_name:
+    1:                 existing_by_email.full_name = full_name
+    1:                 update_fields.append('full_name')
+    1:             if update_fields:
+    1:                 existing_by_email.save(update_fields=update_fields)
+    1:             return existing_by_email
+       
+    1:     email_for_new_customer = preferred_email or _unique_fallback_customer_email(user.id)
+    1:     if Customer.objects.filter(email=email_for_new_customer).exists():
+    1:         email_for_new_customer = _unique_fallback_customer_email(user.id)
+    2:     return Customer.objects.create(
+    1:         user=user,
+    1:         email=email_for_new_customer,
+    1:         full_name=full_name,
+           )
+       
+       
+    1: def _get_or_create_cart(request):
+   20:     if request.user.is_authenticated:
+    2:         customer = _get_or_create_customer_for_user(request.user)
+    2:         cart, _ = Cart.objects.get_or_create(customer=customer, defaults={'currency': 'COP'})
+    2:         return cart
+       
+   18:     if not request.session.session_key:
+    9:         request.session.create()
+   18:     cart, _ = Cart.objects.get_or_create(session_key=request.session.session_key, defaults={'currency': 'COP'})
+   18:     return cart
+       
+       
+    1: def _validate_stock_for_quantity(variant, quantity):
+   10:     if not variant.is_active:
+               return f'La variante {variant.sku} no está disponible.'
+   10:     try:
+   10:         available = variant.stock_level.available
+           except ObjectDoesNotExist:
+               return f'Sin stock configurado para SKU {variant.sku}.'
+   10:     if quantity > available:
+    2:         return f'Stock insuficiente para SKU {variant.sku}. Disponible: {available}.'
+    8:     return ''
+       
+       
+    2: class CartApiView(APIView):
+    1:     def get(self, request):
+    2:         cart = _get_or_create_cart(request)
+    2:         return Response(CartSerializer(cart).data)
+       
+       
+    2: class CartItemsApiView(APIView):
+    1:     authentication_classes = [EnforcedCsrfSessionAuthentication]
+       
+    1:     def post(self, request):
+    8:         cart = _get_or_create_cart(request)
+    8:         serializer = AddCartItemSerializer(data=request.data)
+    8:         serializer.is_valid(raise_exception=True)
+    8:         variant = serializer.validated_data['variant']
+    8:         quantity = serializer.validated_data['quantity']
+    8:         item, created = CartItem.objects.get_or_create(cart=cart, variant=variant, defaults={'quantity': quantity})
+    8:         target_quantity = quantity if created else item.quantity + quantity
+    8:         stock_error = _validate_stock_for_quantity(variant, target_quantity)
+    8:         if stock_error:
+    1:             if created:
+    1:                 item.delete()
+    1:             return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+    7:         if not created:
+                   item.quantity = target_quantity
+                   item.save(update_fields=['quantity'])
+    7:         return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
+       
+       
+    2: class CartItemDetailApiView(APIView):
+    1:     authentication_classes = [EnforcedCsrfSessionAuthentication]
+       
+    1:     def patch(self, request, item_id):
+    2:         cart = _get_or_create_cart(request)
+    2:         item = get_object_or_404(CartItem, id=item_id, cart=cart)
+    2:         serializer = UpdateCartItemSerializer(data=request.data)
+    2:         serializer.is_valid(raise_exception=True)
+    2:         new_quantity = serializer.validated_data['quantity']
+    2:         stock_error = _validate_stock_for_quantity(item.variant, new_quantity)
+    2:         if stock_error:
+    1:             return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+    1:         item.quantity = new_quantity
+    1:         item.save(update_fields=['quantity'])
+    1:         return Response(CartSerializer(cart).data)
+       
+    1:     def delete(self, request, item_id):
+               cart = _get_or_create_cart(request)
+               item = get_object_or_404(CartItem, id=item_id, cart=cart)
+               item.delete()
+               return Response(CartSerializer(cart).data)
+       
+       
+    2: class CartClearApiView(APIView):
+    1:     authentication_classes = [EnforcedCsrfSessionAuthentication]
+       
+    1:     def post(self, request):
+    1:         cart = _get_or_create_cart(request)
+    1:         cart.items.all().delete()
+    1:         return Response(CartSerializer(cart).data)
+       
+       
+    2: @ensure_csrf_cookie
+    2: def cart_page(request):
+    2:     cart = _get_or_create_cart(request)
+    2:     return render(request, 'orders/cart.html', {'cart': cart, 'totals': CartSerializer(cart).data['totals']})
+       
+       
+    2: @ensure_csrf_cookie
+    2: def order_confirmation(request, public_id):
+           order = get_object_or_404(Order.objects.prefetch_related('items__variant__product'), public_id=public_id)
+           if order.session_key and request.session.session_key != order.session_key:
+               raise Http404('Pedido no encontrado')
+           whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
+           return render(request, 'orders/confirmation.html', {'order': order, 'whatsapp_url': whatsapp_url})

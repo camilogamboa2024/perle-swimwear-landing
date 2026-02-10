@@ -1,0 +1,4 @@
+Operations to perform:
+  Apply all migrations: admin, auth, catalog, contenttypes, customers, inventory, orders, sessions
+Running migrations:
+  No migrations to apply.

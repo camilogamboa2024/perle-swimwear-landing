@@ -1,0 +1,8 @@
+    1: from django.urls import path
+    1: from .views import CheckoutConfirmApiView, checkout_page, whatsapp_checkout
+       
+    1: urlpatterns = [
+    1:     path('', checkout_page, name='checkout-page'),
+    1:     path('whatsapp/', whatsapp_checkout, name='checkout-whatsapp'),
+    1:     path('api/checkout/confirm/', CheckoutConfirmApiView.as_view(), name='api-checkout-confirm'),
+       ]

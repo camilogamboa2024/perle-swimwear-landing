@@ -1,0 +1,37 @@
+    1: import django.contrib.sessions.models
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = []
+       
+    1:     operations = [
+    2:         migrations.CreateModel(
+    1:             name="Session",
+    1:             fields=[
+    1:                 (
+    1:                     "session_key",
+    2:                     models.CharField(
+    1:                         max_length=40,
+    1:                         serialize=False,
+    1:                         verbose_name="session key",
+    1:                         primary_key=True,
+                           ),
+                       ),
+    1:                 ("session_data", models.TextField(verbose_name="session data")),
+    1:                 (
+    1:                     "expire_date",
+    1:                     models.DateTimeField(verbose_name="expire date", db_index=True),
+                       ),
+                   ],
+    1:             options={
+    1:                 "abstract": False,
+    1:                 "db_table": "django_session",
+    1:                 "verbose_name": "session",
+    1:                 "verbose_name_plural": "sessions",
+                   },
+    1:             managers=[
+    1:                 ("objects", django.contrib.sessions.models.SessionManager()),
+                   ],
+               ),
+           ]

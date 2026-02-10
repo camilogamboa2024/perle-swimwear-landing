@@ -1,0 +1,10 @@
+    1: from django.db.backends.base.client import BaseDatabaseClient
+       
+       
+    2: class DatabaseClient(BaseDatabaseClient):
+    1:     executable_name = "sqlite3"
+       
+    2:     @classmethod
+    2:     def settings_to_cmd_args_env(cls, settings_dict, parameters):
+               args = [cls.executable_name, settings_dict["NAME"], *parameters]
+               return args, None

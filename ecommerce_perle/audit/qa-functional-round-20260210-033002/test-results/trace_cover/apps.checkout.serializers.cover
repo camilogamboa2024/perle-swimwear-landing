@@ -1,0 +1,12 @@
+    1: from rest_framework import serializers
+       
+       
+    2: class CheckoutConfirmSerializer(serializers.Serializer):
+    1:     full_name = serializers.CharField(max_length=120)
+    1:     email = serializers.EmailField()
+    1:     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    1:     line1 = serializers.CharField(max_length=180)
+    1:     city = serializers.CharField(max_length=80)
+    1:     state = serializers.CharField(max_length=80)
+    1:     coupon_code = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    1:     payment_method = serializers.ChoiceField(choices=['whatsapp', 'manual', 'wompi', 'stripe'], default='whatsapp')

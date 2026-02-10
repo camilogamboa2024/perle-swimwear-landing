@@ -1,0 +1,28 @@
+    1: import os
+    1: import subprocess
+       
+       
+    2: class BaseDatabaseClient:
+    1:     """Encapsulate backend-specific methods for opening a client shell."""
+       
+           # This should be a string representing the name of the executable
+           # (e.g., "psql"). Subclasses must override this.
+    1:     executable_name = None
+       
+    1:     def __init__(self, connection):
+               # connection is an instance of BaseDatabaseWrapper.
+    1:         self.connection = connection
+       
+    2:     @classmethod
+    2:     def settings_to_cmd_args_env(cls, settings_dict, parameters):
+               raise NotImplementedError(
+                   "subclasses of BaseDatabaseClient must provide a "
+                   "settings_to_cmd_args_env() method or override a runshell()."
+               )
+       
+    1:     def runshell(self, parameters):
+               args, env = self.settings_to_cmd_args_env(
+                   self.connection.settings_dict, parameters
+               )
+               env = {**os.environ, **env} if env else None
+               subprocess.run(args, env=env, check=True)

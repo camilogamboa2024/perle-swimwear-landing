@@ -1,0 +1,70 @@
+    1: from django.conf import settings
+    1: from django.db.models import Prefetch, Q
+    1: from django.shortcuts import get_object_or_404, render
+    1: from django.views.decorators.csrf import ensure_csrf_cookie
+    1: from rest_framework import generics
+       
+    1: from .models import Product, ProductVariant
+    1: from .serializers import ProductSerializer
+       
+       
+    2: class ProductListApiView(generics.ListAPIView):
+    1:     serializer_class = ProductSerializer
+       
+    1:     def get_queryset(self):
+               active_variants = Prefetch(
+                   'variants',
+                   queryset=ProductVariant.objects.filter(is_active=True).select_related('stock_level'),
+               )
+               queryset = Product.objects.filter(is_active=True).select_related('category').prefetch_related(
+                   'images',
+                   active_variants,
+               )
+               category = self.request.query_params.get('category')
+               query = self.request.query_params.get('q')
+               if category:
+                   queryset = queryset.filter(category__slug=category)
+               if query:
+                   queryset = queryset.filter(Q(name__icontains=query) | Q(description__icontains=query))
+               return queryset
+       
+       
+    2: class ProductDetailApiView(generics.RetrieveAPIView):
+    1:     serializer_class = ProductSerializer
+    1:     lookup_field = 'slug'
+       
+    1:     def get_queryset(self):
+    2:         active_variants = Prefetch(
+    1:             'variants',
+    1:             queryset=ProductVariant.objects.filter(is_active=True).select_related('stock_level'),
+               )
+    1:         return Product.objects.filter(is_active=True).select_related('category').prefetch_related('images', active_variants)
+       
+       
+    2: @ensure_csrf_cookie
+    2: def home(request):
+   24:     active_variants = Prefetch(
+   12:         'variants',
+   12:         queryset=ProductVariant.objects.filter(is_active=True).select_related('stock_level'),
+           )
+   12:     products = Product.objects.filter(is_active=True).select_related('category').prefetch_related('images', active_variants)[:12]
+   12:     payload = ProductSerializer(products, many=True).data
+   24:     return render(request, 'catalog/home.html', {
+   12:         'products': products,
+   12:         'products_payload': payload,
+   12:         'exchange_rate': settings.CURRENCY_USD_RATE,
+           })
+       
+       
+    2: @ensure_csrf_cookie
+    2: def product_detail(request, slug):
+    2:     active_variants = Prefetch(
+    1:         'variants',
+    1:         queryset=ProductVariant.objects.filter(is_active=True).select_related('stock_level'),
+           )
+    2:     product = get_object_or_404(
+    1:         Product.objects.select_related('category').prefetch_related('images', active_variants),
+    1:         slug=slug,
+    1:         is_active=True,
+           )
+    1:     return render(request, 'catalog/product_detail.html', {'product': product})

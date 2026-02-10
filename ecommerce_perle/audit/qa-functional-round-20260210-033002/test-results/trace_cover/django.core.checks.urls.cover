@@ -1,0 +1,159 @@
+    1: import inspect
+    1: from collections import Counter
+       
+    1: from django.conf import settings
+    1: from django.core.exceptions import ViewDoesNotExist
+       
+    1: from . import Error, Tags, Warning, register
+       
+       
+    2: @register(Tags.urls)
+    2: def check_url_config(app_configs, **kwargs):
+    1:     if getattr(settings, "ROOT_URLCONF", None):
+    1:         from django.urls import get_resolver
+       
+    1:         resolver = get_resolver()
+    1:         return check_resolver(resolver)
+           return []
+       
+       
+    1: def check_resolver(resolver):
+           """
+           Recursively check the resolver.
+           """
+  144:     check_method = getattr(resolver, "check", None)
+  144:     if check_method is not None:
+  144:         return check_method()
+           elif not hasattr(resolver, "resolve"):
+               return get_warning_for_invalid_pattern(resolver)
+           else:
+               return []
+       
+       
+    2: @register(Tags.urls)
+    2: def check_url_namespaces_unique(app_configs, **kwargs):
+           """
+           Warn if URL namespaces used in applications aren't unique.
+           """
+    1:     if not getattr(settings, "ROOT_URLCONF", None):
+               return []
+       
+    1:     from django.urls import get_resolver
+       
+    1:     resolver = get_resolver()
+    1:     all_namespaces = _load_all_namespaces(resolver)
+    1:     counter = Counter(all_namespaces)
+    3:     non_unique_namespaces = [n for n, count in counter.items() if count > 1]
+    1:     errors = []
+    1:     for namespace in non_unique_namespaces:
+               errors.append(
+                   Warning(
+                       "URL namespace '{}' isn't unique. You may not be able to reverse "
+                       "all URLs in this namespace".format(namespace),
+                       id="urls.W005",
+                   )
+               )
+    1:     return errors
+       
+       
+    1: def _load_all_namespaces(resolver, parents=()):
+           """
+           Recursively load all namespaces from URL patterns.
+           """
+  144:     url_patterns = getattr(resolver, "url_patterns", [])
+  575:     namespaces = [
+    1:         ":".join(parents + (url.namespace,))
+  287:         for url in url_patterns
+  288:         if getattr(url, "namespace", None) is not None
+           ]
+  287:     for pattern in url_patterns:
+  143:         namespace = getattr(pattern, "namespace", None)
+  143:         current = parents
+  143:         if namespace is not None:
+    1:             current += (namespace,)
+  143:         namespaces.extend(_load_all_namespaces(pattern, current))
+  144:     return namespaces
+       
+       
+    1: def get_warning_for_invalid_pattern(pattern):
+           """
+           Return a list containing a warning that the pattern is invalid.
+       
+           describe_pattern() cannot be used here, because we cannot rely on the
+           urlpattern having regex or name attributes.
+           """
+           if isinstance(pattern, str):
+               hint = (
+                   "Try removing the string '{}'. The list of urlpatterns should not "
+                   "have a prefix string as the first element.".format(pattern)
+               )
+           elif isinstance(pattern, tuple):
+               hint = "Try using path() instead of a tuple."
+           else:
+               hint = None
+       
+           return [
+               Error(
+                   "Your URL pattern {!r} is invalid. Ensure that urlpatterns is a list "
+                   "of path() and/or re_path() instances.".format(pattern),
+                   hint=hint,
+                   id="urls.E004",
+               )
+           ]
+       
+       
+    2: @register(Tags.urls)
+    2: def check_url_settings(app_configs, **kwargs):
+    1:     errors = []
+    3:     for name in ("STATIC_URL", "MEDIA_URL"):
+    2:         value = getattr(settings, name)
+    2:         if value and not value.endswith("/"):
+                   errors.append(E006(name))
+    1:     return errors
+       
+       
+    1: def E006(name):
+           return Error(
+               "The {} setting must end with a slash.".format(name),
+               id="urls.E006",
+           )
+       
+       
+    2: @register(Tags.urls)
+    2: def check_custom_error_handlers(app_configs, **kwargs):
+    1:     if not getattr(settings, "ROOT_URLCONF", None):
+               return []
+       
+    1:     from django.urls import get_resolver
+       
+    1:     resolver = get_resolver()
+       
+    1:     errors = []
+           # All handlers take (request, exception) arguments except handler500
+           # which takes (request).
+    5:     for status_code, num_parameters in [(400, 2), (403, 2), (404, 2), (500, 1)]:
+    4:         try:
+    4:             handler = resolver.resolve_error_handler(status_code)
+               except (ImportError, ViewDoesNotExist) as e:
+                   path = getattr(resolver.urlconf_module, "handler%s" % status_code)
+                   msg = (
+                       "The custom handler{status_code} view '{path}' could not be "
+                       "imported."
+                   ).format(status_code=status_code, path=path)
+                   errors.append(Error(msg, hint=str(e), id="urls.E008"))
+                   continue
+    4:         signature = inspect.signature(handler)
+    4:         args = [None] * num_parameters
+    4:         try:
+    4:             signature.bind(*args)
+               except TypeError:
+                   msg = (
+                       "The custom handler{status_code} view '{path}' does not "
+                       "take the correct number of arguments ({args})."
+                   ).format(
+                       status_code=status_code,
+                       path=handler.__module__ + "." + handler.__qualname__,
+                       args="request, exception" if num_parameters == 2 else "request",
+                   )
+                   errors.append(Error(msg, id="urls.E007"))
+    1:     return errors

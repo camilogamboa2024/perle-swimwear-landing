@@ -1,0 +1,10 @@
+    1: def calculate_cart_totals(cart, coupon=None):
+   17:     subtotal = 0
+   30:     for item in cart.items.select_related('variant').all():
+   13:         subtotal += item.quantity * item.variant.price_cop
+   17:     discount = int(subtotal * (coupon.percentage / 100)) if coupon and coupon.is_active else 0
+   17:     return {
+   17:         'subtotal': subtotal,
+   17:         'discount_total': discount,
+   17:         'grand_total': max(subtotal - discount, 0),
+           }

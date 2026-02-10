@@ -1,0 +1,66 @@
+    1: import sys
+       
+    1: from django.conf import settings
+    1: from django.core.management.base import BaseCommand
+    1: from django.core.management.utils import get_command_line_option
+    1: from django.test.runner import get_max_test_processes
+    1: from django.test.utils import NullTimeKeeper, TimeKeeper, get_runner
+       
+       
+    2: class Command(BaseCommand):
+    1:     help = "Discover and run tests in the specified modules or the current directory."
+       
+           # DiscoverRunner runs the checks after databases are set up.
+    1:     requires_system_checks = []
+    1:     test_runner = None
+       
+    1:     def run_from_argv(self, argv):
+               """
+               Pre-parse the command line to extract the value of the --testrunner
+               option. This allows a test runner to define additional command line
+               arguments.
+               """
+    1:         self.test_runner = get_command_line_option(argv, "--testrunner")
+    1:         super().run_from_argv(argv)
+       
+    1:     def add_arguments(self, parser):
+    2:         parser.add_argument(
+    1:             "args",
+    1:             metavar="test_label",
+    1:             nargs="*",
+                   help=(
+    1:                 "Module paths to test; can be modulename, modulename.TestCase or "
+                       "modulename.TestCase.test_method"
+                   ),
+               )
+    2:         parser.add_argument(
+    1:             "--noinput",
+    1:             "--no-input",
+    1:             action="store_false",
+    1:             dest="interactive",
+    1:             help="Tells Django to NOT prompt the user for input of any kind.",
+               )
+    2:         parser.add_argument(
+    1:             "--testrunner",
+    1:             help="Tells Django to use specified test runner class instead of "
+                   "the one specified by the TEST_RUNNER setting.",
+               )
+       
+    1:         test_runner_class = get_runner(settings, self.test_runner)
+       
+    1:         if hasattr(test_runner_class, "add_arguments"):
+    1:             test_runner_class.add_arguments(parser)
+       
+    1:     def handle(self, *test_labels, **options):
+    1:         TestRunner = get_runner(settings, options["testrunner"])
+       
+    1:         time_keeper = TimeKeeper() if options.get("timing", False) else NullTimeKeeper()
+    1:         parallel = options.get("parallel")
+    1:         if parallel == "auto":
+                   options["parallel"] = get_max_test_processes()
+    1:         test_runner = TestRunner(**options)
+    2:         with time_keeper.timed("Total run"):
+    1:             failures = test_runner.run_tests(test_labels)
+    1:         time_keeper.print_results()
+    1:         if failures:
+                   sys.exit(1)

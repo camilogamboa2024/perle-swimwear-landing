@@ -1,0 +1,14 @@
+    1: from django.db.models import JSONField as BuiltinJSONField
+       
+    1: __all__ = ["JSONField"]
+       
+       
+    2: class JSONField(BuiltinJSONField):
+    1:     system_check_removed_details = {
+               "msg": (
+    1:             "django.contrib.postgres.fields.JSONField is removed except for "
+                   "support in historical migrations."
+               ),
+    1:         "hint": "Use django.db.models.JSONField instead.",
+    1:         "id": "fields.E904",
+           }

@@ -1,0 +1,17 @@
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("auth", "0004_alter_user_username_opts"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.AlterField(
+    1:             model_name="user",
+    1:             name="last_login",
+    2:             field=models.DateTimeField(
+    1:                 null=True, verbose_name="last login", blank=True
+                   ),
+               ),
+           ]

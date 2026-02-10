@@ -1,0 +1,11 @@
+    1: """
+       psycopg types package
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from .. import _typeinfo
+       
+       # Exposed here
+    1: TypeInfo = _typeinfo.TypeInfo
+    1: TypesRegistry = _typeinfo.TypesRegistry

@@ -1,0 +1,19 @@
+    1: from django.core.exceptions import BadRequest, SuspiciousOperation
+       
+       
+    2: class InvalidSessionKey(SuspiciousOperation):
+    1:     """Invalid characters in session key"""
+       
+    1:     pass
+       
+       
+    2: class SuspiciousSession(SuspiciousOperation):
+    1:     """The session may be tampered with"""
+       
+    1:     pass
+       
+       
+    2: class SessionInterrupted(BadRequest):
+    1:     """The session was interrupted."""
+       
+    1:     pass

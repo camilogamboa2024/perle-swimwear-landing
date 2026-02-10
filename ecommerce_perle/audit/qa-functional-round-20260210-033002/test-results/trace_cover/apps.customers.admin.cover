@@ -1,0 +1,5 @@
+    1: from django.contrib import admin
+    1: from .models import Address, Customer
+       
+    1: admin.site.register(Customer)
+    1: admin.site.register(Address)

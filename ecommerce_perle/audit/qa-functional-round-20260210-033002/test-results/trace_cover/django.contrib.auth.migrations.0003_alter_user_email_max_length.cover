@@ -1,0 +1,17 @@
+    1: from django.db import migrations, models
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("auth", "0002_alter_permission_name_max_length"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.AlterField(
+    1:             model_name="user",
+    1:             name="email",
+    2:             field=models.EmailField(
+    1:                 max_length=254, verbose_name="email address", blank=True
+                   ),
+               ),
+           ]

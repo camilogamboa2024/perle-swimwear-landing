@@ -1,0 +1,345 @@
+    1: """
+       Code to manage the creation and SQL rendering of 'where' constraints.
+       """
+       
+    1: import operator
+    1: from functools import reduce
+       
+    1: from django.core.exceptions import EmptyResultSet, FullResultSet
+    1: from django.db.models.expressions import Case, When
+    1: from django.db.models.functions import Mod
+    1: from django.db.models.lookups import Exact
+    1: from django.utils import tree
+    1: from django.utils.functional import cached_property
+       
+       # Connection types
+    1: AND = "AND"
+    1: OR = "OR"
+    1: XOR = "XOR"
+       
+       
+    2: class WhereNode(tree.Node):
+    1:     """
+           An SQL WHERE clause.
+       
+           The class is tied to the Query class that created it (in order to create
+           the correct SQL).
+       
+           A child is usually an expression producing boolean values. Most likely the
+           expression is a Lookup instance.
+       
+           However, a child could also be any class with as_sql() and either
+           relabeled_clone() method or relabel_aliases() and clone() methods and
+           contains_aggregate attribute.
+           """
+       
+    1:     default = AND
+    1:     resolved = False
+    1:     conditional = True
+       
+    1:     def split_having_qualify(self, negated=False, must_group_by=False):
+               """
+               Return three possibly None nodes: one for those parts of self that
+               should be included in the WHERE clause, one for those parts of self
+               that must be included in the HAVING clause, and one for those parts
+               that refer to window functions.
+               """
+  297:         if not self.contains_aggregate and not self.contains_over_clause:
+  297:             return self, None, None
+               in_negated = negated ^ self.negated
+               # Whether or not children must be connected in the same filtering
+               # clause (WHERE > HAVING > QUALIFY) to maintain logical semantic.
+               must_remain_connected = (
+                   (in_negated and self.connector == AND)
+                   or (not in_negated and self.connector == OR)
+                   or self.connector == XOR
+               )
+               if (
+                   must_remain_connected
+                   and self.contains_aggregate
+                   and not self.contains_over_clause
+               ):
+                   # It's must cheaper to short-circuit and stash everything in the
+                   # HAVING clause than split children if possible.
+                   return None, self, None
+               where_parts = []
+               having_parts = []
+               qualify_parts = []
+               for c in self.children:
+                   if hasattr(c, "split_having_qualify"):
+                       where_part, having_part, qualify_part = c.split_having_qualify(
+                           in_negated, must_group_by
+                       )
+                       if where_part is not None:
+                           where_parts.append(where_part)
+                       if having_part is not None:
+                           having_parts.append(having_part)
+                       if qualify_part is not None:
+                           qualify_parts.append(qualify_part)
+                   elif c.contains_over_clause:
+                       qualify_parts.append(c)
+                   elif c.contains_aggregate:
+                       having_parts.append(c)
+                   else:
+                       where_parts.append(c)
+               if must_remain_connected and qualify_parts:
+                   # Disjunctive heterogeneous predicates can be pushed down to
+                   # qualify as long as no conditional aggregation is involved.
+                   if not where_parts or (where_parts and not must_group_by):
+                       return None, None, self
+                   elif where_parts:
+                       # In theory this should only be enforced when dealing with
+                       # where_parts containing predicates against multi-valued
+                       # relationships that could affect aggregation results but this
+                       # is complex to infer properly.
+                       raise NotImplementedError(
+                           "Heterogeneous disjunctive predicates against window functions are "
+                           "not implemented when performing conditional aggregation."
+                       )
+               where_node = (
+                   self.create(where_parts, self.connector, self.negated)
+                   if where_parts
+                   else None
+               )
+               having_node = (
+                   self.create(having_parts, self.connector, self.negated)
+                   if having_parts
+                   else None
+               )
+               qualify_node = (
+                   self.create(qualify_parts, self.connector, self.negated)
+                   if qualify_parts
+                   else None
+               )
+               return where_node, having_node, qualify_node
+       
+    1:     def as_sql(self, compiler, connection):
+               """
+               Return the SQL version of the where clause and the value to be
+               substituted in. Return '', [] if this node matches everything,
+               None, [] if this node is empty, and raise EmptyResultSet if this
+               node can't match anything.
+               """
+  365:         result = []
+  365:         result_params = []
+  365:         if self.connector == AND:
+  365:             full_needed, empty_needed = len(self.children), 1
+               else:
+                   full_needed, empty_needed = 1, len(self.children)
+       
+  365:         if self.connector == XOR and not connection.features.supports_logical_xor:
+                   # Convert if the database doesn't support XOR:
+                   #   a XOR b XOR c XOR ...
+                   # to:
+                   #   (a OR b OR c OR ...) AND MOD(a + b + c + ..., 2) == 1
+                   # The result of an n-ary XOR is true when an odd number of operands
+                   # are true.
+                   lhs = self.__class__(self.children, OR)
+                   rhs_sum = reduce(
+                       operator.add,
+                       (Case(When(c, then=1), default=0) for c in self.children),
+                   )
+                   if len(self.children) > 2:
+                       rhs_sum = Mod(rhs_sum, 2)
+                   rhs = Exact(1, rhs_sum)
+                   return self.__class__([lhs, rhs], AND, self.negated).as_sql(
+                       compiler, connection
+                   )
+       
+  779:         for child in self.children:
+  414:             try:
+  414:                 sql, params = compiler.compile(child)
+                   except EmptyResultSet:
+                       empty_needed -= 1
+                   except FullResultSet:
+                       full_needed -= 1
+                   else:
+  414:                 if sql:
+  414:                     result.append(sql)
+  414:                     result_params.extend(params)
+                       else:
+                           full_needed -= 1
+                   # Check if this node matches nothing or everything.
+                   # First check the amount of full nodes and empty nodes
+                   # to make this node empty/full.
+                   # Now, check if this node is full/empty using the
+                   # counts.
+  414:             if empty_needed == 0:
+                       if self.negated:
+                           raise FullResultSet
+                       else:
+                           raise EmptyResultSet
+  414:             if full_needed == 0:
+                       if self.negated:
+                           raise EmptyResultSet
+                       else:
+                           raise FullResultSet
+  365:         conn = " %s " % self.connector
+  365:         sql_string = conn.join(result)
+  365:         if not sql_string:
+    4:             raise FullResultSet
+  361:         if self.negated:
+                   # Some backends (Oracle at least) need parentheses around the inner
+                   # SQL in the negated case, even if the inner SQL contains just a
+                   # single expression.
+                   sql_string = "NOT (%s)" % sql_string
+  361:         elif len(result) > 1 or self.resolved:
+   53:             sql_string = "(%s)" % sql_string
+  361:         return sql_string, result_params
+       
+    1:     def get_group_by_cols(self):
+               cols = []
+               for child in self.children:
+                   cols.extend(child.get_group_by_cols())
+               return cols
+       
+    1:     def get_source_expressions(self):
+               return self.children[:]
+       
+    1:     def set_source_expressions(self, children):
+               assert len(children) == len(self.children)
+               self.children = children
+       
+    1:     def relabel_aliases(self, change_map):
+               """
+               Relabel the alias values of any children. 'change_map' is a dictionary
+               mapping old (current) alias values to the new values.
+               """
+               if not change_map:
+                   return self
+               for pos, child in enumerate(self.children):
+                   if hasattr(child, "relabel_aliases"):
+                       # For example another WhereNode
+                       child.relabel_aliases(change_map)
+                   elif hasattr(child, "relabeled_clone"):
+                       self.children[pos] = child.relabeled_clone(change_map)
+       
+    1:     def clone(self):
+  926:         clone = self.create(connector=self.connector, negated=self.negated)
+ 1365:         for child in self.children:
+  439:             if hasattr(child, "clone"):
+                       child = child.clone()
+  439:             clone.children.append(child)
+  926:         return clone
+       
+    1:     def relabeled_clone(self, change_map):
+               clone = self.clone()
+               clone.relabel_aliases(change_map)
+               return clone
+       
+    1:     def replace_expressions(self, replacements):
+               if not replacements:
+                   return self
+               if replacement := replacements.get(self):
+                   return replacement
+               clone = self.create(connector=self.connector, negated=self.negated)
+               for child in self.children:
+                   clone.children.append(child.replace_expressions(replacements))
+               return clone
+       
+    1:     def get_refs(self):
+               refs = set()
+               for child in self.children:
+                   refs |= child.get_refs()
+               return refs
+       
+    2:     @classmethod
+    2:     def _contains_aggregate(cls, obj):
+  647:         if isinstance(obj, tree.Node):
+  958:             return any(cls._contains_aggregate(c) for c in obj.children)
+  344:         return obj.contains_aggregate
+       
+    2:     @cached_property
+    2:     def contains_aggregate(self):
+  295:         return self._contains_aggregate(self)
+       
+    2:     @classmethod
+    2:     def _contains_over_clause(cls, obj):
+  647:         if isinstance(obj, tree.Node):
+  958:             return any(cls._contains_over_clause(c) for c in obj.children)
+  344:         return obj.contains_over_clause
+       
+    2:     @cached_property
+    2:     def contains_over_clause(self):
+  295:         return self._contains_over_clause(self)
+       
+    2:     @property
+    2:     def is_summary(self):
+               return any(child.is_summary for child in self.children)
+       
+    2:     @staticmethod
+    2:     def _resolve_leaf(expr, query, *args, **kwargs):
+               if hasattr(expr, "resolve_expression"):
+                   expr = expr.resolve_expression(query, *args, **kwargs)
+               return expr
+       
+    2:     @classmethod
+    2:     def _resolve_node(cls, node, query, *args, **kwargs):
+               if hasattr(node, "children"):
+                   for child in node.children:
+                       cls._resolve_node(child, query, *args, **kwargs)
+               if hasattr(node, "lhs"):
+                   node.lhs = cls._resolve_leaf(node.lhs, query, *args, **kwargs)
+               if hasattr(node, "rhs"):
+                   node.rhs = cls._resolve_leaf(node.rhs, query, *args, **kwargs)
+       
+    1:     def resolve_expression(self, *args, **kwargs):
+               clone = self.clone()
+               clone._resolve_node(clone, *args, **kwargs)
+               clone.resolved = True
+               return clone
+       
+    2:     @cached_property
+    2:     def output_field(self):
+               from django.db.models import BooleanField
+       
+               return BooleanField()
+       
+    2:     @property
+    2:     def _output_field_or_none(self):
+               return self.output_field
+       
+    1:     def select_format(self, compiler, sql, params):
+               # Wrap filters with a CASE WHEN expression if a database backend
+               # (e.g. Oracle) doesn't support boolean expression in SELECT or GROUP
+               # BY list.
+               if not compiler.connection.features.supports_boolean_expr_in_select_clause:
+                   sql = f"CASE WHEN {sql} THEN 1 ELSE 0 END"
+               return sql, params
+       
+    1:     def get_db_converters(self, connection):
+               return self.output_field.get_db_converters(connection)
+       
+    1:     def get_lookup(self, lookup):
+               return self.output_field.get_lookup(lookup)
+       
+    1:     def leaves(self):
+               for child in self.children:
+                   if isinstance(child, WhereNode):
+                       yield from child.leaves()
+                   else:
+                       yield child
+       
+       
+    2: class NothingNode:
+    1:     """A node that matches nothing."""
+       
+    1:     contains_aggregate = False
+    1:     contains_over_clause = False
+       
+    1:     def as_sql(self, compiler=None, connection=None):
+               raise EmptyResultSet
+       
+       
+    2: class ExtraWhere:
+           # The contents are a black box - assume no aggregates or windows are used.
+    1:     contains_aggregate = False
+    1:     contains_over_clause = False
+       
+    1:     def __init__(self, sqls, params):
+               self.sqls = sqls
+               self.params = params
+       
+    1:     def as_sql(self, compiler=None, connection=None):
+               sqls = ["(%s)" % sql for sql in self.sqls]
+               return " AND ".join(sqls), list(self.params or ())

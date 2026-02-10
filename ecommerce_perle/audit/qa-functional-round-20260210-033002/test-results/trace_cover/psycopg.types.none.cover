@@ -1,0 +1,27 @@
+    1: """
+       Adapters for None.
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: from __future__ import annotations
+       
+    1: from ..abc import AdaptContext, Buffer, NoneType
+    1: from ..adapt import Dumper
+       
+       
+    2: class NoneDumper(Dumper):
+    1:     """
+           Not a complete dumper as it doesn't implement dump(), but it implements
+           quote(), so it can be used in sql composition.
+           """
+       
+    1:     def dump(self, obj: None) -> Buffer | None:
+               raise NotImplementedError("NULL is passed to Postgres in other ways")
+       
+    1:     def quote(self, obj: None) -> Buffer:
+               return b"NULL"
+       
+       
+    1: def register_default_adapters(context: AdaptContext) -> None:
+    1:     context.adapters.register_dumper(NoneType, NoneDumper)

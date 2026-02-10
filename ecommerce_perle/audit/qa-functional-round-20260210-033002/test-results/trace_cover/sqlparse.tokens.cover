@@ -1,0 +1,71 @@
+       #
+       # Copyright (C) 2009-2020 the sqlparse authors and contributors
+       # <see AUTHORS file>
+       #
+       # This module is part of python-sqlparse and is released under
+       # the BSD License: https://opensource.org/licenses/BSD-3-Clause
+       #
+       # The Token implementation is based on pygment's token system written
+       # by Georg Brandl.
+       # http://pygments.org/
+       
+    1: """Tokens"""
+       
+       
+    2: class _TokenType(tuple):
+    1:     parent = None
+       
+    1:     def __contains__(self, item):
+               return item is not None and (self is item or item[:len(self)] == self)
+       
+    1:     def __getattr__(self, name):
+               # don't mess with dunder
+   35:         if name.startswith('__'):
+                   return super().__getattr__(self, name)
+   35:         new = _TokenType(self + (name,))
+   35:         setattr(self, name, new)
+   35:         new.parent = self
+   35:         return new
+       
+    1:     def __repr__(self):
+               # self can be False only if its the `root` i.e. Token itself
+               return 'Token' + ('.' if self else '') + '.'.join(self)
+       
+       
+    1: Token = _TokenType()
+       
+       # Special token types
+    1: Text = Token.Text
+    1: Whitespace = Text.Whitespace
+    1: Newline = Whitespace.Newline
+    1: Error = Token.Error
+       # Text that doesn't belong to this lexer (e.g. HTML in PHP)
+    1: Other = Token.Other
+       
+       # Common token types for source code
+    1: Keyword = Token.Keyword
+    1: Name = Token.Name
+    1: Literal = Token.Literal
+    1: String = Literal.String
+    1: Number = Literal.Number
+    1: Punctuation = Token.Punctuation
+    1: Operator = Token.Operator
+    1: Comparison = Operator.Comparison
+    1: Wildcard = Token.Wildcard
+    1: Comment = Token.Comment
+    1: Assignment = Token.Assignment
+       
+       # Generic types for non-source code
+    1: Generic = Token.Generic
+    1: Command = Generic.Command
+       
+       # String and some others are not direct children of Token.
+       # alias them:
+    1: Token.Token = Token
+    1: Token.String = String
+    1: Token.Number = Number
+       
+       # SQL specific tokens
+    1: DML = Keyword.DML
+    1: DDL = Keyword.DDL
+    1: CTE = Keyword.CTE

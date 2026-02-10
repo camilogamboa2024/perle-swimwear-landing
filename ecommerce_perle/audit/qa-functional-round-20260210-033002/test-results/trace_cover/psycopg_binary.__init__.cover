@@ -1,0 +1,14 @@
+    1: """
+       psycopg -- PostgreSQL database adapter for Python -- C optimization package
+       """
+       
+       # Copyright (C) 2020 The Psycopg Team
+       
+    1: import sys
+       
+       # This package shouldn't be imported before psycopg itself, or weird things
+       # will happen
+    1: if "psycopg" not in sys.modules:
+           raise ImportError("the psycopg package should be imported before psycopg_binary")
+       
+    1: from .version import __version__ as __version__  # noqa

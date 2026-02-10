@@ -1,0 +1,167 @@
+    1: """
+       This module allows importing AbstractBaseUser even when django.contrib.auth is
+       not in INSTALLED_APPS.
+       """
+       
+    1: import unicodedata
+       
+    1: from django.conf import settings
+    1: from django.contrib.auth import password_validation
+    1: from django.contrib.auth.hashers import (
+           acheck_password,
+           check_password,
+           is_password_usable,
+           make_password,
+       )
+    1: from django.db import models
+    1: from django.utils.crypto import salted_hmac
+    1: from django.utils.translation import gettext_lazy as _
+       
+       
+    2: class BaseUserManager(models.Manager):
+    2:     @classmethod
+    2:     def normalize_email(cls, email):
+               """
+               Normalize the email address by lowercasing the domain part of it.
+               """
+    3:         email = email or ""
+    3:         try:
+    3:             email_name, domain_part = email.strip().rsplit("@", 1)
+               except ValueError:
+                   pass
+               else:
+    3:             email = email_name + "@" + domain_part.lower()
+    3:         return email
+       
+    1:     def get_by_natural_key(self, username):
+    2:         return self.get(**{self.model.USERNAME_FIELD: username})
+       
+    1:     async def aget_by_natural_key(self, username):
+               return await self.aget(**{self.model.USERNAME_FIELD: username})
+       
+       
+    2: class AbstractBaseUser(models.Model):
+    1:     password = models.CharField(_("password"), max_length=128)
+    1:     last_login = models.DateTimeField(_("last login"), blank=True, null=True)
+       
+    1:     is_active = True
+       
+    1:     REQUIRED_FIELDS = []
+       
+           # Stores the raw password if set_password() is called so that it can
+           # be passed to password_changed() after the model is saved.
+    1:     _password = None
+       
+    2:     class Meta:
+    1:         abstract = True
+       
+    1:     def __str__(self):
+               return self.get_username()
+       
+           # RemovedInDjango60Warning: When the deprecation ends, replace with:
+           # def save(self, **kwargs):
+           #   super().save(**kwargs)
+    1:     def save(self, *args, **kwargs):
+    5:         super().save(*args, **kwargs)
+    5:         if self._password is not None:
+                   password_validation.password_changed(self._password, self)
+                   self._password = None
+       
+    1:     def get_username(self):
+               """Return the username for this User."""
+               return getattr(self, self.USERNAME_FIELD)
+       
+    1:     def clean(self):
+               setattr(self, self.USERNAME_FIELD, self.normalize_username(self.get_username()))
+       
+    1:     def natural_key(self):
+               return (self.get_username(),)
+       
+    2:     @property
+    2:     def is_anonymous(self):
+               """
+               Always return False. This is a way of comparing User objects to
+               anonymous users.
+               """
+    1:         return False
+       
+    2:     @property
+    2:     def is_authenticated(self):
+               """
+               Always return True. This is a way to tell if the user has been
+               authenticated in templates.
+               """
+    3:         return True
+       
+    1:     def set_password(self, raw_password):
+               self.password = make_password(raw_password)
+               self._password = raw_password
+       
+    1:     def check_password(self, raw_password):
+               """
+               Return a boolean of whether the raw_password was correct. Handles
+               hashing formats behind the scenes.
+               """
+       
+    2:         def setter(raw_password):
+                   self.set_password(raw_password)
+                   # Password hash upgrades shouldn't be considered password changes.
+                   self._password = None
+                   self.save(update_fields=["password"])
+       
+    2:         return check_password(raw_password, self.password, setter)
+       
+    1:     async def acheck_password(self, raw_password):
+               """See check_password()."""
+       
+               async def setter(raw_password):
+                   self.set_password(raw_password)
+                   # Password hash upgrades shouldn't be considered password changes.
+                   self._password = None
+                   await self.asave(update_fields=["password"])
+       
+               return await acheck_password(raw_password, self.password, setter)
+       
+    1:     def set_unusable_password(self):
+               # Set a value that will never be a valid hash
+               self.password = make_password(None)
+       
+    1:     def has_usable_password(self):
+               """
+               Return False if set_unusable_password() has been called for this user.
+               """
+               return is_password_usable(self.password)
+       
+    1:     def get_session_auth_hash(self):
+               """
+               Return an HMAC of the password field.
+               """
+    4:         return self._get_session_auth_hash()
+       
+    1:     def get_session_auth_fallback_hash(self):
+               for fallback_secret in settings.SECRET_KEY_FALLBACKS:
+                   yield self._get_session_auth_hash(secret=fallback_secret)
+       
+    1:     def _get_session_auth_hash(self, secret=None):
+    4:         key_salt = "django.contrib.auth.models.AbstractBaseUser.get_session_auth_hash"
+   12:         return salted_hmac(
+    4:             key_salt,
+    4:             self.password,
+    4:             secret=secret,
+    4:             algorithm="sha256",
+    4:         ).hexdigest()
+       
+    2:     @classmethod
+    2:     def get_email_field_name(cls):
+               try:
+                   return cls.EMAIL_FIELD
+               except AttributeError:
+                   return "email"
+       
+    2:     @classmethod
+    2:     def normalize_username(cls, username):
+    3:         return (
+    3:             unicodedata.normalize("NFKC", username)
+    3:             if isinstance(username, str)
+                   else username
+               )

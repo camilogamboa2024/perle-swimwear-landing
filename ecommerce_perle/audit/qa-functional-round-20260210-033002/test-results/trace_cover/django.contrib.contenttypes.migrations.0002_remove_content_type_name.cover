@@ -1,0 +1,42 @@
+    1: from django.db import migrations, models
+       
+       
+    1: def add_legacy_name(apps, schema_editor):
+           alias = schema_editor.connection.alias
+           ContentType = apps.get_model("contenttypes", "ContentType")
+           for ct in ContentType.objects.using(alias):
+               try:
+                   ct.name = apps.get_model(ct.app_label, ct.model)._meta.object_name
+               except LookupError:
+                   ct.name = ct.model
+               ct.save()
+       
+       
+    2: class Migration(migrations.Migration):
+    1:     dependencies = [
+    1:         ("contenttypes", "0001_initial"),
+           ]
+       
+    1:     operations = [
+    2:         migrations.AlterModelOptions(
+    1:             name="contenttype",
+    1:             options={
+    1:                 "verbose_name": "content type",
+    1:                 "verbose_name_plural": "content types",
+                   },
+               ),
+    2:         migrations.AlterField(
+    1:             model_name="contenttype",
+    1:             name="name",
+    1:             field=models.CharField(max_length=100, null=True),
+               ),
+    2:         migrations.RunPython(
+    1:             migrations.RunPython.noop,
+    1:             add_legacy_name,
+    1:             hints={"model_name": "contenttype"},
+               ),
+    2:         migrations.RemoveField(
+    1:             model_name="contenttype",
+    1:             name="name",
+               ),
+           ]
