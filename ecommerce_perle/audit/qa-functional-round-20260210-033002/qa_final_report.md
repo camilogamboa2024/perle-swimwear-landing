@@ -10,7 +10,7 @@
 ## Tabla de hallazgos
 | ID | Severidad | Módulo | Descripción | Pasos | Esperado | Actual (antes fix) | Evidencia | Fix (commit/PR) | Test agregado | Estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| QA-BUG-001 | HIGH | `apps/orders` | Colisión de email entre customer guest y user auth produce 500 en `/cart/` | Crear customer guest + user con mismo email, login y abrir `/cart/` | 200 sin error y customer ligado correctamente | 500 `UNIQUE constraint failed: customers_customer.email` | `test-results/bug_repro_customer_email_collision.log` | Local branch `qa/functional-audit` (fix en `apps/orders/views.py`) | `AuthenticatedCustomerReuseTest` en `apps/orders/tests.py` | Cerrado |
+| QA-BUG-001 | HIGH | `apps/orders` | Colisión de email entre customer guest y user auth produce 500 en `/cart/` | Crear customer guest + user con mismo email, login y abrir `/cart/` | 200 sin error y customer ligado correctamente | 500 `UNIQUE constraint failed: customers_customer.email` | `test-results/bug_repro_customer_email_collision.log` | Commit `9acae58` (fix + tests) | `AuthenticatedCustomerReuseTest` en `apps/orders/tests.py` | Cerrado |
 
 ## Verificaciones ejecutadas
 - Build/checks: `migrate`, `seed_demo`, `check`, `check --deploy`.
