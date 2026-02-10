@@ -16,7 +16,7 @@
       {% endwith %}
       <h3><a href="/product/{{ product.slug }}/">{{ product.name }}</a></h3>
       <p>{{ product.description|default:'Sin descripción'|truncatechars:120 }}</p>
-      {% with v=product.variants.first %}
+      {% with v=product.variants.all|first %}
       {% if v %}
       <p><strong>${{ v.price_cop }}</strong> COP</p>
       <button class="btn" data-add-cart="{{ v.id }}">Añadir a bolsa</button>

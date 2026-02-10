@@ -7,11 +7,15 @@ from apps.orders.services import calculate_cart_totals
 from .whatsapp import build_whatsapp_message
 
 
+class CheckoutError(ValueError):
+    """Business-rule errors that should be exposed as controlled 4xx responses."""
+
+
 @transaction.atomic
 def create_order_from_cart(*, customer, address, cart, coupon=None, payment_method='whatsapp', session_key=''):
     items = list(cart.items.select_related('variant', 'variant__product'))
     if not items:
-        raise ValueError('El carrito está vacío')
+        raise CheckoutError('El carrito está vacío')
 
     order = Order.objects.create(
         customer=customer,
@@ -23,9 +27,14 @@ def create_order_from_cart(*, customer, address, cart, coupon=None, payment_meth
     )
 
     for item in items:
-        stock = StockLevel.objects.select_for_update().get(variant=item.variant)
+        if not item.variant.is_active:
+            raise CheckoutError(f'Variante no disponible para SKU {item.variant.sku}')
+        try:
+            stock = StockLevel.objects.select_for_update().get(variant=item.variant)
+        except StockLevel.DoesNotExist as exc:
+            raise CheckoutError(f'Sin stock configurado para SKU {item.variant.sku}') from exc
         if stock.available < item.quantity:
-            raise ValueError(f'Sin stock para SKU {item.variant.sku}')
+            raise CheckoutError(f'Sin stock para SKU {item.variant.sku}')
 
         stock.available = F('available') - item.quantity
         stock.save(update_fields=['available', 'updated_at'])

@@ -1,0 +1,4 @@
+add_without_csrf_status 201
+patch_without_csrf_status 200
+clear_without_csrf_status 200
+exit_code=0

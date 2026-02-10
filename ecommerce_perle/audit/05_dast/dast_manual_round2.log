@@ -1,0 +1,42 @@
+Forbidden: /api/cart/items/
+Forbidden: /checkout/api/checkout/confirm/
+Not Found: /orders/confirmation/bebb6821-0d77-4d2e-adeb-818c8788b984/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+DAST_ROUND_2_POST_FIX
+variant_id=1 slug=bikini-reversible-aura
+csrf_no_token_cart_status 403
+csrf_no_token_cart_body {"detail":"CSRF Failed: CSRF cookie not set."}
+csrf_no_token_checkout_status 403
+csrf_no_token_checkout_body {"detail":"CSRF Failed: CSRF cookie not set."}
+csrf_with_token_cart_status 201
+csrf_with_token_checkout_status 201
+csrf_with_token_checkout_body_prefix {"order_id":4,"order_public_id":"bebb6821-0d77-4d2e-adeb-818c8788b984","whatsapp_url":"","confirmation_url":"/orders/con
+idor_order_public_id bebb6821-0d77-4d2e-adeb-818c8788b984
+idor_same_session_status 200
+idor_other_session_status 404
+rate_limit_first_429_request 20
+exit_code=0

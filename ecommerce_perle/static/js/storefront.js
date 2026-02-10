@@ -68,6 +68,69 @@ function toggleWishlist(productId) {
   localStorage.setItem('perleWishlist', JSON.stringify(wishlist));
 }
 
+function renderCheckoutError(holder, message) {
+  if (!holder) return;
+  holder.textContent = '';
+  const errorNode = document.createElement('p');
+  errorNode.style.color = '#b42318';
+  errorNode.textContent = message;
+  holder.appendChild(errorNode);
+}
+
+function getSafeConfirmationUrl(rawUrl) {
+  if (!rawUrl) return '';
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    if (!isHttp || parsed.origin !== window.location.origin) return '';
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+function getSafeWhatsappUrl(rawUrl) {
+  if (!rawUrl) return '';
+  try {
+    const parsed = new URL(rawUrl);
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    const allowedHost = parsed.hostname === 'wa.me' || parsed.hostname === 'api.whatsapp.com';
+    return isHttp && allowedHost ? parsed.toString() : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function renderCheckoutSuccess(holder, confirmationUrl, whatsappUrl) {
+  if (!holder) return;
+  holder.textContent = '';
+
+  const safeConfirmationUrl = getSafeConfirmationUrl(confirmationUrl);
+  const safeWhatsappUrl = getSafeWhatsappUrl(whatsappUrl);
+
+  if (safeConfirmationUrl) {
+    const confirmationLink = document.createElement('a');
+    confirmationLink.href = safeConfirmationUrl;
+    confirmationLink.textContent = 'Ver confirmación';
+    holder.appendChild(confirmationLink);
+  }
+
+  if (safeWhatsappUrl) {
+    if (holder.childNodes.length > 0) holder.appendChild(document.createTextNode(' · '));
+    const whatsappLink = document.createElement('a');
+    whatsappLink.href = safeWhatsappUrl;
+    whatsappLink.textContent = 'WhatsApp';
+    whatsappLink.rel = 'noreferrer';
+    holder.appendChild(whatsappLink);
+  }
+
+  if (holder.childNodes.length === 0) {
+    const successNode = document.createElement('p');
+    successNode.textContent = 'Pedido creado correctamente.';
+    holder.appendChild(successNode);
+  }
+}
+
 document.addEventListener('click', (e) => {
   const cartBtn = e.target.closest('[data-add-cart]');
   if (cartBtn) addToCart(Number(cartBtn.dataset.addCart));
@@ -103,16 +166,16 @@ if (checkoutForm) {
       const payload = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         const errorMsg = payload.detail || payload.error || 'No se pudo confirmar el pedido. Verifica tus datos.';
-        if (holder) holder.innerHTML = `<p style="color:#b42318;">${errorMsg}</p>`;
+        renderCheckoutError(holder, errorMsg);
         showToast('Revisa los datos del checkout');
         return;
       }
 
-      if (holder) holder.innerHTML = `<a href="${payload.confirmation_url}">Ver confirmación</a> · <a href="${payload.whatsapp_url}">WhatsApp</a>`;
+      renderCheckoutSuccess(holder, payload.confirmation_url, payload.whatsapp_url);
       showToast('Pedido creado correctamente');
       await refreshCartBadge();
     } catch (_) {
-      if (holder) holder.innerHTML = '<p style="color:#b42318;">Error de red al confirmar el pedido. Intenta de nuevo.</p>';
+      renderCheckoutError(holder, 'Error de red al confirmar el pedido. Intenta de nuevo.');
       showToast('Error de red');
     } finally {
       if (submitButton) {

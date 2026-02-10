@@ -1,0 +1,119 @@
+     1	from django.conf import settings
+     2	from django.core.exceptions import ObjectDoesNotExist
+     3	from django.http import Http404
+     4	from django.shortcuts import get_object_or_404, render
+     5	from django.views.decorators.csrf import ensure_csrf_cookie
+     6	from rest_framework import status
+     7	from rest_framework.response import Response
+     8	from rest_framework.views import APIView
+     9	
+    10	from apps.customers.models import Customer
+    11	from apps.checkout.whatsapp import build_whatsapp_url
+    12	from core.authentication import EnforcedCsrfSessionAuthentication
+    13	from .models import Cart, CartItem, Order
+    14	from .serializers import AddCartItemSerializer, CartSerializer, UpdateCartItemSerializer
+    15	
+    16	
+    17	def _get_or_create_cart(request):
+    18	    if request.user.is_authenticated:
+    19	        customer, _ = Customer.objects.get_or_create(
+    20	            user=request.user,
+    21	            defaults={
+    22	                'email': request.user.email or f'user-{request.user.id}@local.test',
+    23	                'full_name': request.user.get_full_name() or request.user.username,
+    24	            },
+    25	        )
+    26	        cart, _ = Cart.objects.get_or_create(customer=customer, defaults={'currency': 'COP'})
+    27	        return cart
+    28	
+    29	    if not request.session.session_key:
+    30	        request.session.create()
+    31	    cart, _ = Cart.objects.get_or_create(session_key=request.session.session_key, defaults={'currency': 'COP'})
+    32	    return cart
+    33	
+    34	
+    35	def _validate_stock_for_quantity(variant, quantity):
+    36	    if not variant.is_active:
+    37	        return f'La variante {variant.sku} no está disponible.'
+    38	    try:
+    39	        available = variant.stock_level.available
+    40	    except ObjectDoesNotExist:
+    41	        return f'Sin stock configurado para SKU {variant.sku}.'
+    42	    if quantity > available:
+    43	        return f'Stock insuficiente para SKU {variant.sku}. Disponible: {available}.'
+    44	    return ''
+    45	
+    46	
+    47	class CartApiView(APIView):
+    48	    def get(self, request):
+    49	        cart = _get_or_create_cart(request)
+    50	        return Response(CartSerializer(cart).data)
+    51	
+    52	
+    53	class CartItemsApiView(APIView):
+    54	    authentication_classes = [EnforcedCsrfSessionAuthentication]
+    55	
+    56	    def post(self, request):
+    57	        cart = _get_or_create_cart(request)
+    58	        serializer = AddCartItemSerializer(data=request.data)
+    59	        serializer.is_valid(raise_exception=True)
+    60	        variant = serializer.validated_data['variant']
+    61	        quantity = serializer.validated_data['quantity']
+    62	        item, created = CartItem.objects.get_or_create(cart=cart, variant=variant, defaults={'quantity': quantity})
+    63	        target_quantity = quantity if created else item.quantity + quantity
+    64	        stock_error = _validate_stock_for_quantity(variant, target_quantity)
+    65	        if stock_error:
+    66	            if created:
+    67	                item.delete()
+    68	            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+    69	        if not created:
+    70	            item.quantity = target_quantity
+    71	            item.save(update_fields=['quantity'])
+    72	        return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
+    73	
+    74	
+    75	class CartItemDetailApiView(APIView):
+    76	    authentication_classes = [EnforcedCsrfSessionAuthentication]
+    77	
+    78	    def patch(self, request, item_id):
+    79	        cart = _get_or_create_cart(request)
+    80	        item = get_object_or_404(CartItem, id=item_id, cart=cart)
+    81	        serializer = UpdateCartItemSerializer(data=request.data)
+    82	        serializer.is_valid(raise_exception=True)
+    83	        new_quantity = serializer.validated_data['quantity']
+    84	        stock_error = _validate_stock_for_quantity(item.variant, new_quantity)
+    85	        if stock_error:
+    86	            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+    87	        item.quantity = new_quantity
+    88	        item.save(update_fields=['quantity'])
+    89	        return Response(CartSerializer(cart).data)
+    90	
+    91	    def delete(self, request, item_id):
+    92	        cart = _get_or_create_cart(request)
+    93	        item = get_object_or_404(CartItem, id=item_id, cart=cart)
+    94	        item.delete()
+    95	        return Response(CartSerializer(cart).data)
+    96	
+    97	
+    98	class CartClearApiView(APIView):
+    99	    authentication_classes = [EnforcedCsrfSessionAuthentication]
+   100	
+   101	    def post(self, request):
+   102	        cart = _get_or_create_cart(request)
+   103	        cart.items.all().delete()
+   104	        return Response(CartSerializer(cart).data)
+   105	
+   106	
+   107	@ensure_csrf_cookie
+   108	def cart_page(request):
+   109	    cart = _get_or_create_cart(request)
+   110	    return render(request, 'orders/cart.html', {'cart': cart, 'totals': CartSerializer(cart).data['totals']})
+   111	
+   112	
+   113	@ensure_csrf_cookie
+   114	def order_confirmation(request, public_id):
+   115	    order = get_object_or_404(Order.objects.prefetch_related('items__variant__product'), public_id=public_id)
+   116	    if order.session_key and request.session.session_key != order.session_key:
+   117	        raise Http404('Pedido no encontrado')
+   118	    whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
+   119	    return render(request, 'orders/confirmation.html', {'order': order, 'whatsapp_url': whatsapp_url})

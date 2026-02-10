@@ -1,0 +1,11 @@
+ ecommerce_perle/apps/catalog/serializers.py |  9 +++-
+ ecommerce_perle/apps/catalog/tests.py       | 47 ++++++++++++++++++
+ ecommerce_perle/apps/catalog/views.py       | 27 +++++++++--
+ ecommerce_perle/apps/checkout/services.py   | 15 ++++--
+ ecommerce_perle/apps/checkout/tests.py      | 74 +++++++++++++++++++++++++++++
+ ecommerce_perle/apps/checkout/views.py      | 53 ++++++++++++---------
+ ecommerce_perle/apps/orders/views.py        | 27 ++++++++++-
+ ecommerce_perle/core/settings.py            |  9 +++-
+ ecommerce_perle/static/js/storefront.js     | 69 +++++++++++++++++++++++++--
+ ecommerce_perle/templates/catalog/home.html |  2 +-
+ 10 files changed, 294 insertions(+), 38 deletions(-)

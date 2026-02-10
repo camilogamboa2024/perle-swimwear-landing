@@ -1,0 +1,11 @@
+     1	from rest_framework.authentication import SessionAuthentication
+     2	
+     3	
+     4	class EnforcedCsrfSessionAuthentication(SessionAuthentication):
+     5	    """
+     6	    Force CSRF validation for session-based requests, including anonymous sessions.
+     7	    """
+     8	
+     9	    def authenticate(self, request):
+    10	        self.enforce_csrf(request)
+    11	        return super().authenticate(request)

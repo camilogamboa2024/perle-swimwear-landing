@@ -1,0 +1,7 @@
+Operations to perform:
+  Apply all migrations: admin, auth, catalog, contenttypes, customers, inventory, orders, sessions
+Running migrations:
+  Applying catalog.0002_rename_catalog_pro_is_acti_b8dd35_idx_catalog_pro_is_acti_00391f_idx_and_more... OK
+  Applying inventory.0002_rename_inventory_i_variant_56b574_idx_inventory_i_variant_b826d6_idx_and_more... OK
+  Applying orders.0002_rename_orders_orde_status_8ffe9c_idx_orders_orde_status_25e057_idx... OK
+exit_code=0

@@ -1,0 +1,8 @@
+Not Found: /api/cart/items/9/
+Not Found: /api/cart/items/9/
+owner_add_status 201
+item_id 9
+attacker_patch_status 404
+attacker_delete_status 404
+attacker_patch_body_prefix {"detail":"No CartItem matches the given query."}
+exit_code=0

@@ -1,0 +1,46 @@
+Not Found: /orders/confirmation/eb94770e-d598-4436-8bd2-f1bd6984ccd3/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Bad Request: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+Too Many Requests: /checkout/api/checkout/confirm/
+DAST_ROUND_1
+variant_id=1 slug=bikini-reversible-aura
+csrf_no_token_cart_status 201
+csrf_no_token_cart_body {"id":7,"currency":"COP","items":[{"id":4,"variant":1,"quantity":1,"product_name":"Bikini Reversible Aura","size":"S","color":"Negro","unit_price":189000}],"totals":{"subtotal":189
+csrf_no_token_checkout_status 201
+csrf_no_token_checkout_body {"order_id":2,"order_public_id":"5d0f03df-34ba-492c-bd16-3afb75d77ee8","whatsapp_url":"","confirmation_url":"/orders/confirmation/5d0f03df-34ba-492c-bd16-3afb75d77ee8/"}
+csrf_with_token_cart_status 201
+checkout_create_for_idor_status 201
+idor_order_public_id eb94770e-d598-4436-8bd2-f1bd6984ccd3
+idor_same_session_status 200
+idor_other_session_status 404
+admin_anonymous_status 302
+admin_anonymous_location /admin/login/?next=/admin/
+sqli_probe_status 200
+sqli_probe_content_type application/json
+sqli_probe_items 0
+xss_probe_status 200
+xss_payload_reflected False
+rate_limit_first_429_request 19
+exit_code=0

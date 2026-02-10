@@ -1,0 +1,8 @@
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f7993b1c710>: Failed to establish a new connection: [Errno -2] Nombre o servicio desconocido')': /simple/django/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f7995143f10>: Failed to establish a new connection: [Errno -2] Nombre o servicio desconocido')': /simple/django/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f7993b2a150>: Failed to establish a new connection: [Errno -2] Nombre o servicio desconocido')': /simple/django/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f7993b2ad50>: Failed to establish a new connection: [Errno -2] Nombre o servicio desconocido')': /simple/django/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f7993b2b590>: Failed to establish a new connection: [Errno -2] Nombre o servicio desconocido')': /simple/django/
+ERROR: Could not find a version that satisfies the requirement Django<6.0,>=5.0 (from versions: none)
+ERROR: No matching distribution found for Django<6.0,>=5.0
+exit_code=1

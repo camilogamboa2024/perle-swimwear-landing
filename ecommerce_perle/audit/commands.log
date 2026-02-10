@@ -1,0 +1,171 @@
+# Audit command log
+Generated: 2026-02-10T03:00:33-05:00
+
+$ pwd
+/home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle
+$ date -Iseconds
+2026-02-10T03:00:44-05:00
+$ git rev-parse --short HEAD
+1d3e0be
+$ git status --short
+ M apps/catalog/serializers.py
+ M apps/catalog/tests.py
+ M apps/catalog/views.py
+ M apps/checkout/services.py
+ M apps/checkout/tests.py
+ M apps/checkout/views.py
+ M apps/orders/views.py
+ M core/settings.py
+ M static/js/storefront.js
+ M templates/catalog/home.html
+?? apps/catalog/migrations/0002_rename_catalog_pro_is_acti_b8dd35_idx_catalog_pro_is_acti_00391f_idx_and_more.py
+?? apps/inventory/migrations/0002_rename_inventory_i_variant_56b574_idx_inventory_i_variant_b826d6_idx_and_more.py
+?? apps/orders/migrations/0002_rename_orders_orde_status_8ffe9c_idx_orders_orde_status_25e057_idx.py
+?? audit/
+$ git diff --stat
+ ecommerce_perle/apps/catalog/serializers.py |  9 +++-
+ ecommerce_perle/apps/catalog/tests.py       | 47 ++++++++++++++++++
+ ecommerce_perle/apps/catalog/views.py       | 27 +++++++++--
+ ecommerce_perle/apps/checkout/services.py   | 15 ++++--
+ ecommerce_perle/apps/checkout/tests.py      | 74 +++++++++++++++++++++++++++++
+ ecommerce_perle/apps/checkout/views.py      | 53 ++++++++++++---------
+ ecommerce_perle/apps/orders/views.py        | 27 ++++++++++-
+ ecommerce_perle/core/settings.py            |  9 +++-
+ ecommerce_perle/static/js/storefront.js     | 69 +++++++++++++++++++++++++--
+ ecommerce_perle/templates/catalog/home.html |  2 +-
+ 10 files changed, 294 insertions(+), 38 deletions(-)
+$ . .venv/bin/activate && python --version && pip --version
+$ sed -n 1,220p .env.example
+Python 3.11.2
+$ . .venv/bin/activate && pip freeze
+DJANGO_SECRET_KEY=change-me
+DEBUG=1
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://localhost:8000,https://*.onrender.com
+DATABASE_URL=
+DB_ENGINE=django.db.backends.sqlite3
+DB_NAME=db.sqlite3
+DB_CONN_MAX_AGE=600
+DB_SSL_REQUIRE=0
+WHATSAPP_PHONE=
+CURRENCY_USD_RATE=0.00026
+pip 23.0.1 from /home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/.venv/lib/python3.11/site-packages/pip (python 3.11)
+asgiref==3.11.1
+dj-database-url==2.3.0
+Django==5.2.11
+djangorestframework==3.16.1
+gunicorn==22.0.0
+packaging==26.0
+psycopg==3.3.2
+psycopg-binary==3.3.2
+sqlparse==0.5.5
+typing_extensions==4.15.0
+whitenoise==6.11.0
+$ awk -F= ... .env (sanitized)
+DJANGO_SECRET_KEY=<redacted>
+DEBUG=<redacted>
+ALLOWED_HOSTS=<redacted>
+CSRF_TRUSTED_ORIGINS=<redacted>
+DATABASE_URL=<redacted>
+WHATSAPP_PHONE=<redacted>
+SECURE_SSL_REDIRECT=<redacted>
+SECURE_HSTS_SECONDS=<redacted>
+SECURE_HSTS_INCLUDE_SUBDOMAINS=<redacted>
+SECURE_HSTS_PRELOAD=<redacted>
+DB_CONN_MAX_AGE=<redacted>
+DB_SSL_REQUIRE=<redacted>
+CURRENCY_USD_RATE=<redacted>
+$ python -m venv .venv_audit
+exit_code=0
+$ . .venv_audit/bin/activate && pip install -r requirements.txt
+exit_code=1
+$ . .venv/bin/activate && python manage.py migrate --noinput
+$ . .venv/bin/activate && python manage.py seed_demo
+$ . .venv/bin/activate && python manage.py check
+$ . .venv/bin/activate && python manage.py createsuperuser --noinput --username audit_admin --email audit_admin@example.com
+exit_code=0
+exit_code=0
+exit_code=0
+exit_code=0
+$ . .venv/bin/activate && python manage.py runserver 127.0.0.1:8000
+$ . .venv/bin/activate && python manage.py runserver 127.0.0.1:8000 --noreload
+$ smoke_flows_via_django_test_client
+exit_code=0
+$ admin_login_verification
+exit_code=0
+$ set admin password for audit user
+exit_code=0
+$ admin_login_verification_after_password_fix
+exit_code=0
+$ admin_home_snippet
+exit_code=0
+$ . .venv/bin/activate && python manage.py check
+$ . .venv/bin/activate && python manage.py check --deploy
+$ . .venv/bin/activate && python manage.py test
+$ tool availability check
+coverage=MISSING
+bandit=MISSING
+semgrep=MISSING
+pip-audit=MISSING
+safety=MISSING
+gitleaks=MISSING
+trufflehog=MISSING
+detect-secrets=MISSING
+exit_code=0
+exit_code=0
+exit_code=0
+$ . .venv/bin/activate && pip install coverage bandit pip-audit semgrep
+exit_code=1
+$ dast_manual_pre_fix (django test client)
+exit_code=0
+$ secret scan (working tree fallback)
+exit_code=1
+$ secret scan (git history fallback)
+exit_code=0
+$ sast grep fallback
+exit_code=1
+$ dependency check fallback: pip check
+exit_code=0
+$ csrf_state_changing_cart_pre_fix
+exit_code=0
+$ . .venv/bin/activate && python manage.py test
+exit_code=0
+$ . .venv/bin/activate && python manage.py check
+$ . .venv/bin/activate && python manage.py makemigrations --check --dry-run
+$ . .venv/bin/activate && python manage.py check --deploy
+exit_code=0
+exit_code=0
+exit_code=0
+$ dast_manual_round2_post_fix
+exit_code=0
+$ csrf_cart_mutations_round2_post_fix
+exit_code=0
+$ . .venv/bin/activate && python -m compileall .
+exit_code=0
+$ idor_cart_item_cross_session_test
+exit_code=0
+$ DEBUG=0 production-like check --deploy
+exit_code=0
+$ DEBUG=0 production-like check --deploy with long key
+exit_code=0
+$ git status --short
+$ git diff -- apps/orders/views.py apps/checkout/views.py core/authentication.py apps/orders/tests.py apps/checkout/tests.py
+ M apps/catalog/serializers.py
+ M apps/catalog/tests.py
+ M apps/catalog/views.py
+ M apps/checkout/services.py
+ M apps/checkout/tests.py
+ M apps/checkout/views.py
+ M apps/orders/views.py
+ M core/settings.py
+ M static/js/storefront.js
+ M templates/catalog/home.html
+?? .venv_audit/
+?? apps/catalog/migrations/0002_rename_catalog_pro_is_acti_b8dd35_idx_catalog_pro_is_acti_00391f_idx_and_more.py
+?? apps/inventory/migrations/0002_rename_inventory_i_variant_56b574_idx_inventory_i_variant_b826d6_idx_and_more.py
+?? apps/orders/migrations/0002_rename_orders_orde_status_8ffe9c_idx_orders_orde_status_25e057_idx.py
+?? apps/orders/tests.py
+?? audit/
+?? core/authentication.py
+$ git rev-parse --short HEAD
+1d3e0be

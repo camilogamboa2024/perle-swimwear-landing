@@ -1,0 +1,22 @@
+status 200
+title_marker True
+contains_logout False
+first_500_chars
+<!DOCTYPE html>
+
+<html lang="es-co" dir="ltr">
+<head>
+<title>Sitio administrativo | Sitio de administración de Django</title>
+<link rel="stylesheet" href="/static/admin/css/base.css">
+
+  <link rel="stylesheet" href="/static/admin/css/dark_mode.css">
+  <script src="/static/admin/js/theme.js"></script>
+
+
+  <link rel="stylesheet" href="/static/admin/css/nav_sidebar.css">
+  <script src="/static/admin/js/nav_sidebar.js" defer></script>
+
+<link rel="stylesheet" href="/static/admin/css/dashboard.css">
+
+
+exit_code=0
