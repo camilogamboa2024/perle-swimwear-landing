@@ -1,9 +1,11 @@
-from django.test import TestCase
+import json
+
+from django.test import Client, TestCase
 
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.customers.models import Address, Customer
 from apps.inventory.models import InventoryMovement, StockLevel
-from apps.orders.models import Cart, CartItem, Coupon
+from apps.orders.models import Cart, CartItem, Coupon, Order
 from .services import create_order_from_cart
 
 
@@ -50,3 +52,101 @@ class CheckoutServiceTest(TestCase):
         CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
         order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
         self.assertTrue(InventoryMovement.objects.filter(reason=f'Order #{order.id}').exists())
+
+    def test_missing_stock_level_raises_error(self):
+        self.variant.stock_level.delete()
+        cart = Cart.objects.create(customer=self.customer)
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+        with self.assertRaisesMessage(ValueError, 'Sin stock configurado'):
+            create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
+
+
+class CheckoutConfirmApiViewTest(TestCase):
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        category = Category.objects.create(name='One Piece', slug='one-piece')
+        product = Product.objects.create(name='Model', slug='model', category=category, description='x')
+        self.variant = ProductVariant.objects.create(
+            product=product, sku='SKU-API-1', size='M', color='Negro', price_cop=150000
+        )
+        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 1})
+
+    def _csrf_headers(self, path='/'):
+        response = self.client.get(path)
+        token = response.cookies.get('csrftoken').value
+        return {'HTTP_X_CSRFTOKEN': token}
+
+    def _payload(self, email):
+        return {
+            'full_name': 'Cliente API',
+            'email': email,
+            'phone': '',
+            'line1': 'Calle 123',
+            'city': 'Bogotá',
+            'state': 'DC',
+            'coupon_code': '',
+            'payment_method': 'whatsapp',
+        }
+
+    def _add_to_cart(self, quantity):
+        headers = self._csrf_headers('/')
+        return self.client.post(
+            '/api/cart/items/',
+            data=json.dumps({'variant_id': self.variant.id, 'quantity': quantity}),
+            content_type='application/json',
+            **headers,
+        )
+
+    def _confirm_checkout(self, email, with_csrf=True):
+        headers = self._csrf_headers('/checkout/') if with_csrf else {}
+        return self.client.post(
+            '/checkout/api/checkout/confirm/',
+            data=json.dumps(self._payload(email)),
+            content_type='application/json',
+            **headers,
+        )
+
+    def test_empty_cart_returns_400_and_rolls_back_customer_data(self):
+        response = self._confirm_checkout('empty-cart@example.com')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('vacío', response.json().get('error', '').lower())
+        self.assertFalse(Customer.objects.filter(email='empty-cart@example.com').exists())
+        self.assertFalse(Address.objects.exists())
+
+    def test_out_of_stock_returns_400_and_rolls_back_customer_data(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+        StockLevel.objects.filter(variant=self.variant).update(available=0)
+
+        response = self._confirm_checkout('out-of-stock@example.com')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('sin stock', response.json().get('error', '').lower())
+        self.assertFalse(Customer.objects.filter(email='out-of-stock@example.com').exists())
+        self.assertFalse(Address.objects.exists())
+
+    def test_missing_stock_level_returns_400(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+        self.variant.stock_level.delete()
+
+        response = self._confirm_checkout('missing-stock@example.com')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('stock configurado', response.json().get('error', '').lower())
+        self.assertFalse(Customer.objects.filter(email='missing-stock@example.com').exists())
+        self.assertFalse(Address.objects.exists())
+
+    def test_checkout_confirm_requires_csrf_token(self):
+        response = self._confirm_checkout('missing-csrf@example.com', with_csrf=False)
+        self.assertEqual(response.status_code, 403)
+
+    def test_double_submit_returns_400_on_second_attempt_and_keeps_single_order(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        first_response = self._confirm_checkout('double-submit@example.com')
+        self.assertEqual(first_response.status_code, 201)
+
+        second_response = self._confirm_checkout('double-submit@example.com')
+        self.assertEqual(second_response.status_code, 400)
+        self.assertIn('vacío', second_response.json().get('error', '').lower())
+        self.assertEqual(Order.objects.filter(customer__email='double-submit@example.com').count(), 1)
