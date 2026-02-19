@@ -1,0 +1,6 @@
+20 objects imported automatically (use -v 2 for details).
+
+status_without_phone= 200
+home_without_phone_contains_wa_me= False
+status_with_phone= 200
+home_with_phone_contains_expected_wa= True
