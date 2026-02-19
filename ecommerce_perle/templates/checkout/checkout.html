@@ -1,17 +1,66 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="container">
-  <h1>Checkout</h1>
-  <form id="checkout-form">
-    <input name="full_name" placeholder="Nombre" required>
-    <input name="email" placeholder="Email" required>
-    <input name="phone" placeholder="Teléfono">
-    <input name="line1" placeholder="Dirección" required>
-    <input name="city" placeholder="Ciudad" required>
-    <input name="state" placeholder="Estado/Depto" required>
-    <input name="coupon_code" placeholder="Cupón">
-    <button class="btn" type="submit">Confirmar pedido</button>
+<section class="container section-space checkout-page" data-testid="checkout-page">
+  <div class="section-head">
+    <h1>Checkout</h1>
+    <p>Completa tus datos para confirmar pedido y generar tu número de orden.</p>
+  </div>
+
+  <form id="checkout-form" class="surface checkout-form">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="checkout-full-name" class="form-label">Nombre completo</label>
+        <input id="checkout-full-name" name="full_name" placeholder="Nombre" required autocomplete="name">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-email" class="form-label">Email</label>
+        <input id="checkout-email" name="email" type="email" placeholder="cliente@correo.com" required autocomplete="email">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-phone" class="form-label">Teléfono</label>
+        <input id="checkout-phone" name="phone" placeholder="3001234567" autocomplete="tel">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-line1" class="form-label">Dirección</label>
+        <input id="checkout-line1" name="line1" placeholder="Calle 123 #45-67" required autocomplete="street-address">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-city" class="form-label">Ciudad</label>
+        <input id="checkout-city" name="city" placeholder="Bogotá" required autocomplete="address-level2">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-state" class="form-label">Estado/Depto</label>
+        <input id="checkout-state" name="state" placeholder="Cundinamarca" required autocomplete="address-level1">
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-coupon" class="form-label">Cupón</label>
+        <input id="checkout-coupon" name="coupon_code" maxlength="40" placeholder="Opcional">
+        <p class="helper">Si no aplica, deja este campo vacío.</p>
+      </div>
+
+      <div class="form-field">
+        <label for="checkout-payment-method" class="form-label">Método de pago</label>
+        <select id="checkout-payment-method" name="payment_method">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="manual">Manual</option>
+          <option value="wompi">Wompi</option>
+          <option value="stripe">Stripe</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary full" type="submit" data-testid="confirm-order">Confirmar pedido</button>
+    <p id="checkout-result" class="checkout-result" aria-live="polite"></p>
   </form>
-  <div id="checkout-result"></div>
+
+  <div class="checkout-help">
+    <p>¿Necesitas ayuda antes de pagar? Revisa el detalle en carrito y vuelve.</p>
+  </div>
 </section>
 {% endblock %}

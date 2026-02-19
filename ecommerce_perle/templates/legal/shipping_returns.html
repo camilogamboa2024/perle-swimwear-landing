@@ -1,13 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Envíos y devoluciones | Perle{% endblock %}
 {% block content %}
-<section class="container">
-  <h1>Envíos y devoluciones</h1>
-  <p>Última actualización: 2026-01-01</p>
-  <ul>
-    <li>Envíos nacionales e internacionales según cobertura del operador.</li>
-    <li>Aceptamos cambios dentro del plazo informado en confirmación de pedido.</li>
-    <li>Coordina soporte por {% if WHATSAPP_PHONE %}WhatsApp: {{ WHATSAPP_PHONE }}.{% else %}Canales de contacto publicados en redes oficiales.{% endif %}</li>
-  </ul>
+<section class="container section-space legal-page">
+  <article class="surface legal-content">
+    <h1>Envíos y devoluciones</h1>
+    <p class="muted">Última actualización: 2026-02-19</p>
+    <ul>
+      <li>Envíos nacionales e internacionales según cobertura vigente del operador.</li>
+      <li>Los tiempos de entrega informados en checkout son estimados y pueden variar.</li>
+      <li>Aceptamos cambios dentro del plazo indicado en el comprobante de compra.</li>
+      <li>
+        Soporte:
+        {% if WHATSAPP_PHONE %}
+        WhatsApp {{ WHATSAPP_PHONE }}.
+        {% else %}
+        usa los canales de contacto publicados en redes oficiales.
+        {% endif %}
+      </li>
+    </ul>
+  </article>
 </section>
 {% endblock %}

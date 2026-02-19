@@ -1,9 +1,42 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="container">
-  <h1>Pedido confirmado</h1>
-  <p>ID público: <strong>{{ order.public_id }}</strong></p>
-  <p>Total: ${{ order.grand_total }} COP</p>
-  {% if whatsapp_url %}<a class="btn" href="{{ whatsapp_url }}">Finalizar por WhatsApp</a>{% endif %}
+<section class="container section-space" data-testid="confirmation-page">
+  <article class="surface confirmation-card">
+    <p class="eyebrow">Orden confirmada</p>
+    <h1>Pedido confirmado</h1>
+    <p class="muted">Conserva este identificador para soporte y seguimiento.</p>
+
+    <div class="summary-row">
+      <span>ID público</span>
+      <strong>{{ order.public_id }}</strong>
+    </div>
+    <div class="summary-row">
+      <span>Total</span>
+      <strong>${{ order.grand_total }} COP</strong>
+    </div>
+    <div class="summary-row">
+      <span>Estado</span>
+      <strong>{{ order.get_status_display }}</strong>
+    </div>
+
+    <h2>Items</h2>
+    <ul class="confirmation-items">
+      {% for item in order.items.all %}
+      <li>
+        <span>{{ item.variant.product.name }} · {{ item.variant.size }}/{{ item.variant.color }} · x{{ item.quantity }}</span>
+        <strong>${{ item.line_total }} COP</strong>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <div class="confirmation-actions">
+      <a class="btn btn-secondary" href="{% url 'home' %}">Volver al catálogo</a>
+      {% if whatsapp_url %}
+      <a class="btn btn-primary" href="{{ whatsapp_url }}" rel="noreferrer" target="_blank" data-testid="confirmation-wa">
+        Finalizar por WhatsApp
+      </a>
+      {% endif %}
+    </div>
+  </article>
 </section>
 {% endblock %}

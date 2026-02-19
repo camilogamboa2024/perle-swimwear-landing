@@ -1,13 +1,43 @@
 {% extends 'base.html' %}
+{% block title %}{{ product.name }} | Perle{% endblock %}
 {% block content %}
-<section class="container">
-  <h1>{{ product.name }}</h1>
-  <p>{{ product.description }}</p>
-  <h3>Variantes</h3>
-  <ul>
+<section class="container section-space product-detail-page" data-testid="product-detail">
+  <div class="product-detail-hero">
+    {% with img=product.images.first %}
+    {% if img %}
+    <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" class="product-detail-image">
+    {% else %}
+    <div class="product-detail-image product-image-fallback">Perle</div>
+    {% endif %}
+    {% endwith %}
+    <div>
+      <p class="eyebrow">Detalle de producto</p>
+      <h1>{{ product.name }}</h1>
+      <p class="muted">{{ product.description }}</p>
+    </div>
+  </div>
+
+  <h2>Variantes disponibles</h2>
+  <ul class="variant-list">
     {% for v in product.variants.all %}
-    <li>{{ v.size }} / {{ v.color }} - ${{ v.price_cop }} COP - Stock: {{ v.stock_level.available }}
-      <button class="btn" data-add-cart="{{ v.id }}">Añadir</button>
+    <li class="variant-card">
+      <div>
+        <h3>{{ v.size }} · {{ v.color }}</h3>
+        <p class="price">${{ v.price_cop }} COP</p>
+        {% if v.stock_level.available > 0 %}
+        <p class="stock-ok">Stock: {{ v.stock_level.available }}</p>
+        {% else %}
+        <p class="stock-low">Sin stock</p>
+        {% endif %}
+      </div>
+      <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}" {% if v.stock_level.available < 1 %}disabled{% endif %}>
+        Agregar al carrito
+      </button>
+    </li>
+    {% empty %}
+    <li class="empty-state">
+      <h3>Producto sin variantes activas</h3>
+      <p>Este producto no tiene opciones comprables en este momento.</p>
     </li>
     {% endfor %}
   </ul>

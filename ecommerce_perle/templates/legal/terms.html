@@ -1,13 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Términos | Perle{% endblock %}
 {% block content %}
-<section class="container">
-  <h1>Términos y condiciones</h1>
-  <p>Última actualización: 2026-01-01</p>
-  <ul>
-    <li>Los productos están sujetos a disponibilidad de inventario.</li>
-    <li>El pedido se considera confirmado después de validación de datos y stock.</li>
-    <li>Para soporte, contáctanos por {% if WHATSAPP_PHONE %}WhatsApp: {{ WHATSAPP_PHONE }}.{% else %}Canales de contacto publicados en redes oficiales.{% endif %}</li>
-  </ul>
+<section class="container section-space legal-page">
+  <article class="surface legal-content">
+    <h1>Términos y condiciones</h1>
+    <p class="muted">Última actualización: 2026-02-19</p>
+    <ul>
+      <li>Los productos están sujetos a disponibilidad de inventario y validación final de checkout.</li>
+      <li>El pedido se considera confirmado cuando se genera identificador público y resumen de orden.</li>
+      <li>Los tiempos de preparación y envío pueden variar según ciudad y operador logístico.</li>
+      <li>
+        Para soporte:
+        {% if WHATSAPP_PHONE %}
+        WhatsApp {{ WHATSAPP_PHONE }}.
+        {% else %}
+        usa los canales de contacto publicados en redes oficiales.
+        {% endif %}
+      </li>
+    </ul>
+  </article>
 </section>
 {% endblock %}

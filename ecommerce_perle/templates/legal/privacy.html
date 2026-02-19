@@ -1,13 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Privacidad | Perle{% endblock %}
 {% block content %}
-<section class="container">
-  <h1>Política de privacidad</h1>
-  <p>Última actualización: 2026-01-01</p>
-  <ul>
-    <li>Solo recolectamos datos necesarios para procesar pedidos y soporte.</li>
-    <li>No compartimos datos personales con terceros sin base legal.</li>
-    <li>Solicitudes de privacidad: {% if WHATSAPP_PHONE %}WhatsApp {{ WHATSAPP_PHONE }}.{% else %}Canales de contacto publicados en redes oficiales.{% endif %}</li>
-  </ul>
+<section class="container section-space legal-page">
+  <article class="surface legal-content">
+    <h1>Política de privacidad</h1>
+    <p class="muted">Última actualización: 2026-02-19</p>
+    <ul>
+      <li>Recolectamos únicamente datos necesarios para procesar pedidos, entregas y soporte.</li>
+      <li>No vendemos información personal ni compartimos datos sin base legal.</li>
+      <li>Conservamos datos mínimos para trazabilidad de pedidos y gestión postventa.</li>
+      <li>
+        Solicitudes de privacidad:
+        {% if WHATSAPP_PHONE %}
+        WhatsApp {{ WHATSAPP_PHONE }}.
+        {% else %}
+        usa los canales de contacto publicados en redes oficiales.
+        {% endif %}
+      </li>
+    </ul>
+  </article>
 </section>
 {% endblock %}

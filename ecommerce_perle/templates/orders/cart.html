@@ -1,13 +1,74 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="container">
-  <h1>Tu bolsa</h1>
-  <div id="cart-server">
-    {% for item in cart.items.all %}
-    <p>{{ item.variant.product.name }} ({{ item.variant.size }}/{{ item.variant.color }}) x{{ item.quantity }}</p>
-    {% empty %}<p>Tu bolsa está vacía.</p>{% endfor %}
+<section class="container section-space" data-cart-page data-testid="cart-page">
+  <div class="section-head">
+    <h1>Tu bolsa</h1>
+    <p>Revisa cantidades, aplica cupón y continúa a checkout.</p>
   </div>
-  <p>Subtotal: ${{ totals.subtotal }} COP</p>
-  <p>Total: ${{ totals.grand_total }} COP</p>
+
+  <div class="cart-layout">
+    <section class="surface">
+      <div id="cart-empty" class="empty-state" {% if cart.items.all %}hidden{% endif %}>
+        <h3>Tu bolsa está vacía</h3>
+        <p>Agrega productos desde el catálogo para iniciar tu compra.</p>
+        <a class="btn btn-secondary" href="{% url 'home' %}">Ver colección</a>
+      </div>
+
+      <div id="cart-content" {% if not cart.items.all %}hidden{% endif %}>
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cart-items">
+            {% for item in cart.items.all %}
+            <tr data-item-id="{{ item.id }}">
+              <td>
+                <strong>{{ item.variant.product.name }}</strong>
+                <p class="muted">{{ item.variant.size }} / {{ item.variant.color }}</p>
+              </td>
+              <td>
+                <div class="qty-stepper">
+                  <button type="button" class="btn btn-ghost" data-cart-decrease="{{ item.id }}" aria-label="Reducir cantidad">-</button>
+                  <span data-cart-qty="{{ item.id }}">{{ item.quantity }}</span>
+                  <button type="button" class="btn btn-ghost" data-cart-increase="{{ item.id }}" aria-label="Aumentar cantidad">+</button>
+                </div>
+              </td>
+              <td>${{ item.variant.price_cop }} COP</td>
+              <td><button type="button" class="btn btn-ghost danger" data-cart-remove="{{ item.id }}">Eliminar</button></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="cart-actions">
+          <button type="button" class="btn btn-ghost" data-cart-clear>Vaciar carrito</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="surface order-summary">
+      <h2>Resumen</h2>
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <strong id="cart-subtotal">${{ totals.subtotal }} COP</strong>
+      </div>
+      <div class="summary-row">
+        <span>Descuento</span>
+        <strong id="cart-discount">$0 COP</strong>
+      </div>
+      <div class="summary-row total">
+        <span>Total</span>
+        <strong id="cart-total-main">${{ totals.grand_total }} COP</strong>
+      </div>
+      <label for="cart-coupon" class="form-label">Cupón</label>
+      <input id="cart-coupon" type="text" maxlength="40" placeholder="Ej: PERLE10" />
+      <p class="helper">El cupón se aplicará al confirmar checkout.</p>
+      <a href="{% url 'checkout-page' %}" class="btn btn-primary full" data-testid="go-checkout">Ir a checkout</a>
+    </aside>
+  </div>
 </section>
 {% endblock %}

@@ -1,31 +1,55 @@
 {% extends 'base.html' %}
 {% block title %}Perle | Home{% endblock %}
 {% block content %}
-<section class="hero"><h1>Colección Perle</h1><p>Boutique premium, tallas reales y stock en vivo.</p></section>
-<section class="container">
-  <h2>Productos</h2>
-  <div id="products-grid" class="grid">
+<section class="hero">
+  <div class="container">
+    <p class="eyebrow">Colección Perle</p>
+    <h1>Swimwear premium diseñado para moverse contigo</h1>
+    <p class="hero-copy">Siluetas atemporales, stock en vivo y checkout rápido para cerrar compra en minutos.</p>
+  </div>
+</section>
+
+<section class="container section-space">
+  <div class="section-head">
+    <h2>Productos destacados</h2>
+    <p>Explora la colección boutique con disponibilidad por variante.</p>
+  </div>
+
+  <div id="products-grid" class="product-grid" data-testid="products-grid">
     {% for product in products %}
-    <article class="card">
+    <article class="product-card">
       {% with img=product.images.first %}
       {% if img %}
-      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" style="width:100%;border-radius:12px;aspect-ratio:4/5;object-fit:cover;">
+      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" class="product-image">
       {% else %}
-      <div style="width:100%;border-radius:12px;aspect-ratio:4/5;background:#f7edf1;display:grid;place-items:center;">Perle</div>
+      <div class="product-image product-image-fallback">Perle</div>
       {% endif %}
       {% endwith %}
-      <h3><a href="/product/{{ product.slug }}/">{{ product.name }}</a></h3>
-      <p>{{ product.description|default:'Sin descripción'|truncatechars:120 }}</p>
+      <div class="product-content">
+        <h3><a href="{% url 'product-detail' slug=product.slug %}">{{ product.name }}</a></h3>
+        <p>{{ product.description|default:'Sin descripción'|truncatechars:120 }}</p>
+      </div>
       {% with v=product.variants.all|first %}
       {% if v %}
-      <p><strong>${{ v.price_cop }}</strong> COP</p>
-      <button class="btn" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
+      <div class="product-meta">
+        <p class="price"><strong>${{ v.price_cop }}</strong> COP</p>
+        <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
+      </div>
       {% endif %}
       {% endwith %}
     </article>
     {% empty %}
-    <p>No hay productos aún.</p>
+    <article class="empty-state">
+      <h3>No hay productos aún</h3>
+      <p>Ejecuta <code>python manage.py seed_demo</code> para cargar catálogo demo.</p>
+    </article>
     {% endfor %}
+  </div>
+
+  <div class="skeleton-grid" aria-hidden="true">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
   </div>
 </section>
 {{ products_payload|json_script:'products-data' }}

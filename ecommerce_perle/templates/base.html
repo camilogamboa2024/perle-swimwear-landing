@@ -5,51 +5,75 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/favicon.svg' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/perle.css' %}" />
 </head>
 <body>
-<div class="topbar">
-  <span>Hecho en Colombia · Calidad premium</span>
-  <span>Cambios fáciles · Atención por WhatsApp</span>
-</div>
-<header class="site-header">
-  <a href="/" class="brand">PERLE <small>swimwear</small></a>
-  <nav class="nav-right">
-    <a href="/">Inicio</a>
-    <a href="/">Colección</a>
-    <a href="/cart/" class="cart-badge">Bolsa <span class="badge" id="cart-count">0</span></a>
-    <span id="cart-total" class="cart-total"></span>
-    <a href="/checkout/">Checkout</a>
-  </nav>
-</header>
-
-<main id="main-content">{% block content %}{% endblock %}</main>
-
-<footer class="site-footer">
-  <div>
-    <h4>{{ BRAND_NAME }}</h4>
-    <p>Diseño boutique, confección cuidada y soporte humano.</p>
+  <div class="topbar" role="note">
+    <span>Hecho en Colombia · Calidad premium</span>
+    <span>Envíos y cambios fáciles</span>
   </div>
-  <div>
-    <h4>Ayuda</h4>
-    <a href="/legal/terms/">Términos</a>
-    <a href="/legal/privacy/">Privacidad</a>
-    <a href="/legal/shipping-returns/">Envíos y devoluciones</a>
-  </div>
-  <div>
-    <h4>Conecta</h4>
-    <a href="{{ BRAND_IG }}" target="_blank" rel="noreferrer">Instagram</a>
-    {% if WHATSAPP_PHONE %}<a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noreferrer">WhatsApp</a>{% endif %}
-  </div>
-</footer>
 
-{% if WHATSAPP_PHONE %}<a class="fab-whatsapp" target="_blank" rel="noreferrer" href="https://wa.me/{{ WHATSAPP_PHONE }}?text=Hola%20Perle%2C%20quiero%20ayuda%20con%20mi%20pedido">WhatsApp</a>{% endif %}
-<div id="app-toast" class="toast"></div>
+  <header class="site-header">
+    <div class="container site-header-inner">
+      <a href="{% url 'home' %}" class="brand" aria-label="Volver al inicio">
+        <img src="{% static 'brand/perle-logo.svg' %}" alt="Perle" class="brand-mark" />
+        <span>PERLE <small>swimwear</small></span>
+      </a>
+      <nav class="nav-right" aria-label="Navegación principal">
+        <a href="{% url 'home' %}">Inicio</a>
+        <a href="{% url 'cart-page' %}" class="cart-badge" data-testid="nav-cart">
+          Bolsa <span class="badge" id="cart-count">0</span>
+        </a>
+        <span id="cart-total" class="cart-total"></span>
+        <a href="{% url 'checkout-page' %}" data-testid="nav-checkout">Checkout</a>
+      </nav>
+    </div>
+  </header>
 
-<script src="{% static 'js/storefront.js' %}" defer></script>
-{% block scripts %}{% endblock %}
+  <main id="main-content" class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <section>
+        <h4>{{ BRAND_NAME }}</h4>
+        <p>Diseño boutique, confección cuidada y soporte humano para cada pedido.</p>
+      </section>
+      <section>
+        <h4>Legales</h4>
+        <a href="{% url 'legal-terms' %}">Términos</a>
+        <a href="{% url 'legal-privacy' %}">Privacidad</a>
+        <a href="{% url 'legal-shipping-returns' %}">Envíos y devoluciones</a>
+      </section>
+      <section>
+        <h4>Conecta</h4>
+        <a href="{{ BRAND_IG }}" target="_blank" rel="noreferrer">Instagram</a>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noreferrer">WhatsApp</a>
+        {% endif %}
+      </section>
+    </div>
+  </footer>
+
+  {% if WHATSAPP_PHONE %}
+  <a
+    class="fab-whatsapp"
+    target="_blank"
+    rel="noreferrer"
+    href="https://wa.me/{{ WHATSAPP_PHONE }}?text=Hola%20Perle%2C%20quiero%20ayuda%20con%20mi%20pedido"
+    aria-label="Abrir WhatsApp con Perle"
+  >
+    WhatsApp
+  </a>
+  {% endif %}
+
+  <div id="app-toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="{% static 'js/storefront.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
