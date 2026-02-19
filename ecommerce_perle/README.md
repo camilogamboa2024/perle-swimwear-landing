@@ -23,7 +23,8 @@ Aplicación Django + DRF para catálogo, carrito, checkout y operación interna 
   - Órdenes con acciones masivas (`paid`, `shipped`, `delivered`, `cancelled`) y confirmación.
   - Inventario con ajuste masivo y registro en `InventoryMovement`.
   - Cupones con activación/desactivación + expiración.
-  - Dashboard admin con KPIs y accesos rápidos.
+  - Dashboard admin premium con KPIs, tendencias y módulos accionables.
+  - Interfaz admin en español con estilo luxury dark-slate.
 
 ## Setup local
 ```bash
@@ -124,4 +125,8 @@ Checklist completa: `docs/QA_CHECKLIST.md`
 - `docs/screenshots/checkout_mobile360.png`
 - `docs/screenshots/confirmation_desktop.png`
 - `docs/screenshots/confirmation_mobile360.png`
-- `docs/screenshots/admin-dashboard.png`
+- `docs/screenshots/admin-login.png`
+- `docs/screenshots/admin-dashboard-premium.png`
+- `docs/screenshots/admin-orders-changelist.png`
+- `docs/screenshots/admin-orders-action-confirmation.png`
+- `docs/screenshots/admin-stock-adjust-confirmation.png`
