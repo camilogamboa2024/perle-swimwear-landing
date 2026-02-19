@@ -868,11 +868,22 @@ select {
 
 .summary-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: var(--s-3);
   margin: var(--s-2) 0;
   color: var(--muted);
+  min-width: 0;
+}
+
+.summary-row > :last-child {
+  display: block;
+  flex: 1 1 auto;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 62%;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .summary-row.total {
@@ -937,6 +948,10 @@ select {
   gap: var(--s-3);
 }
 
+.confirmation-card > * {
+  min-width: 0;
+}
+
 .confirmation-items {
   list-style: none;
   padding: 0;
@@ -947,9 +962,15 @@ select {
 .confirmation-items li {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: var(--s-3);
   padding: var(--s-3) 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.confirmation-items li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .confirmation-actions {
@@ -1116,6 +1137,15 @@ select {
   .checkout-form,
   .legal-page .legal-content {
     padding: var(--s-4);
+  }
+
+  .summary-row {
+    align-items: flex-start;
+  }
+
+  .summary-row > :last-child {
+    max-width: 100%;
+    text-align: left;
   }
 
   .cart-table thead {
