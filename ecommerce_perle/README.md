@@ -5,6 +5,7 @@ Aplicación Django + DRF para catálogo, carrito, checkout y operación interna 
 ## Stack
 - Django 5.x + DRF
 - Templates + CSS/JS vanilla (`static/css/perle.css`, `static/js/storefront.js`)
+- Tipografía storefront: `Manrope` (Google Fonts) + fallback system
 - WhiteNoise + Gunicorn
 - SQLite (local) / PostgreSQL (`DATABASE_URL`) en producción
 - Theme admin: Jazzmin
@@ -113,9 +114,14 @@ Checklist completa: `docs/QA_CHECKLIST.md`
 `docs/RUNBOOK.md`
 
 ## Screenshots
-- `docs/screenshots/home.png`
-- `docs/screenshots/product.png`
-- `docs/screenshots/cart.png`
-- `docs/screenshots/checkout.png`
-- `docs/screenshots/confirmation.png`
+- `docs/screenshots/home_desktop.png`
+- `docs/screenshots/home_mobile360.png`
+- `docs/screenshots/product_desktop.png`
+- `docs/screenshots/product_mobile360.png`
+- `docs/screenshots/cart_desktop.png`
+- `docs/screenshots/cart_mobile360.png`
+- `docs/screenshots/checkout_desktop.png`
+- `docs/screenshots/checkout_mobile360.png`
+- `docs/screenshots/confirmation_desktop.png`
+- `docs/screenshots/confirmation_mobile360.png`
 - `docs/screenshots/admin-dashboard.png`

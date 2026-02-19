@@ -12,3 +12,11 @@
 - Checkout no muestra spinner visual dedicado en botón (solo cambio de texto) ni alertas diferenciadas por severidad.
 - Legal pages son legibles pero pueden mejorar ritmo tipográfico y estructura de lectura larga.
 - Hay inconsistencias de clase entre controles (`input/select`) y sistema utilitario esperado (`.input/.select/.textarea`).
+
+## Design Decisions (Implemented)
+
+- Dirección visual: `Luxury minimal` con foco en superficies claras, contraste sobrio y CTAs redondeados de alto peso visual.
+- Tipografía UI elegida: `Manrope` (Google Fonts) como única familia premium + fallback system.
+- Header sticky con navegación móvil colapsable para `360px`, priorizando targets táctiles >= 44px.
+- Feedback de interacción estandarizado con toasts tipados (`success/warn/danger/info`) y estados `aria-busy`.
+- Home estructurada en `hero + trust bar + best sellers + nuevas + colecciones`.
