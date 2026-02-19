@@ -127,7 +127,7 @@ JAZZMIN_SETTINGS = {
     'site_title': 'Administración Perle',
     'site_header': 'Administración Perle',
     'site_brand': 'Perle',
-    'site_logo': 'brand/perle-logo.png',
+    'site_logo': 'brand/perle-wordmark.png',
     'site_icon': 'brand/favicon.png',
     'welcome_sign': 'Bienvenida al panel administrativo de Perle',
     'copyright': 'Perle Swimwear',

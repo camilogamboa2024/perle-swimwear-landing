@@ -1,0 +1,31 @@
+<svg width="620" height="180" viewBox="0 0 620 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="perleBadge" x1="22" y1="22" x2="162" y2="162" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#63E3FF"/>
+      <stop offset="1" stop-color="#1C9FCB"/>
+    </linearGradient>
+    <linearGradient id="perleWave" x1="58" y1="104" x2="128" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B5D75"/>
+      <stop offset="1" stop-color="#0F7C98"/>
+    </linearGradient>
+    <filter id="softShadow" x="0" y="0" width="182" height="182" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="6"/>
+      <feGaussianBlur stdDeviation="8"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.04 0 0 0 0 0.24 0 0 0 0 0.30 0 0 0 0.28 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_4"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_4" result="shape"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <circle cx="92" cy="84" r="66" fill="url(#perleBadge)"/>
+    <circle cx="92" cy="84" r="65" stroke="#B8F1FF" stroke-opacity="0.68" stroke-width="2"/>
+    <path d="M53 104C66 92 77 92 90 104C103 116 114 116 127 104" stroke="url(#perleWave)" stroke-width="9" stroke-linecap="round"/>
+  </g>
+
+  <text x="170" y="96" fill="#0E5D76" font-size="76" font-weight="800" letter-spacing="1.5" font-family="'Segoe UI', Arial, sans-serif">PERLE</text>
+  <text x="346" y="132" fill="#2A6D86" font-size="30" font-weight="700" letter-spacing="1.4" font-family="'Segoe UI', Arial, sans-serif">SWIMWEAR</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="perleFavBg" x1="36" y1="26" x2="214" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#62E2FF"/>
+      <stop offset="1" stop-color="#1B98C7"/>
+    </linearGradient>
+    <linearGradient id="perleFavStroke" x1="56" y1="55" x2="185" y2="197" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C5C75"/>
+      <stop offset="1" stop-color="#0F7C9A"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="106" fill="url(#perleFavBg)"/>
+  <circle cx="128" cy="128" r="104.5" stroke="#C7F5FF" stroke-opacity="0.76" stroke-width="3"/>
+  <path d="M83 179V77H132.5C163.7 77 183 93.8 183 121.1C183 149.8 162.7 167 132 167H106.5V179H83ZM106.5 147H128.8C144.6 147 156.2 138.4 156.2 121.8C156.2 106 145.8 98.3 128.8 98.3H106.5V147Z" fill="url(#perleFavStroke)"/>
+</svg>

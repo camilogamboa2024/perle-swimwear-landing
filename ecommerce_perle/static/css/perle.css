@@ -475,9 +475,9 @@ select {
 }
 
 .brand-mark {
-  width: 124px;
+  width: auto;
   max-width: 100%;
-  height: auto;
+  height: 44px;
   object-fit: contain;
 }
 
@@ -983,7 +983,7 @@ select {
   }
 
   .brand-mark {
-    width: 104px;
+    height: 40px;
   }
 
   .nav-right {
