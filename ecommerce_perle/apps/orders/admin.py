@@ -1,10 +1,37 @@
+from datetime import timedelta
+
 from django.contrib import admin
 from django.contrib.admin import helpers
 from django.db import transaction
 from django.template.response import TemplateResponse
+from django.utils.html import format_html
 from django.utils import timezone
 
 from .models import Cart, CartItem, Coupon, Order, OrderItem, OrderStatusHistory
+
+
+class OrderPeriodFilter(admin.SimpleListFilter):
+    title = 'Periodo rápido'
+    parameter_name = 'periodo'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('hoy', 'Hoy'),
+            ('semana', 'Esta semana'),
+            ('pendientes', 'Solo pendientes'),
+        )
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        value = self.value()
+        if value == 'hoy':
+            return queryset.filter(created_at__date=today)
+        if value == 'semana':
+            week_start = today - timedelta(days=today.weekday())
+            return queryset.filter(created_at__date__gte=week_start)
+        if value == 'pendientes':
+            return queryset.filter(status=Order.PENDING)
+        return queryset
 
 
 class OrderItemInline(admin.TabularInline):
@@ -16,14 +43,24 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('public_id', 'customer', 'customer_email', 'status', 'grand_total', 'payment_method', 'created_at')
-    list_filter = ('status', 'created_at', 'payment_method')
+    list_display = (
+        'public_id',
+        'customer',
+        'customer_email',
+        'status_badge',
+        'grand_total_cop',
+        'payment_method',
+        'created_at',
+    )
+    list_filter = ('status', OrderPeriodFilter, 'created_at', 'payment_method')
     search_fields = ('public_id', 'customer__email')
+    list_select_related = ('customer', 'address', 'coupon')
+    list_per_page = 25
     readonly_fields = (
         'public_id',
         'session_key',
-        'customer',
-        'address',
+        'customer_snapshot',
+        'address_snapshot',
         'coupon',
         'payment_method',
         'subtotal',
@@ -32,13 +69,130 @@ class OrderAdmin(admin.ModelAdmin):
         'created_at',
         'whatsapp_message',
         'paid_at',
+        'status_timeline',
     )
     inlines = [OrderItemInline]
     actions = ('mark_paid', 'mark_shipped', 'mark_delivered', 'mark_cancelled')
+    fieldsets = (
+        (
+            'Resumen',
+            {
+                'fields': (
+                    'public_id',
+                    'status',
+                    'payment_method',
+                    'paid_at',
+                    'created_at',
+                )
+            },
+        ),
+        (
+            'Cliente y dirección',
+            {
+                'fields': (
+                    'customer_snapshot',
+                    'address_snapshot',
+                )
+            },
+        ),
+        (
+            'Montos',
+            {
+                'fields': (
+                    'subtotal',
+                    'discount_total',
+                    'grand_total',
+                    'coupon',
+                )
+            },
+        ),
+        (
+            'Timeline',
+            {
+                'fields': (
+                    'status_timeline',
+                    'whatsapp_message',
+                    'session_key',
+                )
+            },
+        ),
+    )
 
     @admin.display(ordering='customer__email', description='Email')
     def customer_email(self, obj):
         return obj.customer.email
+
+    @admin.display(ordering='status', description='Estado')
+    def status_badge(self, obj):
+        badge_map = {
+            Order.PENDING: 'warning',
+            Order.CONFIRMED: 'info',
+            Order.PAID: 'success',
+            Order.SHIPPED: 'info',
+            Order.DELIVERED: 'success',
+            Order.CANCELLED: 'danger',
+        }
+        css_class = badge_map.get(obj.status, 'muted')
+        return format_html(
+            '<span class="perle-pill perle-pill-{}">{}</span>',
+            css_class,
+            obj.get_status_display(),
+        )
+
+    @admin.display(ordering='grand_total', description='Total')
+    def grand_total_cop(self, obj):
+        value = f'{obj.grand_total:,.0f}'.replace(',', '.')
+        return f'${value} COP'
+
+    @admin.display(description='Cliente')
+    def customer_snapshot(self, obj):
+        return format_html(
+            '<strong>{}</strong><br><span>{}</span><br><small>{}</small>',
+            obj.customer.full_name or 'Sin nombre',
+            obj.customer.email,
+            obj.customer.phone or 'Sin teléfono',
+        )
+
+    @admin.display(description='Dirección')
+    def address_snapshot(self, obj):
+        address = obj.address
+        return format_html(
+            '{}<br>{}, {}<br>{}',
+            address.line1,
+            address.city,
+            address.state,
+            address.country,
+        )
+
+    @admin.display(description='Timeline de estados')
+    def status_timeline(self, obj):
+        events = obj.status_history.order_by('-changed_at')[:10]
+        if not events:
+            return 'Sin historial registrado.'
+        rows = []
+        for event in events:
+            rows.append(
+                (
+                    event.changed_at.strftime('%d/%m/%Y %H:%M'),
+                    str(event.order.public_id),
+                    event.from_status or 'N/A',
+                    event.to_status,
+                )
+            )
+        return format_html(
+            '<ul class="perle-list">{}</ul>',
+            format_html(
+                ''.join(
+                    [
+                        (
+                            '<li><strong>{}</strong> <small>({})</small>'
+                            '<br><span>{} → {}</span></li>'
+                        ).format(changed_at, public_id, from_status, to_status)
+                        for changed_at, public_id, from_status, to_status in rows
+                    ]
+                )
+            ),
+        )
 
     def _transition_orders(self, request, queryset, to_status):
         updated = 0
@@ -65,6 +219,10 @@ class OrderAdmin(admin.ModelAdmin):
         else:
             self.message_user(request, 'No hubo cambios para aplicar.')
         return None
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('customer', 'address', 'coupon').prefetch_related('status_history')
 
     def _confirm_action(self, request, queryset, title, action_name):
         context = {
