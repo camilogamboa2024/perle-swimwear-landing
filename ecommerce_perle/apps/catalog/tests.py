@@ -63,6 +63,12 @@ class ActiveVariantsVisibilityTest(TestCase):
 
 
 class TemplateRegressionTest(TestCase):
+    def test_base_template_references_new_logo_and_favicon_png_assets(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "brand/perle-logo.png")
+        self.assertContains(response, "brand/favicon.png")
+
     def test_checkout_template_renders_expected_controls(self):
         response = self.client.get('/checkout/')
         self.assertEqual(response.status_code, 200)

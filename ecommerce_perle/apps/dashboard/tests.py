@@ -81,6 +81,7 @@ class AdminDashboardFeatureTest(TestCase):
         self.assertContains(login_response, 'Iniciar sesión')
         self.assertContains(login_response, 'Nombre de usuario')
         self.assertContains(login_response, 'Contraseña')
+        self.assertContains(login_response, 'brand/perle-logo.png')
 
         self.client.force_login(self.admin)
         orders_response = self.client.get(reverse('admin:orders_order_changelist'))
