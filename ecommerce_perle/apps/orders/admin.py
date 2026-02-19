@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib import admin
 from django.contrib.admin import helpers
+from django.db.models import Q
 from django.db import transaction
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
@@ -32,6 +33,35 @@ class OrderPeriodFilter(admin.SimpleListFilter):
         if value == 'pendientes':
             return queryset.filter(status=Order.PENDING)
         return queryset
+
+
+class CouponValidityFilter(admin.SimpleListFilter):
+    title = 'Vigencia'
+    parameter_name = 'vigencia'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('vigente', 'Vigente'),
+            ('expirado', 'Expirado'),
+            ('por_vencer', 'Expira en 7 días'),
+        )
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        value = self.value()
+        if value == 'vigente':
+            return queryset.filter(is_active=True).filter(coupon_valid_q(now))
+        if value == 'expirado':
+            return queryset.filter(expires_at__isnull=False, expires_at__lte=now)
+        if value == 'por_vencer':
+            return queryset.filter(expires_at__gt=now, expires_at__lte=now + timedelta(days=7))
+        return queryset
+
+
+def coupon_valid_q(now):
+    return (
+        Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+    )
 
 
 class OrderItemInline(admin.TabularInline):
@@ -282,10 +312,25 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
-    list_display = ('code', 'percentage', 'is_active', 'expires_at')
-    list_filter = ('is_active', 'expires_at')
+    list_display = ('code', 'percentage', 'active_badge', 'validity_badge', 'expires_at')
+    list_filter = ('is_active', CouponValidityFilter, 'expires_at')
     search_fields = ('code',)
     actions = ('activate_coupons', 'deactivate_coupons')
+
+    @admin.display(description='Activo')
+    def active_badge(self, obj):
+        if obj.is_active:
+            return format_html('<span class="perle-pill perle-pill-success">Activo</span>')
+        return format_html('<span class="perle-pill perle-pill-danger">Inactivo</span>')
+
+    @admin.display(description='Vigencia')
+    def validity_badge(self, obj):
+        now = timezone.now()
+        if obj.expires_at and obj.expires_at <= now:
+            return format_html('<span class="perle-pill perle-pill-danger">Expirado</span>')
+        if obj.expires_at and obj.expires_at <= now + timedelta(days=7):
+            return format_html('<span class="perle-pill perle-pill-warning">Por vencer</span>')
+        return format_html('<span class="perle-pill perle-pill-success">Vigente</span>')
 
     @admin.action(description='Activar cupones')
     def activate_coupons(self, request, queryset):

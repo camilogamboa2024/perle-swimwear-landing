@@ -2,22 +2,63 @@
 {% load i18n %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Se aplicará el ajuste de stock a las variantes seleccionadas.</p>
-<ul>
-  {% for stock in stocks %}
-  <li>{{ stock.variant.sku }} · {{ stock.variant.product.name }} · disponible: {{ stock.available }}</li>
-  {% endfor %}
-</ul>
+<section class="perle-admin-dashboard">
+  <article class="card">
+    <div class="card-header">
+      <h1>{{ title }}</h1>
+    </div>
+    <div class="card-body">
+      <p>
+        Esta acción aplica un ajuste uniforme a todas las variantes seleccionadas y registra
+        un movimiento de inventario tipo <strong>ADJUST</strong>.
+      </p>
+      <div class="perle-table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Producto</th>
+              <th>Disponible</th>
+              <th>Proyección</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in preview_rows %}
+            <tr>
+              <td>{{ row.stock.variant.sku }}</td>
+              <td>{{ row.stock.variant.product.name }}</td>
+              <td>{{ row.stock.available }}</td>
+              <td>
+                {% if row.projected <= 0 %}
+                <span class="perle-pill perle-pill-danger">{{ row.projected }}</span>
+                {% elif row.projected <= LOW_STOCK_THRESHOLD %}
+                <span class="perle-pill perle-pill-warning">{{ row.projected }}</span>
+                {% else %}
+                <span class="perle-pill perle-pill-success">{{ row.projected }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </article>
 
-<form method="post">{% csrf_token %}
-  {% for stock in stocks %}
-  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ stock.pk }}">
-  {% endfor %}
-  <input type="hidden" name="action" value="adjust_stock">
-  {{ form.as_p }}
-  <input type="hidden" name="apply" value="1">
-  <button type="submit" class="button default">Aplicar ajuste</button>
-  <a href="{% url 'admin:inventory_stocklevel_changelist' %}" class="button cancel-link">Cancelar</a>
-</form>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% for stock in stocks %}
+      <input type="hidden" name="{{ action_checkbox_name }}" value="{{ stock.pk }}">
+      {% endfor %}
+      <input type="hidden" name="action" value="adjust_stock">
+      {{ form.as_p }}
+      <input type="hidden" name="apply" value="1">
+      <div class="perle-admin-actions">
+        <button type="submit" class="btn btn-primary">Aplicar ajuste</button>
+        <a href="{% url 'admin:inventory_stocklevel_changelist' %}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </div>
+  </form>
+</section>
 {% endblock %}

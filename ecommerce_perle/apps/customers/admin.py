@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.db.models import Max, Sum
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -14,9 +16,19 @@ class AddressInline(admin.TabularInline):
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('email', 'full_name', 'phone', 'orders_count', 'orders_link', 'created_at')
+    list_display = (
+        'email',
+        'full_name',
+        'phone',
+        'orders_count',
+        'total_spent_cop',
+        'last_order_at',
+        'orders_link',
+        'created_at',
+    )
     search_fields = ('email', 'full_name', 'phone')
-    readonly_fields = ('created_at', 'orders_link')
+    readonly_fields = ('created_at', 'orders_link', 'total_spent_cop', 'last_order_at')
+    list_filter = ('created_at',)
     inlines = [AddressInline]
 
     @admin.display(description='Pedidos')
@@ -33,6 +45,24 @@ class CustomerAdmin(admin.ModelAdmin):
             + f'?customer__id__exact={obj.id}'
         )
         return format_html('<a href="{}">Ver {} pedido(s)</a>', url, count)
+
+    @admin.display(ordering='total_spent', description='Total comprado')
+    def total_spent_cop(self, obj):
+        value = f'{obj.total_spent:,.0f}'.replace(',', '.')
+        return f'${value} COP'
+
+    @admin.display(ordering='last_order', description='Último pedido')
+    def last_order_at(self, obj):
+        if not obj.last_order:
+            return 'Sin pedidos'
+        return obj.last_order.strftime('%d/%m/%Y %H:%M')
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            total_spent=Coalesce(Sum('order__grand_total'), 0),
+            last_order=Max('order__created_at'),
+        )
 
 
 @admin.register(Address)

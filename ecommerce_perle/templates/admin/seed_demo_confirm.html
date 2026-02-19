@@ -1,12 +1,28 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Esta operación crea/actualiza productos, variantes e inventario demo para ambientes de desarrollo o staging.</p>
-<p><strong>No está disponible cuando DEBUG=0.</strong></p>
+<section class="perle-admin-dashboard">
+  <article class="card">
+    <div class="card-header">
+      <h1>{{ title }}</h1>
+    </div>
+    <div class="card-body">
+      <p>
+        Esta operación crea/actualiza catálogo demo para ambientes de desarrollo o staging.
+      </p>
+      <p class="perle-empty">
+        Se ejecuta el comando <code>seed_demo</code>. No está disponible cuando <code>DEBUG=0</code>.
+      </p>
+      <div class="perle-pill perle-pill-warning">Acción operacional sensible</div>
+    </div>
+  </article>
 
-<form method="post">{% csrf_token %}
-  <button type="submit" class="button default">Ejecutar seed demo</button>
-  <a href="{% url 'admin:index' %}" class="button cancel-link">Cancelar</a>
-</form>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body perle-admin-actions">
+      <button type="submit" class="btn btn-primary">Ejecutar seed demo</button>
+      <a href="{% url 'admin:index' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</section>
 {% endblock %}
