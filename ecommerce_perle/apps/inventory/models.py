@@ -15,6 +15,8 @@ class InventoryMovement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        verbose_name = 'Movimiento de inventario'
+        verbose_name_plural = 'Movimientos de inventario'
         indexes = [models.Index(fields=['variant', 'created_at'])]
 
 
@@ -24,4 +26,6 @@ class StockLevel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'Nivel de stock'
+        verbose_name_plural = 'Niveles de stock'
         indexes = [models.Index(fields=['available'])]

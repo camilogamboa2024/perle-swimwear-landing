@@ -27,18 +27,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apps.catalog',
+    'apps.catalog.apps.CatalogConfig',
     'apps.inventory.apps.InventoryConfig',
-    'apps.customers',
-    'apps.orders',
-    'apps.checkout',
-    'apps.dashboard',
+    'apps.customers.apps.CustomersConfig',
+    'apps.orders.apps.OrdersConfig',
+    'apps.checkout.apps.CheckoutConfig',
+    'apps.dashboard.apps.DashboardConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -98,7 +99,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-LANGUAGE_CODE = 'es-co'
+LANGUAGE_CODE = 'es'
+LANGUAGES = [
+    ('es', 'Español'),
+]
 TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
@@ -120,12 +124,12 @@ REST_FRAMEWORK = {
 }
 
 JAZZMIN_SETTINGS = {
-    'site_title': 'Perle Admin',
-    'site_header': 'Perle Operations',
+    'site_title': 'Administración Perle',
+    'site_header': 'Administración Perle',
     'site_brand': 'Perle',
     'site_logo': 'brand/perle-logo.svg',
     'site_icon': 'brand/favicon.svg',
-    'welcome_sign': 'Panel operativo Perle',
+    'welcome_sign': 'Bienvenida al panel administrativo de Perle',
     'copyright': 'Perle Swimwear',
     'show_sidebar': True,
     'navigation_expanded': True,

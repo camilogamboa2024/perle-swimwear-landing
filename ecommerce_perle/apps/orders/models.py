@@ -12,6 +12,10 @@ class Cart(models.Model):
     currency = models.CharField(max_length=3, default='COP')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Carrito'
+        verbose_name_plural = 'Carritos'
+
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
@@ -19,6 +23,8 @@ class CartItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
+        verbose_name = 'Ítem de carrito'
+        verbose_name_plural = 'Ítems de carrito'
         unique_together = ('cart', 'variant')
 
 
@@ -33,6 +39,10 @@ class Coupon(models.Model):
 
     def __str__(self):
         return self.code
+
+    class Meta:
+        verbose_name = 'Cupón'
+        verbose_name_plural = 'Cupones'
 
     def is_valid_for_checkout(self, now=None):
         if not self.is_active:
@@ -79,6 +89,8 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        verbose_name = 'Orden'
+        verbose_name_plural = 'Órdenes'
         indexes = [models.Index(fields=['status', 'created_at'])]
 
 
@@ -89,9 +101,17 @@ class OrderItem(models.Model):
     unit_price = models.PositiveIntegerField()
     line_total = models.PositiveIntegerField()
 
+    class Meta:
+        verbose_name = 'Ítem de orden'
+        verbose_name_plural = 'Ítems de orden'
+
 
 class OrderStatusHistory(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
     from_status = models.CharField(max_length=20, blank=True)
     to_status = models.CharField(max_length=20)
     changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Historial de estado de orden'
+        verbose_name_plural = 'Historiales de estado de orden'

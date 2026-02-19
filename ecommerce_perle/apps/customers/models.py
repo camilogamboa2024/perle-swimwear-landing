@@ -9,6 +9,10 @@ class Customer(models.Model):
     phone = models.CharField(max_length=30, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Cliente'
+        verbose_name_plural = 'Clientes'
+
 
 class Address(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='addresses')
@@ -20,3 +24,7 @@ class Address(models.Model):
     country = models.CharField(max_length=80, default='Colombia')
     postal_code = models.CharField(max_length=20, blank=True)
     is_default = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'Dirección'
+        verbose_name_plural = 'Direcciones'

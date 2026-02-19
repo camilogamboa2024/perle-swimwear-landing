@@ -5,6 +5,10 @@ class Category(models.Model):
     name = models.CharField(max_length=80, unique=True)
     slug = models.SlugField(max_length=90, unique=True, db_index=True)
 
+    class Meta:
+        verbose_name = 'Categoría'
+        verbose_name_plural = 'Categorías'
+
     def __str__(self):
         return self.name
 
@@ -18,6 +22,8 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
         indexes = [models.Index(fields=['is_active', 'created_at'])]
 
     def __str__(self):
@@ -35,6 +41,8 @@ class ProductVariant(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
     class Meta:
+        verbose_name = 'Variante de producto'
+        verbose_name_plural = 'Variantes de producto'
         indexes = [models.Index(fields=['product', 'size', 'color'])]
 
     def __str__(self):
@@ -48,4 +56,6 @@ class ProductImage(models.Model):
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
+        verbose_name = 'Imagen de producto'
+        verbose_name_plural = 'Imágenes de producto'
         ordering = ['sort_order']
