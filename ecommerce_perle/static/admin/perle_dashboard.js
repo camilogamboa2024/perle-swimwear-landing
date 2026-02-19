@@ -1,4 +1,23 @@
 (() => {
+  const palette = {
+    text: "#dceaf4",
+    muted: "rgba(178, 204, 223, 0.82)",
+    grid: "rgba(121, 177, 210, 0.18)",
+    aqua: "#34c3e6",
+    aquaSoft: "rgba(52, 195, 230, 0.2)",
+    pearl: "#f1dfbe",
+    pearlSoft: "rgba(241, 223, 190, 0.24)",
+    infoSoft: "rgba(121, 183, 238, 0.72)",
+  };
+
+  function axisOptions() {
+    return {
+      ticks: { color: palette.muted },
+      grid: { color: palette.grid },
+      border: { color: palette.grid },
+    };
+  }
+
   function parseJsonScript(id) {
     const node = document.getElementById(id);
     if (!node) return null;
@@ -23,10 +42,27 @@
           {
             label: "Órdenes",
             data: series7d.orders || [],
-            borderColor: "#f0d4a5",
-            backgroundColor: "rgba(240, 212, 165, 0.14)",
+            borderColor: palette.pearl,
+            backgroundColor: palette.pearlSoft,
+            pointBackgroundColor: palette.pearl,
+            pointRadius: 3,
+            fill: true,
+            tension: 0.34,
           },
         ],
+      },
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: palette.text,
+            },
+          },
+        },
+        scales: {
+          x: axisOptions(),
+          y: axisOptions(),
+        },
       },
     });
   }
@@ -41,9 +77,24 @@
           {
             label: "Ingresos",
             data: series30d.revenue || [],
-            backgroundColor: "rgba(116, 164, 231, 0.68)",
+            backgroundColor: palette.infoSoft,
+            borderRadius: 7,
+            maxBarThickness: 22,
           },
         ],
+      },
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: palette.text,
+            },
+          },
+        },
+        scales: {
+          x: axisOptions(),
+          y: axisOptions(),
+        },
       },
     });
   }
@@ -59,15 +110,26 @@
             label: "Estados",
             data: statusDistribution.map((row) => row.value),
             backgroundColor: [
-              "#f0d4a5",
-              "#74a4e7",
-              "#3fbe8a",
-              "#e1ac5c",
-              "#e77474",
-              "#9eafc3",
+              "#34c3e6",
+              "#f1dfbe",
+              "#4dc18d",
+              "#e3b465",
+              "#e07878",
+              "#79b7ee",
             ],
+            borderColor: "#0f2538",
+            borderWidth: 1,
           },
         ],
+      },
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: palette.text,
+            },
+          },
+        },
       },
     });
   }

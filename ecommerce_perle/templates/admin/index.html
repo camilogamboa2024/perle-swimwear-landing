@@ -7,10 +7,10 @@
 <section class="perle-admin-dashboard">
   <header class="card perle-admin-hero">
     <div class="card-body">
-      <p class="perle-hero-eyebrow">Panel Ejecutivo</p>
-      <h1>Visión operativa diaria</h1>
+      <p class="perle-hero-eyebrow">Panel Ejecutivo · Perle Panamá</p>
+      <h1>Operación diaria en tiempo real</h1>
       <p class="perle-hero-copy">
-        Estado del negocio en tiempo real para decisiones rápidas de catálogo, inventario y postventa.
+        Controla ventas, inventario y postventa con una vista única diseñada para decisiones rápidas.
       </p>
       <p class="perle-hero-meta">Actualizado: {{ kpis.generated_at|date:"d/m/Y H:i" }}</p>
     </div>
@@ -74,13 +74,13 @@
   <section class="perle-admin-actions">
     <a class="btn btn-primary" href="{% url 'admin:catalog_product_add' %}">Crear producto</a>
     <a class="btn btn-secondary" href="{% url 'admin:orders_order_changelist' %}?status__exact=pending">
-      Ver pendientes ({{ kpis.pending_orders }})
+      Órdenes pendientes ({{ kpis.pending_orders }})
     </a>
     <a class="btn btn-secondary" href="{% url 'admin:inventory_stocklevel_changelist' %}?available__lte={{ LOW_STOCK_THRESHOLD }}">
-      Revisar stock crítico
+      Inventario crítico
     </a>
     {% if ADMIN_SEED_DEMO_ENABLED %}
-    <a class="btn btn-secondary" href="{% url 'admin:seed-demo' %}">Cargar seed demo</a>
+    <a class="btn btn-secondary" href="{% url 'admin:seed-demo' %}">Cargar catálogo demo</a>
     {% endif %}
   </section>
 
@@ -125,7 +125,7 @@
               <tr>
                 <th>Orden</th>
                 <th>Cliente</th>
-                <th>Total</th>
+                <th>Total (COP)</th>
                 <th>Creada</th>
               </tr>
             </thead>
@@ -171,7 +171,7 @@
     </article>
     <article class="card">
       <div class="card-header">
-        <h3>Top productos (unidades)</h3>
+        <h3>Top productos vendidos</h3>
       </div>
       <div class="card-body">
         {% if kpis.top_products %}
