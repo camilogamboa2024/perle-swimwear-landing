@@ -476,7 +476,9 @@ select {
 
 .brand-mark {
   width: 124px;
+  max-width: 100%;
   height: auto;
+  object-fit: contain;
 }
 
 .brand small {
