@@ -60,3 +60,20 @@ class ActiveVariantsVisibilityTest(TestCase):
         variant_ids = {variant['id'] for variant in payload['variants']}
         self.assertIn(self.active_variant.id, variant_ids)
         self.assertNotIn(self.inactive_variant.id, variant_ids)
+
+
+class TemplateRegressionTest(TestCase):
+    def test_checkout_template_renders_expected_controls(self):
+        response = self.client.get('/checkout/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-testid="checkout-page"')
+        self.assertContains(response, 'id="checkout-form"')
+        self.assertContains(response, 'id="checkout-result"')
+        self.assertContains(response, 'name="coupon_code"')
+
+    def test_cart_template_renders_cart_data_hooks(self):
+        response = self.client.get('/cart/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-cart-page')
+        self.assertContains(response, 'data-testid="go-checkout"')
+        self.assertContains(response, 'id="cart-items"')
