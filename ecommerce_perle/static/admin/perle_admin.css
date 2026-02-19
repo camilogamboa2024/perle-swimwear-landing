@@ -284,3 +284,135 @@ body .badge,
     border-radius: 16px;
   }
 }
+
+.perle-admin-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.perle-admin-hero {
+  margin-bottom: 6px;
+}
+
+.perle-admin-hero .card-body {
+  padding: 20px;
+}
+
+.perle-hero-eyebrow {
+  margin: 0 0 6px;
+  color: var(--perle-primary);
+  font-size: 0.77rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.perle-admin-hero h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+}
+
+.perle-hero-copy {
+  margin: 0;
+  color: var(--perle-muted);
+}
+
+.perle-hero-meta {
+  margin: 10px 0 0;
+  color: #bfd0e6;
+  font-size: 0.8rem;
+}
+
+.perle-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.perle-kpi-card .card-body {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.perle-kpi-label {
+  margin: 0;
+  color: var(--perle-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.perle-kpi-card h2 {
+  margin: 0;
+  color: #f7fbff;
+}
+
+.perle-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.perle-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.perle-dashboard-grid .card-body {
+  padding: 14px 16px;
+}
+
+.perle-dashboard-grid canvas {
+  width: 100%;
+  min-height: 130px;
+}
+
+.perle-empty {
+  margin: 0;
+  color: var(--perle-muted);
+  font-size: 0.92rem;
+}
+
+.perle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.perle-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(159, 178, 198, 0.2);
+  border-radius: 11px;
+  padding: 8px 10px;
+  background: rgba(25, 38, 55, 0.55);
+}
+
+.perle-admin-modules .app-catalog > table,
+.perle-admin-modules .app-orders > table,
+.perle-admin-modules .app-customers > table,
+.perle-admin-modules .app-inventory > table,
+.perle-admin-modules table {
+  background: transparent;
+}
+
+.perle-dashboard-table td,
+.perle-dashboard-table th {
+  white-space: nowrap;
+}
+
+.perle-table-wrap {
+  overflow-x: auto;
+}
+
+@media (max-width: 1080px) {
+  .perle-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}

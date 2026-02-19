@@ -1,78 +1,212 @@
 {% extends "admin/base_site.html" %}
-{% load i18n dashboard_admin %}
+{% load static i18n dashboard_admin %}
 
 {% block content %}
 {% admin_kpis as kpis %}
-<style>
-  .perle-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .perle-kpi-card {
-    border: 1px solid #d6d8db;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 14px;
-  }
-  .perle-kpi-card h3 {
-    margin: 0 0 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #6c7480;
-  }
-  .perle-kpi-card strong {
-    font-size: 24px;
-    color: #233142;
-  }
-  .perle-admin-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 10px 0 20px;
-  }
-  .perle-admin-actions a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #c6ccd3;
-    border-radius: 999px;
-    padding: 8px 14px;
-    text-decoration: none;
-  }
-</style>
 
-<div class="perle-kpi-grid">
-  <article class="perle-kpi-card">
-    <h3>Órdenes hoy</h3>
-    <strong>{{ kpis.orders_today }}</strong>
-  </article>
-  <article class="perle-kpi-card">
-    <h3>Órdenes semana</h3>
-    <strong>{{ kpis.orders_week }}</strong>
-  </article>
-  <article class="perle-kpi-card">
-    <h3>Stock bajo</h3>
-    <strong>{{ kpis.low_stock_count }}</strong>
-  </article>
-  <article class="perle-kpi-card">
-    <h3>Ingresos semana (COP)</h3>
-    <strong>${{ kpis.revenue_week }}</strong>
-  </article>
-</div>
+<section class="perle-admin-dashboard">
+  <header class="card perle-admin-hero">
+    <div class="card-body">
+      <p class="perle-hero-eyebrow">Panel Ejecutivo</p>
+      <h1>Visión operativa diaria</h1>
+      <p class="perle-hero-copy">
+        Estado del negocio en tiempo real para decisiones rápidas de catálogo, inventario y postventa.
+      </p>
+      <p class="perle-hero-meta">Actualizado: {{ kpis.generated_at|date:"d/m/Y H:i" }}</p>
+    </div>
+  </header>
 
-<div class="perle-admin-actions">
-  <a href="{% url 'admin:catalog_product_add' %}">Crear producto</a>
-  <a href="{% url 'admin:orders_order_changelist' %}?status__exact=pending">Órdenes pendientes ({{ kpis.pending_orders }})</a>
-  {% if ADMIN_SEED_DEMO_ENABLED %}
-  <a href="{% url 'admin:seed-demo' %}">Seed demo (dev)</a>
-  {% endif %}
-</div>
+  <section class="perle-kpi-grid" aria-label="Indicadores clave">
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Órdenes hoy</p>
+        <h2>{{ kpis.orders_today }}</h2>
+        <span class="perle-pill {% if kpis.orders_today_delta >= 0 %}perle-pill-success{% else %}perle-pill-danger{% endif %}">
+          {% if kpis.orders_today_delta >= 0 %}+{% endif %}{{ kpis.orders_today_delta }}% vs ayer
+        </span>
+      </div>
+    </article>
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Órdenes semana</p>
+        <h2>{{ kpis.orders_week }}</h2>
+        <span class="perle-pill {% if kpis.orders_week_delta >= 0 %}perle-pill-success{% else %}perle-pill-danger{% endif %}">
+          {% if kpis.orders_week_delta >= 0 %}+{% endif %}{{ kpis.orders_week_delta }}% semana anterior
+        </span>
+      </div>
+    </article>
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Pendientes</p>
+        <h2>{{ kpis.pending_orders }}</h2>
+        <span class="perle-pill {% if kpis.pending_orders > 0 %}perle-pill-warning{% else %}perle-pill-success{% endif %}">
+          {% if kpis.pending_orders > 0 %}Requieren atención{% else %}Sin cola{% endif %}
+        </span>
+      </div>
+    </article>
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Stock bajo</p>
+        <h2>{{ kpis.low_stock_count }}</h2>
+        <span class="perle-pill {% if kpis.low_stock_count > 0 %}perle-pill-warning{% else %}perle-pill-success{% endif %}">
+          Umbral: {{ LOW_STOCK_THRESHOLD }}
+        </span>
+      </div>
+    </article>
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Ingresos semana (COP)</p>
+        <h2>${{ kpis.revenue_week }}</h2>
+        <span class="perle-pill {% if kpis.revenue_week_delta >= 0 %}perle-pill-success{% else %}perle-pill-danger{% endif %}">
+          {% if kpis.revenue_week_delta >= 0 %}+{% endif %}{{ kpis.revenue_week_delta }}% semana anterior
+        </span>
+      </div>
+    </article>
+    <article class="card perle-kpi-card">
+      <div class="card-body">
+        <p class="perle-kpi-label">Ticket promedio semana</p>
+        <h2>${{ kpis.ticket_avg_week }}</h2>
+        <span class="perle-pill perle-pill-info">Promedio por orden facturable</span>
+      </div>
+    </article>
+  </section>
 
-{% if app_list %}
-  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
-{% else %}
-  <p>No tienes permisos sobre módulos administrativos.</p>
-{% endif %}
+  <section class="perle-admin-actions">
+    <a class="btn btn-primary" href="{% url 'admin:catalog_product_add' %}">Crear producto</a>
+    <a class="btn btn-secondary" href="{% url 'admin:orders_order_changelist' %}?status__exact=pending">
+      Ver pendientes ({{ kpis.pending_orders }})
+    </a>
+    <a class="btn btn-secondary" href="{% url 'admin:inventory_stocklevel_changelist' %}?available__lte={{ LOW_STOCK_THRESHOLD }}">
+      Revisar stock crítico
+    </a>
+    {% if ADMIN_SEED_DEMO_ENABLED %}
+    <a class="btn btn-secondary" href="{% url 'admin:seed-demo' %}">Cargar seed demo</a>
+    {% endif %}
+  </section>
+
+  <section class="perle-dashboard-grid">
+    <article class="card">
+      <div class="card-header">
+        <h3>Tendencia 7 días</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="perle-orders-7d-chart" height="110" aria-label="Tendencia de órdenes 7 días"></canvas>
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h3>Ingresos 30 días</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="perle-revenue-30d-chart" height="110" aria-label="Tendencia de ingresos 30 días"></canvas>
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h3>Distribución por estado</h3>
+      </div>
+      <div class="card-body">
+        {% if kpis.status_distribution %}
+        <canvas id="perle-status-chart" height="130" aria-label="Distribución por estado"></canvas>
+        {% else %}
+        <p class="perle-empty">No hay órdenes registradas para mostrar distribución.</p>
+        {% endif %}
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h3>Órdenes pendientes recientes</h3>
+      </div>
+      <div class="card-body">
+        {% if kpis.pending_recent %}
+        <div class="perle-table-wrap">
+          <table class="table perle-dashboard-table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Creada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for order in kpis.pending_recent %}
+              <tr>
+                <td>
+                  <a href="{% url 'admin:orders_order_change' order.id %}">{{ order.public_id }}</a>
+                </td>
+                <td>{{ order.customer.email }}</td>
+                <td>${{ order.grand_total }}</td>
+                <td>{{ order.created_at|date:"d/m H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="perle-empty">No hay órdenes pendientes en este momento.</p>
+        {% endif %}
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h3>Alertas de inventario crítico</h3>
+      </div>
+      <div class="card-body">
+        {% if kpis.low_stock_items %}
+        <ul class="perle-list">
+          {% for stock in kpis.low_stock_items %}
+          <li>
+            <span>{{ stock.variant.product.name }} · {{ stock.variant.sku }}</span>
+            <span class="perle-pill {% if stock.available <= 0 %}perle-pill-danger{% else %}perle-pill-warning{% endif %}">
+              {{ stock.available }} disponibles
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="perle-empty">No hay alertas de stock bajo.</p>
+        {% endif %}
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h3>Top productos (unidades)</h3>
+      </div>
+      <div class="card-body">
+        {% if kpis.top_products %}
+        <ul class="perle-list">
+          {% for row in kpis.top_products %}
+          <li>
+            <span>{{ row.variant__product__name }}</span>
+            <span class="perle-pill perle-pill-info">{{ row.units }} u. · ${{ row.revenue }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="perle-empty">Sin historial de ventas todavía.</p>
+        {% endif %}
+      </div>
+    </article>
+  </section>
+
+  <section class="card perle-admin-modules">
+    <div class="card-header">
+      <h3>Módulos administrativos</h3>
+    </div>
+    <div class="card-body">
+      {% if app_list %}
+      {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+      {% else %}
+      <p class="perle-empty">No tienes permisos sobre módulos administrativos.</p>
+      {% endif %}
+    </div>
+  </section>
+</section>
+
+{{ kpis.series_7d|json_script:"kpi-series-7d" }}
+{{ kpis.series_30d|json_script:"kpi-series-30d" }}
+{{ kpis.status_distribution|json_script:"kpi-status-distribution" }}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'admin/perle_dashboard.js' %}"></script>
 {% endblock %}
