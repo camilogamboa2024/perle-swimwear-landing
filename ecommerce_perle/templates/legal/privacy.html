@@ -2,22 +2,28 @@
 {% block title %}Privacidad | Perle{% endblock %}
 {% block content %}
 <section class="container section-space legal-page">
-  <article class="surface legal-content">
+  <article class="card legal-content">
+    <p class="eyebrow">Legal</p>
     <h1>Política de privacidad</h1>
-    <p class="muted">Última actualización: 2026-02-19</p>
+    <p class="muted">Last updated: 2026-02-19</p>
+
+    <p>Perle procesa datos personales únicamente para gestionar pedidos, soporte y comunicación operativa.</p>
+
+    <h2>Información que usamos</h2>
     <ul>
-      <li>Recolectamos únicamente datos necesarios para procesar pedidos, entregas y soporte.</li>
-      <li>No vendemos información personal ni compartimos datos sin base legal.</li>
-      <li>Conservamos datos mínimos para trazabilidad de pedidos y gestión postventa.</li>
-      <li>
-        Solicitudes de privacidad:
-        {% if WHATSAPP_PHONE %}
-        WhatsApp {{ WHATSAPP_PHONE }}.
-        {% else %}
-        usa los canales de contacto publicados en redes oficiales.
-        {% endif %}
-      </li>
+      <li>Datos de contacto para confirmar compra y entrega.</li>
+      <li>Dirección de envío para despacho del pedido.</li>
+      <li>Historial básico de órdenes para soporte posventa.</li>
     </ul>
+
+    <h2>Contacto de privacidad</h2>
+    <p>
+      {% if WHATSAPP_PHONE %}
+      Puedes solicitar soporte de privacidad por WhatsApp {{ WHATSAPP_PHONE }}.
+      {% else %}
+      Puedes solicitar soporte de privacidad por los canales oficiales en redes sociales.
+      {% endif %}
+    </p>
   </article>
 </section>
 {% endblock %}

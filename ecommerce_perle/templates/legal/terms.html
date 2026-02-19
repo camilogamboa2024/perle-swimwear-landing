@@ -2,22 +2,28 @@
 {% block title %}Términos | Perle{% endblock %}
 {% block content %}
 <section class="container section-space legal-page">
-  <article class="surface legal-content">
+  <article class="card legal-content">
+    <p class="eyebrow">Legal</p>
     <h1>Términos y condiciones</h1>
-    <p class="muted">Última actualización: 2026-02-19</p>
+    <p class="muted">Last updated: 2026-02-19</p>
+
+    <p>Estos términos regulan la compra de productos Perle Swimwear a través del storefront oficial.</p>
+
+    <h2>Condiciones de compra</h2>
     <ul>
-      <li>Los productos están sujetos a disponibilidad de inventario y validación final de checkout.</li>
-      <li>El pedido se considera confirmado cuando se genera identificador público y resumen de orden.</li>
-      <li>Los tiempos de preparación y envío pueden variar según ciudad y operador logístico.</li>
-      <li>
-        Para soporte:
-        {% if WHATSAPP_PHONE %}
-        WhatsApp {{ WHATSAPP_PHONE }}.
-        {% else %}
-        usa los canales de contacto publicados en redes oficiales.
-        {% endif %}
-      </li>
+      <li>El inventario se valida al momento de confirmar checkout.</li>
+      <li>El pedido se considera confirmado cuando se genera `public_id` y resumen de orden.</li>
+      <li>Los tiempos de envío son estimados y dependen del operador logístico.</li>
     </ul>
+
+    <h2>Atención al cliente</h2>
+    <p>
+      {% if WHATSAPP_PHONE %}
+      Soporte por WhatsApp: {{ WHATSAPP_PHONE }}.
+      {% else %}
+      Soporte por canales oficiales en redes sociales.
+      {% endif %}
+    </p>
   </article>
 </section>
 {% endblock %}

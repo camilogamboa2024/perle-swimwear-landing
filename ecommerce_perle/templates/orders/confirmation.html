@@ -1,23 +1,31 @@
 {% extends 'base.html' %}
+{% block title %}Confirmación de pedido | Perle{% endblock %}
 {% block content %}
 <section class="container section-space" data-testid="confirmation-page">
-  <article class="surface confirmation-card">
-    <p class="eyebrow">Orden confirmada</p>
+  <article class="card confirmation-card">
+    <p class="eyebrow">Compra exitosa</p>
     <h1>Pedido confirmado</h1>
-    <p class="muted">Conserva este identificador para soporte y seguimiento.</p>
+    <p class="muted">Gracias por comprar en Perle. Guarda este resumen para seguimiento y soporte.</p>
 
     <div class="summary-row">
-      <span>ID público</span>
+      <span>Número público</span>
       <strong>{{ order.public_id }}</strong>
-    </div>
-    <div class="summary-row">
-      <span>Total</span>
-      <strong>${{ order.grand_total }} COP</strong>
     </div>
     <div class="summary-row">
       <span>Estado</span>
       <strong>{{ order.get_status_display }}</strong>
     </div>
+    <div class="summary-row total">
+      <span>Total</span>
+      <strong>${{ order.grand_total }} COP</strong>
+    </div>
+
+    <h2>Dirección de entrega</h2>
+    <p>
+      {{ order.address.line1 }}<br>
+      {{ order.address.city }}, {{ order.address.state }}<br>
+      {{ order.address.country }}
+    </p>
 
     <h2>Items</h2>
     <ul class="confirmation-items">
@@ -29,11 +37,16 @@
       {% endfor %}
     </ul>
 
+    <div class="alert alert-info">
+      <strong>Siguiente paso:</strong>
+      revisa tu correo y conserva este número para atención posventa.
+    </div>
+
     <div class="confirmation-actions">
-      <a class="btn btn-secondary" href="{% url 'home' %}">Volver al catálogo</a>
+      <a class="btn btn-outline" href="{% url 'home' %}#catalogo-section">Seguir comprando</a>
       {% if whatsapp_url %}
       <a class="btn btn-primary" href="{{ whatsapp_url }}" rel="noreferrer" target="_blank" data-testid="confirmation-wa">
-        Finalizar por WhatsApp
+        Continuar por WhatsApp
       </a>
       {% endif %}
     </div>
