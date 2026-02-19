@@ -1,28 +1,28 @@
 {% extends 'base.html' %}
-{% block title %}Perle | Luxury Minimal Swimwear{% endblock %}
+{% block title %}Perle Panamá | Luxury Aqua Swimwear{% endblock %}
 {% block content %}
 <section class="hero">
   <div class="container">
-    <p class="eyebrow">Luxury Minimal Swimwear</p>
-    <h1>Diseños atemporales para una experiencia de compra premium</h1>
+    <p class="eyebrow">Luxury Aqua Swimwear · Panamá</p>
+    <h1>Trajes de baño premium para un verano eterno en Panamá</h1>
     <p class="hero-copy">
-      Piezas de baño con ajuste real, materiales seleccionados y checkout rápido.
-      Todo el flujo está pensado para comprar fácil desde móvil o desktop.
+      Diseños atemporales, ajuste real y materiales de alta calidad.
+      Compra rápido desde móvil o desktop con una experiencia cuidada de inicio a fin.
     </p>
     <a href="#catalogo-section" class="btn btn-primary">Comprar ahora</a>
 
     <div class="trust-bar" aria-label="Beneficios de compra">
       <article class="trust-item">
-        <strong>Envíos confiables</strong>
-        <span>Cobertura nacional y trazabilidad del pedido.</span>
+        <strong>Envíos en Panamá</strong>
+        <span>Cobertura nacional y seguimiento en cada pedido.</span>
       </article>
       <article class="trust-item">
         <strong>Cambios sencillos</strong>
-        <span>Soporte humano para ajustes y devoluciones.</span>
+        <span>Atención humana para talla, ajuste y devoluciones.</span>
       </article>
       <article class="trust-item">
         <strong>Checkout seguro</strong>
-        <span>Validación de stock y confirmación de orden protegida.</span>
+        <span>Validación de stock y confirmación protegida de tu orden.</span>
       </article>
     </div>
   </div>
@@ -30,8 +30,8 @@
 
 <section class="container section-space">
   <div class="section-head">
-    <h2>Best Sellers</h2>
-    <p>Las referencias más elegidas por nuestras clientas esta semana.</p>
+    <h2>Más Vendidos</h2>
+    <p>Las referencias favoritas de nuestras clientas esta semana.</p>
   </div>
   <div class="product-grid">
     {% for product in products|slice:":4" %}
@@ -52,7 +52,7 @@
       <div class="product-meta">
         <p class="price"><strong>${{ v.price_cop }}</strong> COP</p>
         <div>
-          <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-outline">Quick view</a>
+          <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-outline">Ver detalle</a>
           <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir</button>
         </div>
       </div>
@@ -65,8 +65,8 @@
 
 <section class="container section-space" id="catalogo-section">
   <div class="section-head">
-    <h2>Nuevas</h2>
-    <p>Novedades con siluetas limpias y acabados de confección premium.</p>
+    <h2>Novedades</h2>
+    <p>Nuevas piezas con siluetas limpias y acabados de confección premium.</p>
   </div>
   <div id="products-grid" class="product-grid" data-testid="products-grid">
     {% for product in products|slice:"4:8" %}
@@ -103,7 +103,7 @@
 <section class="container section-space">
   <div class="section-head">
     <h2>Colecciones</h2>
-    <p>Selección curada para viaje, resort y uso diario.</p>
+    <p>Selección curada para playa, resort y escapadas de fin de semana.</p>
   </div>
   <div class="product-grid">
     {% for product in products|slice:"8:12" %}

@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Tienda online de Perle Swimwear: piezas premium, compra rápida y soporte humano.{% endblock %}" />
-  <meta property="og:title" content="{% block og_title %}Perle Swimwear{% endblock %}" />
-  <meta property="og:description" content="{% block og_description %}Swimwear premium con stock en vivo y experiencia de compra boutique.{% endblock %}" />
+  <meta name="description" content="{% block meta_description %}Perle Swimwear Panamá: trajes de baño premium, compra segura y soporte humano en cada pedido.{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}Perle Swimwear Panamá{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Diseño premium de trajes de baño en Panamá con checkout simple y atención personalizada.{% endblock %}" />
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/png" href="{% static 'brand/favicon.png' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,8 +17,8 @@
 </head>
 <body>
   <div class="topbar" role="note">
-    <span>Luxury minimal · Calidad premium</span>
-    <span>Envíos nacionales · Soporte humano</span>
+    <span>Perle Panamá · Luxury Aqua Minimal</span>
+    <span>Envíos nacionales · Cambios fáciles · Soporte humano</span>
   </div>
 
   <header class="site-header" role="banner">
@@ -39,7 +39,7 @@
       </button>
 
       <nav id="site-navigation" class="nav-right" aria-label="Navegación principal">
-        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'home' %}">Inicio</a>
         <a href="{% url 'home' %}#catalogo-section">Catálogo</a>
         <a href="{% url 'legal-terms' %}">Legal</a>
         {% if request.user.is_staff %}

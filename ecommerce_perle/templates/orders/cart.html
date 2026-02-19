@@ -3,9 +3,9 @@
 {% block content %}
 <section class="container section-space" data-cart-page data-testid="cart-page">
   <div class="section-head">
-    <p class="eyebrow">Bolsa Perle</p>
+    <p class="eyebrow">Bolsa Perle Panamá</p>
     <h1>Tu carrito</h1>
-    <p>Gestiona cantidades, elimina referencias y prepara tu checkout.</p>
+    <p>Gestiona cantidades, elimina referencias y prepara un checkout rápido y seguro.</p>
   </div>
 
   <div class="cart-layout">
@@ -13,7 +13,7 @@
       <div class="card-body">
         <div id="cart-empty" class="empty-state" {% if cart.items.all %}hidden{% endif %}>
           <h3>Tu bolsa está vacía</h3>
-          <p>Añade productos desde el catálogo para iniciar tu compra.</p>
+          <p>Añade productos desde el catálogo para iniciar tu compra premium.</p>
           <a class="btn btn-outline" href="{% url 'home' %}#catalogo-section">Volver al catálogo</a>
         </div>
 
