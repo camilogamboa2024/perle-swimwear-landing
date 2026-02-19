@@ -2,6 +2,8 @@
 
 Aplicación Django + DRF para catálogo, carrito, checkout y operación interna con panel admin premium.
 
+Branding activo: logo oficial del negocio (`static/brand/perle-logo.png`) y favicon (`static/brand/favicon.png`) en storefront + admin.
+
 ## Stack
 - Django 5.x + DRF
 - Templates + CSS/JS vanilla (`static/css/perle.css`, `static/js/storefront.js`)
