@@ -336,6 +336,16 @@ body .messagelist .error {
   padding: 28px 14px;
 }
 
+body.login-page .main-header,
+body.login-page .main-sidebar,
+body.login-page .content-header {
+  display: none !important;
+}
+
+body.login-page .content-wrapper {
+  margin-left: 0 !important;
+}
+
 .perle-login-card {
   width: min(470px, 100%);
   border: 1px solid rgba(73, 109, 132, 0.9);
