@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<section class="perle-login-page" aria-label="Ingreso al panel administrativo">
+  <article class="perle-login-card">
+    <h1>Iniciar sesión</h1>
+    <p>Ingresa con tu cuenta administrativa para operar el negocio.</p>
+
+    {% if form.errors and not form.non_field_errors %}
+    <div class="perle-login-error">
+      Usuario o contraseña inválidos. Verifica tus credenciales.
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="perle-login-error">
+      {% for error in form.non_field_errors %}
+      {{ error }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <div class="perle-login-error">
+      Tu usuario no tiene acceso a esta sección.
+    </div>
+    {% endif %}
+
+    <form action="{{ app_path }}" method="post" id="login-form" novalidate>
+      {% csrf_token %}
+      <div class="form-row">
+        <label for="{{ form.username.id_for_label }}">Nombre de usuario</label>
+        {{ form.username }}
+      </div>
+      <div class="form-row">
+        <label for="{{ form.password.id_for_label }}">Contraseña</label>
+        {{ form.password }}
+        <input type="hidden" name="next" value="{{ next }}">
+      </div>
+      <div class="submit-row">
+        <input type="submit" value="Iniciar sesión">
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

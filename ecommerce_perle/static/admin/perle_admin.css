@@ -1,0 +1,286 @@
+:root {
+  --perle-bg: #0f1720;
+  --perle-surface: #182433;
+  --perle-surface-2: #243449;
+  --perle-surface-soft: #1f2b3b;
+  --perle-border: #31465e;
+  --perle-text: #e7edf5;
+  --perle-muted: #9eafc3;
+  --perle-primary: #f0d4a5;
+  --perle-primary-700: #c79f63;
+  --perle-success: #3fbe8a;
+  --perle-warning: #e1ac5c;
+  --perle-danger: #e77474;
+  --perle-info: #74a4e7;
+  --perle-shadow: 0 18px 44px rgba(3, 8, 14, 0.36);
+  --perle-radius-md: 12px;
+  --perle-radius-lg: 18px;
+  --perle-radius-pill: 999px;
+}
+
+body {
+  background:
+    radial-gradient(900px 380px at 10% 0%, rgba(240, 212, 165, 0.15), transparent 60%),
+    radial-gradient(800px 360px at 95% 0%, rgba(87, 134, 193, 0.18), transparent 58%),
+    linear-gradient(180deg, #0c131d 0%, #101923 100%);
+  color: var(--perle-text);
+}
+
+body .wrapper .content-wrapper {
+  background: transparent;
+}
+
+body .main-header.navbar {
+  border-bottom: 1px solid rgba(240, 212, 165, 0.2);
+  background: rgba(14, 22, 32, 0.86);
+  backdrop-filter: blur(9px);
+}
+
+body .main-sidebar {
+  background: linear-gradient(185deg, #0f1724, #151f2e);
+  border-right: 1px solid rgba(240, 212, 165, 0.14);
+}
+
+body .main-sidebar .nav-sidebar > .nav-item > .nav-link {
+  border-radius: 10px;
+  margin: 0 8px 4px;
+  color: var(--perle-muted);
+}
+
+body .main-sidebar .nav-sidebar > .nav-item > .nav-link.active {
+  background: linear-gradient(130deg, rgba(240, 212, 165, 0.2), rgba(117, 164, 231, 0.22));
+  color: #fff;
+  border: 1px solid rgba(240, 212, 165, 0.25);
+}
+
+body .content-header h1,
+body .content-header .breadcrumb-item,
+body .content-header .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--perle-text);
+}
+
+body .card,
+body .module,
+body .box,
+body .small-box,
+body .info-box {
+  border: 1px solid var(--perle-border);
+  border-radius: var(--perle-radius-lg);
+  background: linear-gradient(180deg, rgba(27, 39, 55, 0.88), rgba(20, 30, 43, 0.92));
+  box-shadow: var(--perle-shadow);
+}
+
+body .card-header,
+body .module h2 {
+  border-bottom: 1px solid rgba(240, 212, 165, 0.14);
+  background: transparent;
+  color: var(--perle-text);
+}
+
+body .table,
+body .table thead th,
+body .results table,
+body .results th,
+body .results td {
+  color: var(--perle-text);
+  border-color: rgba(119, 146, 177, 0.24);
+}
+
+body .table thead th,
+body .results thead th {
+  background: rgba(18, 31, 45, 0.85);
+}
+
+body .table tbody tr:hover,
+body .results tbody tr:hover {
+  background: rgba(240, 212, 165, 0.08);
+}
+
+body .form-control,
+body .vTextField,
+body .vURLField,
+body .vIntegerField,
+body .vLargeTextField,
+body select,
+body textarea {
+  background: #121d2b;
+  border: 1px solid #3a5169;
+  color: var(--perle-text);
+  border-radius: var(--perle-radius-md);
+}
+
+body .form-control:focus,
+body .vTextField:focus,
+body .vURLField:focus,
+body .vIntegerField:focus,
+body .vLargeTextField:focus,
+body select:focus,
+body textarea:focus {
+  border-color: var(--perle-primary);
+  box-shadow: 0 0 0 3px rgba(240, 212, 165, 0.26);
+}
+
+body .btn,
+body .button,
+body input[type="submit"],
+body input[type="button"],
+body .submit-row input {
+  border-radius: var(--perle-radius-pill);
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+body .btn-primary,
+body .button.default,
+body .submit-row input.default {
+  background: linear-gradient(145deg, #f0d4a5, #d9b982);
+  color: #1b2430;
+  border-color: rgba(234, 198, 138, 0.52);
+}
+
+body .btn-secondary,
+body .btn-outline-secondary,
+body .button.cancel-link {
+  background: rgba(126, 150, 178, 0.15);
+  color: var(--perle-text);
+  border-color: rgba(158, 175, 195, 0.4);
+}
+
+body .alert,
+body .messagelist li {
+  border-radius: var(--perle-radius-md);
+  border: 1px solid transparent;
+}
+
+body .messagelist .success {
+  background: rgba(63, 190, 138, 0.2);
+  border-color: rgba(63, 190, 138, 0.48);
+  color: #d7ffed;
+}
+
+body .messagelist .warning {
+  background: rgba(225, 172, 92, 0.2);
+  border-color: rgba(225, 172, 92, 0.48);
+  color: #fff1da;
+}
+
+body .messagelist .error {
+  background: rgba(231, 116, 116, 0.22);
+  border-color: rgba(231, 116, 116, 0.5);
+  color: #ffe2e2;
+}
+
+body .badge,
+.perle-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--perle-radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.perle-pill-muted {
+  background: rgba(158, 175, 195, 0.18);
+  color: #e5ecf5;
+  border-color: rgba(158, 175, 195, 0.36);
+}
+
+.perle-pill-success {
+  background: rgba(63, 190, 138, 0.18);
+  color: #d8ffe9;
+  border-color: rgba(63, 190, 138, 0.42);
+}
+
+.perle-pill-warning {
+  background: rgba(225, 172, 92, 0.2);
+  color: #fff0d3;
+  border-color: rgba(225, 172, 92, 0.44);
+}
+
+.perle-pill-danger {
+  background: rgba(231, 116, 116, 0.2);
+  color: #ffe3e3;
+  border-color: rgba(231, 116, 116, 0.44);
+}
+
+.perle-pill-info {
+  background: rgba(116, 164, 231, 0.2);
+  color: #dfedff;
+  border-color: rgba(116, 164, 231, 0.42);
+}
+
+.perle-login-page {
+  min-height: calc(100vh - 90px);
+  display: grid;
+  place-items: center;
+  padding: 24px 14px;
+}
+
+.perle-login-card {
+  width: min(460px, 100%);
+  border: 1px solid var(--perle-border);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(25, 38, 54, 0.94), rgba(17, 28, 39, 0.97));
+  box-shadow: var(--perle-shadow);
+  padding: 30px;
+}
+
+.perle-login-card h1 {
+  margin: 0 0 8px;
+  color: var(--perle-text);
+  font-size: 1.55rem;
+}
+
+.perle-login-card p {
+  margin: 0 0 18px;
+  color: var(--perle-muted);
+}
+
+.perle-login-card .form-row {
+  margin-bottom: 14px;
+}
+
+.perle-login-card label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--perle-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.perle-login-card .submit-row {
+  padding: 0;
+  margin-top: 18px;
+  border: 0;
+  background: transparent;
+}
+
+.perle-login-card .submit-row input {
+  width: 100%;
+}
+
+.perle-login-error {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(231, 116, 116, 0.5);
+  border-radius: 10px;
+  background: rgba(231, 116, 116, 0.2);
+  color: #ffe3e3;
+}
+
+@media (max-width: 960px) {
+  body .main-sidebar .nav-sidebar > .nav-item > .nav-link {
+    margin-inline: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .perle-login-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+}

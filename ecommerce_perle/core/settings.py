@@ -134,6 +134,8 @@ JAZZMIN_SETTINGS = {
     'show_sidebar': True,
     'navigation_expanded': True,
     'show_ui_builder': False,
+    'custom_css': 'admin/perle_admin.css',
+    'custom_js': 'admin/perle_admin.js',
     'order_with_respect_to': [
         'catalog',
         'inventory',
