@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Se aplicará el cambio de estado a las siguientes órdenes:</p>
+<ul>
+  {% for order in orders %}
+  <li>#{{ order.id }} · {{ order.public_id }} · {{ order.customer.email }} · estado actual: {{ order.get_status_display }}</li>
+  {% endfor %}
+</ul>
+
+<form method="post">{% csrf_token %}
+  {% for order in orders %}
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ order.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="{{ action_name }}">
+  <input type="hidden" name="apply" value="1">
+  <button type="submit" class="button default">Confirmar</button>
+  <a href="{% url 'admin:orders_order_changelist' %}" class="button cancel-link">Cancelar</a>
+</form>
+{% endblock %}

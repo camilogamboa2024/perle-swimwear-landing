@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load i18n dashboard_admin %}
+
+{% block content %}
+{% admin_kpis as kpis %}
+<style>
+  .perle-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .perle-kpi-card {
+    border: 1px solid #d6d8db;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 14px;
+  }
+  .perle-kpi-card h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6c7480;
+  }
+  .perle-kpi-card strong {
+    font-size: 24px;
+    color: #233142;
+  }
+  .perle-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0 20px;
+  }
+  .perle-admin-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #c6ccd3;
+    border-radius: 999px;
+    padding: 8px 14px;
+    text-decoration: none;
+  }
+</style>
+
+<div class="perle-kpi-grid">
+  <article class="perle-kpi-card">
+    <h3>Órdenes hoy</h3>
+    <strong>{{ kpis.orders_today }}</strong>
+  </article>
+  <article class="perle-kpi-card">
+    <h3>Órdenes semana</h3>
+    <strong>{{ kpis.orders_week }}</strong>
+  </article>
+  <article class="perle-kpi-card">
+    <h3>Stock bajo</h3>
+    <strong>{{ kpis.low_stock_count }}</strong>
+  </article>
+  <article class="perle-kpi-card">
+    <h3>Ingresos semana (COP)</h3>
+    <strong>${{ kpis.revenue_week }}</strong>
+  </article>
+</div>
+
+<div class="perle-admin-actions">
+  <a href="{% url 'admin:catalog_product_add' %}">Crear producto</a>
+  <a href="{% url 'admin:orders_order_changelist' %}?status__exact=pending">Órdenes pendientes ({{ kpis.pending_orders }})</a>
+  {% if ADMIN_SEED_DEMO_ENABLED %}
+  <a href="{% url 'admin:seed-demo' %}">Seed demo (dev)</a>
+  {% endif %}
+</div>
+
+{% if app_list %}
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+{% else %}
+  <p>No tienes permisos sobre módulos administrativos.</p>
+{% endif %}
+{% endblock %}

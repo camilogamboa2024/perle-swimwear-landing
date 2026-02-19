@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Se aplicará el ajuste de stock a las variantes seleccionadas.</p>
+<ul>
+  {% for stock in stocks %}
+  <li>{{ stock.variant.sku }} · {{ stock.variant.product.name }} · disponible: {{ stock.available }}</li>
+  {% endfor %}
+</ul>
+
+<form method="post">{% csrf_token %}
+  {% for stock in stocks %}
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ stock.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="adjust_stock">
+  {{ form.as_p }}
+  <input type="hidden" name="apply" value="1">
+  <button type="submit" class="button default">Aplicar ajuste</button>
+  <a href="{% url 'admin:inventory_stocklevel_changelist' %}" class="button cancel-link">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,9 +1,9 @@
+import importlib.util
 import os
 import sys
-
-import dj_database_url
 from pathlib import Path
 
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -14,8 +14,12 @@ if not DEBUG and SECRET_KEY == 'dev-key-change-me':
     raise ImproperlyConfigured('Configura DJANGO_SECRET_KEY para producción.')
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if x.strip()]
+HAS_JAZZMIN = importlib.util.find_spec('jazzmin') is not None
+LOW_STOCK_THRESHOLD = int(os.getenv('LOW_STOCK_THRESHOLD', '3'))
+ADMIN_SEED_DEMO_ENABLED = DEBUG and os.getenv('ADMIN_SEED_DEMO_ENABLED', '1') == '1'
 
 INSTALLED_APPS = [
+    *(['jazzmin'] if HAS_JAZZMIN else []),
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -115,10 +119,71 @@ REST_FRAMEWORK = {
     }
 }
 
+JAZZMIN_SETTINGS = {
+    'site_title': 'Perle Admin',
+    'site_header': 'Perle Operations',
+    'site_brand': 'Perle',
+    'site_logo': 'brand/perle-logo.svg',
+    'site_icon': 'brand/favicon.svg',
+    'welcome_sign': 'Panel operativo Perle',
+    'copyright': 'Perle Swimwear',
+    'show_sidebar': True,
+    'navigation_expanded': True,
+    'show_ui_builder': False,
+    'order_with_respect_to': [
+        'catalog',
+        'inventory',
+        'orders',
+        'customers',
+        'auth',
+    ],
+    'icons': {
+        'catalog': 'fas fa-shirt',
+        'catalog.product': 'fas fa-tags',
+        'catalog.productvariant': 'fas fa-ruler-combined',
+        'catalog.productimage': 'far fa-image',
+        'catalog.category': 'fas fa-layer-group',
+        'inventory': 'fas fa-boxes-stacked',
+        'inventory.stocklevel': 'fas fa-warehouse',
+        'inventory.inventorymovement': 'fas fa-arrow-right-arrow-left',
+        'orders': 'fas fa-cart-shopping',
+        'orders.order': 'fas fa-receipt',
+        'orders.coupon': 'fas fa-ticket',
+        'customers': 'fas fa-users',
+        'customers.customer': 'fas fa-user',
+        'customers.address': 'fas fa-location-dot',
+    },
+}
+
+JAZZMIN_UI_TWEAKS = {
+    'theme': 'flatly',
+    'dark_mode_theme': None,
+    'accent': 'accent-teal',
+    'navbar': 'navbar-white navbar-light',
+    'no_navbar_border': False,
+    'sidebar': 'sidebar-light-primary',
+    'brand_colour': 'navbar-primary',
+    'sidebar_nav_small_text': False,
+    'sidebar_disable_expand': False,
+    'sidebar_nav_child_indent': True,
+    'sidebar_nav_compact_style': False,
+    'sidebar_nav_legacy_style': False,
+    'sidebar_nav_flat_style': True,
+    'sidebar_nav_indent_style': True,
+    'button_classes': {
+        'primary': 'btn-primary',
+        'secondary': 'btn-outline-secondary',
+        'info': 'btn-info',
+        'warning': 'btn-warning',
+        'danger': 'btn-danger',
+        'success': 'btn-success',
+    },
+}
+
 STATICFILES_STORAGE_BACKEND = (
     'django.contrib.staticfiles.storage.StaticFilesStorage'
     if RUNNING_TESTS
-    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    else 'core.storage.PerleStaticFilesStorage'
 )
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
@@ -134,12 +199,14 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', '1') == '1'
     SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '300'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', '1') == '1'
-    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', '0') == '1'
+    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', '1') == '1'
 
 
 SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'strict-origin-when-cross-origin')
 SECURE_CROSS_ORIGIN_OPENER_POLICY = os.getenv('SECURE_CROSS_ORIGIN_OPENER_POLICY', 'same-origin')
 SESSION_COOKIE_HTTPONLY = True
+# Keep CSRF cookie readable by JS because storefront uses csrftoken cookie for fetch headers.
+# If this is changed to 1, frontend must switch to CSRF token in DOM (meta/input).
 CSRF_COOKIE_HTTPONLY = os.getenv('CSRF_COOKIE_HTTPONLY', '0') == '1'
 SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
 CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax')

@@ -1,5 +1,7 @@
 import uuid
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 from apps.catalog.models import ProductVariant
 from apps.customers.models import Address, Customer
 
@@ -22,16 +24,38 @@ class CartItem(models.Model):
 
 class Coupon(models.Model):
     code = models.CharField(max_length=40, unique=True)
-    percentage = models.PositiveSmallIntegerField(default=0)
+    percentage = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
     is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.code
+
+    def is_valid_for_checkout(self, now=None):
+        if not self.is_active:
+            return False
+        current_time = now or timezone.now()
+        return not self.expires_at or self.expires_at > current_time
 
 
 class Order(models.Model):
     PENDING = 'pending'
     CONFIRMED = 'confirmed'
     PAID = 'paid'
+    SHIPPED = 'shipped'
+    DELIVERED = 'delivered'
     CANCELLED = 'cancelled'
-    STATUS_CHOICES = [(PENDING, 'Pendiente'), (CONFIRMED, 'Confirmado'), (PAID, 'Pagado'), (CANCELLED, 'Cancelado')]
+    STATUS_CHOICES = [
+        (PENDING, 'Pendiente'),
+        (CONFIRMED, 'Confirmado'),
+        (PAID, 'Pagado'),
+        (SHIPPED, 'Enviado'),
+        (DELIVERED, 'Entregado'),
+        (CANCELLED, 'Cancelado'),
+    ]
     PAYMENT_CHOICES = [
         ('whatsapp', 'WhatsApp'),
         ('manual', 'Manual'),

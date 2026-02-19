@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.response import Response
@@ -34,8 +35,14 @@ class CheckoutConfirmApiView(APIView):
 
         cart = _get_or_create_cart(request)
         coupon = None
-        if data.get('coupon_code'):
-            coupon = Coupon.objects.filter(code=data['coupon_code'], is_active=True).first()
+        coupon_code = (data.get('coupon_code') or '').strip()
+        if coupon_code:
+            coupon = Coupon.objects.filter(code__iexact=coupon_code).first()
+            if not coupon or not coupon.is_valid_for_checkout(now=timezone.now()):
+                return Response(
+                    {'error': 'Cupón inválido o expirado.', 'code': 'invalid_coupon'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         try:
             with transaction.atomic():

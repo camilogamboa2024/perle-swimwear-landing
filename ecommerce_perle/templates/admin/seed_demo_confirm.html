@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Esta operación crea/actualiza productos, variantes e inventario demo para ambientes de desarrollo o staging.</p>
+<p><strong>No está disponible cuando DEBUG=0.</strong></p>
+
+<form method="post">{% csrf_token %}
+  <button type="submit" class="button default">Ejecutar seed demo</button>
+  <a href="{% url 'admin:index' %}" class="button cancel-link">Cancelar</a>
+</form>
+{% endblock %}
