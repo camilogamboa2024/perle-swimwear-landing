@@ -2,6 +2,11 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.catalog.models import Category, Product, ProductVariant
+from apps.customers.models import Address, Customer
+from apps.inventory.models import StockLevel
+from apps.orders.models import Order, OrderItem
+
 
 class AdminDashboardFeatureTest(TestCase):
     def setUp(self):
@@ -12,12 +17,51 @@ class AdminDashboardFeatureTest(TestCase):
             password='AdminPass123!',
         )
         self.client.force_login(self.admin)
+        category = Category.objects.create(name='Admin QA', slug='admin-qa')
+        product = Product.objects.create(
+            name='Traje QA',
+            slug='traje-qa',
+            category=category,
+            description='x',
+        )
+        self.variant = ProductVariant.objects.create(
+            product=product,
+            sku='SKU-ADMIN-QA',
+            size='M',
+            color='Negro',
+            price_cop=120000,
+            is_active=True,
+        )
+        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 2})
+        customer = Customer.objects.create(email='dashboard-admin@example.com', full_name='Cliente Dashboard')
+        address = Address.objects.create(customer=customer, line1='Calle 100', city='Bogotá', state='DC')
+        order = Order.objects.create(
+            customer=customer,
+            address=address,
+            status=Order.PENDING,
+            subtotal=120000,
+            discount_total=0,
+            grand_total=120000,
+        )
+        OrderItem.objects.create(
+            order=order,
+            variant=self.variant,
+            quantity=1,
+            unit_price=120000,
+            line_total=120000,
+        )
 
     def test_admin_home_renders_kpi_cards(self):
         response = self.client.get(reverse('admin:index'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Órdenes hoy')
         self.assertContains(response, 'Ingresos semana')
+        self.assertContains(response, 'Ticket promedio semana')
+        self.assertContains(response, 'kpi-series-7d')
+        self.assertContains(response, 'kpi-series-30d')
+        self.assertContains(response, 'kpi-status-distribution')
+        self.assertContains(response, 'perle-orders-7d-chart')
+        self.assertContains(response, 'perle-revenue-30d-chart')
 
     @override_settings(ADMIN_SEED_DEMO_ENABLED=True)
     def test_seed_demo_route_is_available_when_enabled(self):
@@ -29,3 +73,16 @@ class AdminDashboardFeatureTest(TestCase):
     def test_seed_demo_route_returns_404_when_disabled(self):
         response = self.client.get(reverse('admin:seed-demo'))
         self.assertEqual(response.status_code, 404)
+
+    def test_admin_login_and_orders_changelist_are_in_spanish(self):
+        self.client.logout()
+        login_response = self.client.get(reverse('admin:login'))
+        self.assertEqual(login_response.status_code, 200)
+        self.assertContains(login_response, 'Iniciar sesión')
+        self.assertContains(login_response, 'Nombre de usuario')
+        self.assertContains(login_response, 'Contraseña')
+
+        self.client.force_login(self.admin)
+        orders_response = self.client.get(reverse('admin:orders_order_changelist'))
+        self.assertEqual(orders_response.status_code, 200)
+        self.assertContains(orders_response, 'Órdenes')
