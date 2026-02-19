@@ -67,4 +67,19 @@ def product_detail(request, slug):
         slug=slug,
         is_active=True,
     )
-    return render(request, 'catalog/product_detail.html', {'product': product})
+    related_products = (
+        Product.objects.filter(
+            is_active=True,
+            category=product.category,
+        )
+        .exclude(id=product.id)
+        .prefetch_related('images', active_variants)[:4]
+    )
+    return render(
+        request,
+        'catalog/product_detail.html',
+        {
+            'product': product,
+            'related_products': related_products,
+        },
+    )
