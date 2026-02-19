@@ -88,9 +88,13 @@ h3,
 h4,
 h5,
 h6 {
+  display: block;
   margin: 0 0 var(--s-3);
   line-height: 1.16;
   letter-spacing: -0.015em;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 h1 {
@@ -542,6 +546,10 @@ select {
 
 .hero .container {
   max-width: 860px;
+}
+
+.hero h1 {
+  max-width: 18ch;
 }
 
 .hero-copy {
@@ -1027,11 +1035,26 @@ select {
 
   .site-header-inner {
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--s-2);
     padding: var(--s-2) 0;
   }
 
+  .brand {
+    max-width: calc(100% - 112px);
+  }
+
+  .brand-mark {
+    height: 34px;
+  }
+
+  .mobile-nav-toggle {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
   .nav-right {
+    order: 3;
     width: 100%;
     display: none;
     flex-direction: column;
@@ -1051,6 +1074,10 @@ select {
 
   .section-space {
     padding: var(--s-8) 0;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 9vw, 2.35rem);
   }
 
   .form-grid,
