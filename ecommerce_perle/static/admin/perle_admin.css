@@ -365,6 +365,12 @@ body.perle-admin-login .content-wrapper {
   font-size: 1.7rem;
 }
 
+.perle-login-logo {
+  height: 34px;
+  width: auto;
+  margin: 0 0 14px;
+}
+
 .perle-login-card p {
   margin: 0 0 20px;
   color: var(--perle-muted);
