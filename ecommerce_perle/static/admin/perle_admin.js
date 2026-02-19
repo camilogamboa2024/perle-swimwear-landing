@@ -3,6 +3,9 @@
   if (!body) return;
 
   body.classList.add("perle-admin-theme");
+  if (document.getElementById("login-form")) {
+    body.classList.add("perle-admin-login");
+  }
 
   document.querySelectorAll(".messagelist li").forEach((message) => {
     window.setTimeout(() => {

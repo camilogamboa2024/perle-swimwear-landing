@@ -338,11 +338,15 @@ body .messagelist .error {
 
 body.login-page .main-header,
 body.login-page .main-sidebar,
-body.login-page .content-header {
+body.login-page .content-header,
+body.perle-admin-login .main-header,
+body.perle-admin-login .main-sidebar,
+body.perle-admin-login .content-header {
   display: none !important;
 }
 
-body.login-page .content-wrapper {
+body.login-page .content-wrapper,
+body.perle-admin-login .content-wrapper {
   margin-left: 0 !important;
 }
 
