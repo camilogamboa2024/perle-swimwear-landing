@@ -82,14 +82,14 @@ class AdminDashboardFeatureTest(TestCase):
         self.assertContains(login_response, 'Nombre de usuario')
         self.assertContains(login_response, 'Contraseña')
         self.assertContains(login_response, 'brand/perle-wordmark.png')
-        self.assertContains(login_response, 'admin/perle_admin.css')
+        self.assertContains(login_response, 'admin/perle_admin_v2.css')
         self.assertContains(login_response, 'admin/perle_admin.js')
 
         self.client.force_login(self.admin)
         dashboard_response = self.client.get(reverse('admin:index'))
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertContains(dashboard_response, 'perle-admin-dashboard')
-        self.assertContains(dashboard_response, 'admin/perle_dashboard.js')
+        self.assertContains(dashboard_response, 'admin/perle_dashboard_v2.js')
 
         orders_response = self.client.get(reverse('admin:orders_order_changelist'))
         self.assertEqual(orders_response.status_code, 200)
