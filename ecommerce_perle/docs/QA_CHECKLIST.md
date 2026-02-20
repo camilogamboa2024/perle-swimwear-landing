@@ -52,9 +52,13 @@
 3. JS sin dependencias externas ni bloqueos visibles en interacción base.
 
 ## Admin Premium (es-ES)
+0. Tema visual claro profesional (Aqua)
+- Fondo general claro y legible (sin bloques oscuros dominantes).
+- Sidebar, tablas y formularios con contraste alto y lectura cómoda en jornada operativa.
+- Botones primarios/secundarios consistentes con paleta de marca.
 1. Login admin (`/admin/login/`)
 - Renderiza texto en español (`Iniciar sesión`, `Nombre de usuario`, `Contraseña`).
-- Estilo luxury dark-slate aplicado.
+- Estilo claro Aqua aplicado.
 2. Dashboard admin (`/admin/`)
 - Renderiza KPIs completos: hoy, semana, pendientes, stock bajo, ingresos, ticket promedio.
 - Renderiza gráficos sin errores JS.
