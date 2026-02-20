@@ -2,12 +2,12 @@
   const palette = {
     text: "#173447",
     muted: "rgba(95, 119, 135, 0.9)",
-    grid: "rgba(15, 143, 178, 0.16)",
+    grid: "rgba(15, 143, 178, 0.14)",
     aqua: "#0f8fb2",
-    aquaSoft: "rgba(15, 143, 178, 0.22)",
+    aquaSoft: "rgba(15, 143, 178, 0.28)",
     pearl: "#f2dfbf",
-    pearlSoft: "rgba(242, 223, 191, 0.38)",
-    infoSoft: "rgba(43, 120, 178, 0.62)",
+    pearlSoft: "rgba(242, 223, 191, 0.48)",
+    infoSoft: "rgba(43, 120, 178, 0.7)",
   };
 
   function axisOptions() {
