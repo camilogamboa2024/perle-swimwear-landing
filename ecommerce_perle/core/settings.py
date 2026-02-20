@@ -162,13 +162,13 @@ JAZZMIN_SETTINGS = {
 }
 
 JAZZMIN_UI_TWEAKS = {
-    'theme': 'darkly',
+    'theme': 'flatly',
     'dark_mode_theme': None,
     'accent': 'accent-info',
-    'navbar': 'navbar-dark',
-    'no_navbar_border': True,
-    'sidebar': 'sidebar-dark-primary',
-    'brand_colour': 'navbar-dark',
+    'navbar': 'navbar-white navbar-light',
+    'no_navbar_border': False,
+    'sidebar': 'sidebar-light-info',
+    'brand_colour': 'navbar-info',
     'sidebar_nav_small_text': False,
     'sidebar_disable_expand': False,
     'sidebar_nav_child_indent': True,
