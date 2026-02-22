@@ -144,6 +144,12 @@ function updateSummaryNodes(payload) {
   if (subtotalNode) subtotalNode.textContent = formatCOP(payload.totals?.subtotal || 0);
   if (discountNode) discountNode.textContent = formatCOP(payload.totals?.discount_total || 0);
   if (grandTotalNode) grandTotalNode.textContent = formatCOP(total);
+
+  const itemsCountNode = document.getElementById("cart-items-count");
+  if (itemsCountNode) {
+    const referencesLabel = items.length === 1 ? "referencia" : "referencias";
+    itemsCountNode.textContent = `${items.length} ${referencesLabel}`;
+  }
 }
 
 function collectRenderedCartImages() {
@@ -677,6 +683,26 @@ function setupCheckoutForm() {
   });
 }
 
+function setupRevealAnimations() {
+  const nodes = Array.from(document.querySelectorAll(".fx-reveal"));
+  if (nodes.length < 1) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+    nodes.forEach((node) => node.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.14 });
+
+  nodes.forEach((node) => observer.observe(node));
+}
+
 document.addEventListener("click", async (event) => {
   const addCartButton = event.target.closest("[data-add-cart]");
   if (addCartButton) {
@@ -748,4 +774,5 @@ setupMobileNavigation();
 setupProductGallery();
 setupCartCouponInput();
 setupCheckoutForm();
+setupRevealAnimations();
 refreshCartBadge({ render: Boolean(document.querySelector("[data-cart-page]")) });

@@ -1,3 +1,6 @@
+import importlib.util
+from unittest import skipUnless
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -6,6 +9,8 @@ from apps.catalog.models import Category, Product, ProductVariant
 from apps.customers.models import Address, Customer
 from apps.inventory.models import StockLevel
 from apps.orders.models import Order, OrderItem
+
+HAS_TWO_FACTOR_PACKAGE = importlib.util.find_spec('two_factor') is not None
 
 
 class AdminDashboardFeatureTest(TestCase):
@@ -105,4 +110,17 @@ class AdminDashboardFeatureTest(TestCase):
         response = self.client.get(reverse('admin:index'))
         self.assertEqual(response.status_code, 302)
         self.assertIn('/account/', response.url)
+        self.assertIn('next=%2Fadmin%2F', response.url)
+
+    @skipUnless(HAS_TWO_FACTOR_PACKAGE, 'django-two-factor-auth no disponible en este entorno.')
+    @override_settings(ADMIN_MFA_REQUIRED=True, HAS_TWO_FACTOR=True)
+    def test_two_factor_account_routes_are_live_and_admin_redirects_to_setup(self):
+        login_url = reverse('two_factor:login')
+        self.assertEqual(login_url, '/account/login/')
+        login_response = self.client.get(login_url)
+        self.assertEqual(login_response.status_code, 200)
+
+        response = self.client.get(reverse('admin:index'))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('two_factor:setup')))
         self.assertIn('next=%2Fadmin%2F', response.url)

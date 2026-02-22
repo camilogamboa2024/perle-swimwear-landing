@@ -16,5 +16,5 @@ urlpatterns = [
 if settings.HAS_TWO_FACTOR:
     urlpatterns.insert(
         1,
-        path('', include(('two_factor.urls', 'two_factor'), namespace='two_factor')),
+        path('', include('two_factor.urls', namespace='two_factor')),
     )

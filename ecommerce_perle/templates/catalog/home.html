@@ -1,36 +1,50 @@
 {% extends 'base.html' %}
 {% block title %}Perle Panamá | Luxury Aqua Swimwear{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="container">
-    <p class="eyebrow">Luxury Aqua Swimwear · Panamá</p>
-    <h1>Trajes de baño premium para un verano eterno en Panamá</h1>
-    <p class="hero-copy">
-      Diseños atemporales, ajuste real y materiales de alta calidad.
-      Compra rápido desde móvil o desktop con una experiencia cuidada de inicio a fin.
-    </p>
-    <a href="#catalogo-section" class="btn btn-primary">Comprar ahora</a>
-
-    <div class="trust-bar" aria-label="Beneficios de compra">
-      <article class="trust-item">
-        <strong>Envíos en Panamá</strong>
-        <span>Cobertura nacional y seguimiento en cada pedido.</span>
-      </article>
-      <article class="trust-item">
-        <strong>Cambios sencillos</strong>
-        <span>Atención humana para talla, ajuste y devoluciones.</span>
-      </article>
-      <article class="trust-item">
-        <strong>Checkout seguro</strong>
-        <span>Validación de stock y confirmación protegida de tu orden.</span>
-      </article>
+<section class="hero hero-editorial">
+  <div class="container hero-editorial-grid">
+    <div class="hero-copy-wrap fx-reveal">
+      <p class="eyebrow">Marea Editorial 2026</p>
+      <h1>Bikinis que se sienten como portada de verano.</h1>
+      <p class="hero-copy">
+        Selección premium de Perle Panamá con siluetas limpias, ajuste real y acabados de confección fina.
+        Una experiencia de compra más ágil, clara y con personalidad.
+      </p>
+      <div class="hero-editorial-actions">
+        <a href="#catalogo-section" class="btn btn-primary">Ver colección</a>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Asesoría WhatsApp</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hero-art fx-reveal" aria-hidden="true">
+      <div class="hero-art-glow"></div>
+      <div class="hero-art-panel">
+        <p class="hero-art-title">Perle Insiders</p>
+        <p>Nuevos drops antes que nadie.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="container section-space">
+<section class="container section-space editorial-metrics fx-reveal" id="guide-section" aria-label="Métricas de servicio">
+  <article class="metric-card">
+    <strong>24h</strong>
+    <span>Respuesta promedio por WhatsApp</span>
+  </article>
+  <article class="metric-card">
+    <strong>8 estilos</strong>
+    <span>En el drop editorial actual</span>
+  </article>
+  <article class="metric-card">
+    <strong>$180</strong>
+    <span>Umbral para envío gratis en Panamá</span>
+  </article>
+</section>
+
+<section class="container section-space fx-reveal">
   <div class="section-head">
-    <h2>Más Vendidos</h2>
+    <h2>Más vendidos</h2>
     <p>Las referencias favoritas de nuestras clientas esta semana.</p>
   </div>
   <div class="product-grid">
@@ -63,10 +77,10 @@
   </div>
 </section>
 
-<section class="container section-space" id="catalogo-section">
+<section class="container section-space fx-reveal" id="catalogo-section">
   <div class="section-head">
-    <h2>Novedades</h2>
-    <p>Nuevas piezas con siluetas limpias y acabados de confección premium.</p>
+    <h2>Nuevos drops</h2>
+    <p>Piezas editoriales con paleta aqua-marfil y construcción premium para playa, resort y ciudad.</p>
   </div>
   <div id="products-grid" class="product-grid" data-testid="products-grid">
     {% for product in products|slice:"4:8" %}
@@ -100,7 +114,20 @@
   </div>
 </section>
 
-<section class="container section-space">
+<section class="container section-space fx-reveal" id="insiders-section">
+  <article class="insiders-card">
+    <p class="eyebrow">Perle Insiders</p>
+    <h2>Nuevos drops antes que nadie</h2>
+    <p>Recibe alertas de stock, guía de fit y preventas de colecciones editoriales.</p>
+    <form class="insiders-form" action="#" method="post">
+      <label class="sr-only" for="insiders-email">Correo para novedades</label>
+      <input id="insiders-email" type="email" class="input" placeholder="tu@email.com" autocomplete="email">
+      <button type="submit" class="btn btn-primary">Suscribirme</button>
+    </form>
+  </article>
+</section>
+
+<section class="container section-space fx-reveal">
   <div class="section-head">
     <h2>Colecciones</h2>
     <p>Selección curada para playa, resort y escapadas de fin de semana.</p>

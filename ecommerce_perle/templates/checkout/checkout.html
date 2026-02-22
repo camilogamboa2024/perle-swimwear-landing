@@ -1,85 +1,88 @@
 {% extends 'base.html' %}
 {% block title %}Checkout | Perle{% endblock %}
 {% block content %}
-<section class="container section-space checkout-page" data-testid="checkout-page">
+<section class="container section-space checkout-page fx-reveal" data-testid="checkout-page">
   <div class="section-head">
-    <p class="eyebrow">Checkout seguro</p>
+    <p class="eyebrow">Checkout seguro · Perle</p>
     <h1>Confirma tu pedido</h1>
-    <p>Completa tus datos para reservar stock y generar tu confirmación de compra en Panamá.</p>
+    <p>Completa tus datos para reservar stock y generar confirmación inmediata.</p>
   </div>
 
-  <form id="checkout-form" class="card checkout-form" novalidate>
-    <div id="checkout-alert" class="alert alert-info" hidden></div>
+  <div class="checkout-grid">
+    <form id="checkout-form" class="card checkout-form" novalidate>
+      <div id="checkout-alert" class="alert alert-info" hidden></div>
 
-    <div class="form-grid">
-      <div class="form-field">
-        <label for="checkout-full-name" class="form-label">Nombre completo</label>
-        <input id="checkout-full-name" class="input" name="full_name" placeholder="Nombre y apellido" required autocomplete="name">
-        <p class="helper" data-field-error="full_name"></p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="checkout-full-name" class="form-label">Nombre completo</label>
+          <input id="checkout-full-name" class="input" name="full_name" placeholder="Nombre y apellido" required autocomplete="name">
+          <p class="helper" data-field-error="full_name"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-email" class="form-label">Email</label>
+          <input id="checkout-email" class="input" name="email" type="email" placeholder="cliente@correo.com" required autocomplete="email">
+          <p class="helper" data-field-error="email"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-phone" class="form-label">Teléfono</label>
+          <input id="checkout-phone" class="input" name="phone" placeholder="+507 6123-4567" autocomplete="tel">
+          <p class="helper" data-field-error="phone"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-line1" class="form-label">Dirección</label>
+          <input id="checkout-line1" class="input" name="line1" placeholder="Calle 50, PH Costa del Este" required autocomplete="street-address">
+          <p class="helper" data-field-error="line1"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-city" class="form-label">Ciudad</label>
+          <input id="checkout-city" class="input" name="city" placeholder="Ciudad de Panamá" required autocomplete="address-level2">
+          <p class="helper" data-field-error="city"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-state" class="form-label">Provincia</label>
+          <input id="checkout-state" class="input" name="state" placeholder="Panamá" required autocomplete="address-level1">
+          <p class="helper" data-field-error="state"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-coupon" class="form-label">Cupón</label>
+          <input id="checkout-coupon" class="input" name="coupon_code" maxlength="40" placeholder="Opcional">
+          <p class="helper">Si no tienes cupón, deja el campo vacío.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="checkout-payment-method" class="form-label">Método de pago</label>
+          <select id="checkout-payment-method" class="select" name="payment_method">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="manual">Manual</option>
+            <option value="wompi">Wompi</option>
+            <option value="stripe">Stripe</option>
+          </select>
+        </div>
       </div>
 
-      <div class="form-field">
-        <label for="checkout-email" class="form-label">Email</label>
-        <input id="checkout-email" class="input" name="email" type="email" placeholder="cliente@correo.com" required autocomplete="email">
-        <p class="helper" data-field-error="email"></p>
+      <button class="btn btn-primary full" type="submit" data-testid="confirm-order" data-loading-text="Procesando...">
+        <span data-button-label>Confirmar pedido</span>
+        <span data-button-spinner aria-hidden="true" hidden>⏳</span>
+      </button>
+      <p id="checkout-result" class="checkout-result" aria-live="polite"></p>
+    </form>
+
+    <div class="card checkout-help-card">
+      <div class="card-body">
+        <h2>Antes de confirmar</h2>
+        <ul>
+          <li>Verifica dirección y correo para evitar retrasos.</li>
+          <li>Si tienes cupón, aplícalo antes de enviar el formulario.</li>
+          <li>Recibirás número de pedido al finalizar.</li>
+        </ul>
+        <p class="helper">Atención humana para soporte de talla y postventa en Panamá.</p>
       </div>
-
-      <div class="form-field">
-        <label for="checkout-phone" class="form-label">Teléfono</label>
-        <input id="checkout-phone" class="input" name="phone" placeholder="+507 6123-4567" autocomplete="tel">
-        <p class="helper" data-field-error="phone"></p>
-      </div>
-
-      <div class="form-field">
-        <label for="checkout-line1" class="form-label">Dirección</label>
-        <input id="checkout-line1" class="input" name="line1" placeholder="Calle 50, PH Costa del Este" required autocomplete="street-address">
-        <p class="helper" data-field-error="line1"></p>
-      </div>
-
-      <div class="form-field">
-        <label for="checkout-city" class="form-label">Ciudad</label>
-        <input id="checkout-city" class="input" name="city" placeholder="Ciudad de Panamá" required autocomplete="address-level2">
-        <p class="helper" data-field-error="city"></p>
-      </div>
-
-      <div class="form-field">
-        <label for="checkout-state" class="form-label">Provincia</label>
-        <input id="checkout-state" class="input" name="state" placeholder="Panamá" required autocomplete="address-level1">
-        <p class="helper" data-field-error="state"></p>
-      </div>
-
-      <div class="form-field">
-        <label for="checkout-coupon" class="form-label">Cupón</label>
-        <input id="checkout-coupon" class="input" name="coupon_code" maxlength="40" placeholder="Opcional">
-        <p class="helper">Si no tienes cupón, deja el campo vacío.</p>
-      </div>
-
-      <div class="form-field">
-        <label for="checkout-payment-method" class="form-label">Método de pago</label>
-        <select id="checkout-payment-method" class="select" name="payment_method">
-          <option value="whatsapp">WhatsApp</option>
-          <option value="manual">Manual</option>
-          <option value="wompi">Wompi</option>
-          <option value="stripe">Stripe</option>
-        </select>
-      </div>
-    </div>
-
-    <button class="btn btn-primary full" type="submit" data-testid="confirm-order" data-loading-text="Procesando...">
-      <span data-button-label>Confirmar pedido</span>
-      <span data-button-spinner aria-hidden="true" hidden>⏳</span>
-    </button>
-    <p id="checkout-result" class="checkout-result" aria-live="polite"></p>
-  </form>
-
-  <div class="card checkout-help-card">
-    <div class="card-body">
-      <h2>Antes de confirmar</h2>
-      <ul>
-        <li>Verifica dirección y correo para evitar retrasos.</li>
-        <li>Si tienes cupón, aplícalo antes de enviar el formulario.</li>
-        <li>Recibirás número de pedido al finalizar.</li>
-      </ul>
     </div>
   </div>
 </section>

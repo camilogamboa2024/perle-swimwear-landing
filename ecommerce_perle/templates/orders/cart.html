@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}Carrito | Perle{% endblock %}
 {% block content %}
-<section class="container section-space" data-cart-page data-testid="cart-page">
+<section class="container section-space cart-page" data-cart-page data-testid="cart-page">
   <div class="section-head">
-    <p class="eyebrow">Bolsa Perle Panamá</p>
+    <p class="eyebrow">Carrito · Perle Swimwear</p>
     <h1>Tu carrito</h1>
-    <p>Gestiona cantidades, elimina referencias y prepara un checkout rápido y seguro.</p>
+    <p>Edita cantidades y cierra tu pedido con checkout directo y seguro.</p>
   </div>
 
-  <div class="cart-layout">
-    <section class="card">
+  <div class="cart-layout fx-reveal">
+    <section class="card cart-table-card">
       <div class="card-body">
         <div id="cart-empty" class="empty-state" {% if cart.items.all %}hidden{% endif %}>
           <h3>Tu bolsa está vacía</h3>
@@ -17,7 +17,7 @@
           <a class="btn btn-outline" href="{% url 'home' %}#catalogo-section">Volver al catálogo</a>
         </div>
 
-        <div id="cart-content" {% if not cart.items.all %}hidden{% endif %}>
+        <div id="cart-content" class="cart-content" {% if not cart.items.all %}hidden{% endif %}>
           <table class="cart-table">
             <thead>
               <tr>
@@ -75,6 +75,10 @@
       </div>
       <div class="card-body">
         <div class="summary-row">
+          <span>Items</span>
+          <strong id="cart-items-count">{{ cart.items.count }} referencias</strong>
+        </div>
+        <div class="summary-row">
           <span>Subtotal</span>
           <strong id="cart-subtotal">${{ totals.subtotal }} COP</strong>
         </div>
@@ -86,6 +90,8 @@
           <span>Total</span>
           <strong id="cart-total-main">${{ totals.grand_total }} COP</strong>
         </div>
+        <p class="cart-shipping-note">Lista para envío gratis.</p>
+        <div class="cart-progress-line" aria-hidden="true"></div>
 
         <div class="form-field">
           <label for="cart-coupon" class="form-label">Cupón</label>

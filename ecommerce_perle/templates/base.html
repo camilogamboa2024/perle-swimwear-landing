@@ -12,13 +12,13 @@
   <link rel="icon" type="image/png" href="{% static 'brand/favicon.png' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/perle.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/perle_editorial.css' %}" />
 </head>
 <body>
   <div class="topbar" role="note">
-    <span>Perle Panamá · Luxury Aqua Minimal</span>
-    <span>Envíos nacionales · Cambios fáciles · Soporte humano</span>
+    <span>Envío gratis desde $180 USD en Panamá · Curaduría editorial Perle 2026</span>
   </div>
 
   <header class="site-header" role="banner">
@@ -46,18 +46,21 @@
 
       <nav id="site-navigation" class="nav-right" aria-label="Navegación principal">
         <a href="{% url 'home' %}">Inicio</a>
-        <a href="{% url 'home' %}#catalogo-section">Catálogo</a>
-        <a href="{% url 'legal-terms' %}">Legal</a>
+        <a href="{% url 'home' %}#catalogo-section">Colección +</a>
+        <a href="{% url 'home' %}#guide-section">Guía de tallas</a>
+        <a href="{% url 'home' %}#insiders-section">Contacto</a>
         {% if request.user.is_staff %}
         <a href="{% url 'admin:index' %}">Admin</a>
         {% endif %}
         <a href="{% url 'cart-page' %}" class="cart-badge" data-testid="nav-cart" aria-label="Abrir carrito">
-          <span aria-hidden="true">👜</span>
           <span>Carrito</span>
           <span class="badge" id="cart-count">0</span>
         </a>
-        <span id="cart-total" class="cart-total" aria-live="polite"></span>
         <a href="{% url 'checkout-page' %}" data-testid="nav-checkout">Checkout</a>
+        <span id="cart-total" class="cart-total" aria-live="polite"></span>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" class="nav-wa" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        {% endif %}
       </nav>
     </div>
   </header>
@@ -70,24 +73,26 @@
     <div class="container footer-grid">
       <section aria-labelledby="footer-brand">
         <h4 id="footer-brand">{{ BRAND_NAME }}</h4>
-        <p>Siluetas atemporales, confección cuidadosa y experiencia de compra premium.</p>
+        <p>Diseño tropical premium hecho en Panamá. Piezas versátiles para una vida junto al mar.</p>
       </section>
 
       <section aria-labelledby="footer-legal">
-        <h4 id="footer-legal">Legales</h4>
-        <a href="{% url 'legal-terms' %}">Términos y condiciones</a>
-        <a href="{% url 'legal-privacy' %}">Política de privacidad</a>
-        <a href="{% url 'legal-shipping-returns' %}">Envíos y devoluciones</a>
+        <h4 id="footer-legal">Navegación</h4>
+        <a href="{% url 'home' %}#catalogo-section">Catálogo</a>
+        <a href="{% url 'home' %}#guide-section">Guía de tallas</a>
+        <a href="{% url 'cart-page' %}">Carrito</a>
+        <a href="{% url 'legal-terms' %}">Términos</a>
       </section>
 
       <section aria-labelledby="footer-contact">
         <h4 id="footer-contact">Contacto</h4>
-        <a href="{{ BRAND_IG }}" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href="{{ BRAND_IG }}" target="_blank" rel="noopener noreferrer">Instagram {{ BRAND_IG|cut:"https://instagram.com/"|cut:"https://www.instagram.com/" }}</a>
         {% if WHATSAPP_PHONE %}
-        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer">WhatsApp +{{ WHATSAPP_PHONE }}</a>
         {% else %}
         <p class="muted">Atención vía redes oficiales</p>
         {% endif %}
+        <p>Ciudad de Panamá</p>
       </section>
     </div>
   </footer>
