@@ -14,7 +14,9 @@ urlpatterns = [
 ]
 
 if settings.HAS_TWO_FACTOR:
+    from two_factor import urls as two_factor_urls
+
     urlpatterns.insert(
         1,
-        path('', include('two_factor.urls', namespace='two_factor')),
+        path('', include((two_factor_urls.urlpatterns, 'two_factor'), namespace='two_factor')),
     )
