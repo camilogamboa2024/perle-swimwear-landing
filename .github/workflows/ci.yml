@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pip-audit-report
-          path: pip-audit.json
+          path: ecommerce_perle/pip-audit.json
 
       - name: Enforce pip-audit gate
         if: steps.pip_audit.outputs.exit_code != '0'
@@ -126,7 +126,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pg-stress-report
-          path: audit/pg_stress_ci
+          path: ecommerce_perle/audit/pg_stress_ci
 
   e2e:
     needs: quality-and-security
@@ -232,7 +232,7 @@ jobs:
 
       - name: ZAP baseline
         run: |
-          docker run --rm --network=host -w /zap/wrk -v "${PWD}/audit/security_ci:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+          docker run --rm --user root --network=host -w /zap/wrk -v "${PWD}/audit/security_ci:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://127.0.0.1:8013 -m 3 -J zap_report.json -r zap_report.html || true
 
       - name: Security gate 0 Critical / 0 High
@@ -248,4 +248,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: security-dast-report
-          path: audit/security_ci
+          path: ecommerce_perle/audit/security_ci
