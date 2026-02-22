@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import F
 
 from apps.inventory.models import InventoryMovement, StockLevel
-from apps.orders.models import Order, OrderItem, OrderStatusHistory
+from apps.orders.models import Cart, Order, OrderItem, OrderStatusHistory
 from apps.orders.services import calculate_cart_totals
 from .whatsapp import build_whatsapp_message
 
@@ -13,26 +13,38 @@ class CheckoutError(ValueError):
 
 @transaction.atomic
 def create_order_from_cart(*, customer, address, cart, coupon=None, payment_method='whatsapp', session_key=''):
-    items = list(cart.items.select_related('variant', 'variant__product'))
+    locked_cart = Cart.objects.select_for_update().get(pk=cart.pk)
+    items = list(
+        locked_cart.items.select_related('variant', 'variant__product').order_by('variant_id', 'id')
+    )
     if not items:
         raise CheckoutError('El carrito está vacío')
+
+    variant_ids = [item.variant_id for item in items]
+    locked_stocks = {
+        stock.variant_id: stock
+        for stock in (
+            StockLevel.objects.select_for_update()
+            .filter(variant_id__in=variant_ids)
+            .order_by('variant_id')
+        )
+    }
 
     order = Order.objects.create(
         customer=customer,
         address=address,
-        currency=cart.currency,
+        currency=locked_cart.currency,
         coupon=coupon,
         payment_method=payment_method,
-        session_key=session_key or cart.session_key,
+        session_key=session_key or locked_cart.session_key,
     )
 
     for item in items:
         if not item.variant.is_active:
             raise CheckoutError(f'Variante no disponible para SKU {item.variant.sku}')
-        try:
-            stock = StockLevel.objects.select_for_update().get(variant=item.variant)
-        except StockLevel.DoesNotExist as exc:
-            raise CheckoutError(f'Sin stock configurado para SKU {item.variant.sku}') from exc
+        stock = locked_stocks.get(item.variant_id)
+        if stock is None:
+            raise CheckoutError(f'Sin stock configurado para SKU {item.variant.sku}')
         if stock.available < item.quantity:
             raise CheckoutError(f'Sin stock para SKU {item.variant.sku}')
 
@@ -53,7 +65,7 @@ def create_order_from_cart(*, customer, address, cart, coupon=None, payment_meth
             line_total=line_total,
         )
 
-    totals = calculate_cart_totals(cart, coupon)
+    totals = calculate_cart_totals(locked_cart, coupon)
     order.subtotal = totals['subtotal']
     order.discount_total = totals['discount_total']
     order.grand_total = totals['grand_total']
@@ -61,5 +73,5 @@ def create_order_from_cart(*, customer, address, cart, coupon=None, payment_meth
     order.save(update_fields=['subtotal', 'discount_total', 'grand_total', 'whatsapp_message'])
 
     OrderStatusHistory.objects.create(order=order, from_status='', to_status=order.status)
-    cart.items.all().delete()
+    locked_cart.items.all().delete()
     return order

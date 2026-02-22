@@ -4,8 +4,8 @@ services:
     env: python
     plan: free
     rootDir: ecommerce_perle
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput"
-    startCommand: "gunicorn core.wsgi:application"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "python manage.py migrate --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
@@ -23,6 +23,12 @@ services:
         value: "600"
       - key: DB_SSL_REQUIRE
         value: "1"
+      - key: SECURITY_PHASE
+        value: "monitor"
+      - key: ADMIN_MFA_REQUIRED
+        value: "0"
+      - key: AXES_FAILURE_LIMIT
+        value: "8"
       - key: WHATSAPP_PHONE
         sync: false
       - key: CURRENCY_USD_RATE

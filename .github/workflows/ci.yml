@@ -50,7 +50,83 @@ jobs:
         run: bandit -q -r apps core -lll
 
       - name: pip-audit
-        run: pip-audit -r requirements.txt
+        id: pip_audit
+        run: |
+          set +e
+          pip-audit -r requirements.txt -f json -o pip-audit.json
+          exit_code=$?
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload pip-audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit.json
+
+      - name: Enforce pip-audit gate
+        if: steps.pip_audit.outputs.exit_code != '0'
+        run: |
+          echo "pip-audit reporto vulnerabilidades o errores."
+          exit 1
+
+  stress-postgres:
+    needs: quality-and-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ecommerce_perle
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perle_qa
+          POSTGRES_USER: perle_qa
+          POSTGRES_PASSWORD: perle_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U perle_qa -d perle_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      USE_DOCKER_POSTGRES: "0"
+      DATABASE_URL: "postgresql://perle_qa:perle_qa@127.0.0.1:5432/perle_qa?connect_timeout=5"
+      QA_OUTPUT_DIR: "audit/pg_stress_ci"
+      QA_PORT: "8011"
+      STOCK_CAP: "20"
+      DJANGO_SECRET_KEY: "ci-stress-secret-key-with-more-than-fifty-characters-123456789"
+      DEBUG: "1"
+      ALLOWED_HOSTS: "127.0.0.1,localhost,testserver"
+      CSRF_TRUSTED_ORIGINS: "http://127.0.0.1:8011,http://localhost:8011"
+      WHATSAPP_PHONE: ""
+      DB_SSL_REQUIRE: "0"
+      DB_CONN_MAX_AGE: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run PostgreSQL stress suite
+        run: bash scripts/qa/run_pg_stress.sh
+
+      - name: Upload stress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pg-stress-report
+          path: audit/pg_stress_ci
 
   e2e:
     needs: quality-and-security
@@ -84,4 +160,92 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E suite
-        run: npx playwright test --project=chromium
+        run: npm run test:e2e:qa
+
+  security-dast:
+    needs: quality-and-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ecommerce_perle
+    env:
+      DJANGO_SECRET_KEY: "ci-security-dast-secret-key-with-more-than-fifty-characters-123456789"
+      DEBUG: "0"
+      SECURITY_PHASE: "monitor"
+      ADMIN_MFA_REQUIRED: "0"
+      ALLOWED_HOSTS: "127.0.0.1,localhost,testserver"
+      CSRF_TRUSTED_ORIGINS: "http://127.0.0.1:8013,http://localhost:8013"
+      DATABASE_URL: "sqlite:///security-ci.sqlite3"
+      WHATSAPP_PHONE: ""
+      DB_SSL_REQUIRE: "0"
+      DB_CONN_MAX_AGE: "0"
+      SECURE_SSL_REDIRECT: "0"
+      SECURE_HSTS_SECONDS: "300"
+      SECURE_HSTS_PRELOAD: "1"
+      SESSION_COOKIE_SECURE: "0"
+      CSRF_COOKIE_SECURE: "0"
+      AXES_FAILURE_LIMIT: "8"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Prepare database and seed
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_demo --reset
+          python manage.py collectstatic --noinput
+
+      - name: Start app for DAST
+        run: |
+          mkdir -p audit/security_ci
+          nohup python manage.py runserver 127.0.0.1:8013 --noreload > audit/security_ci/server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8013/ > /dev/null; then
+              echo "App disponible para DAST."
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8013/ > /dev/null
+
+      - name: Static security suite
+        run: |
+          ruff check .
+          bandit -q -r apps core -lll -f json -o audit/security_ci/bandit.json || true
+          pip-audit -r requirements.txt -f json -o audit/security_ci/pip-audit.json || true
+          semgrep --config p/django --config p/python --json -o audit/security_ci/semgrep.json apps core || true
+
+      - name: Dynamic custom checks
+        run: |
+          python scripts/security/dast_auth_csrf.py --base-url http://127.0.0.1:8013 --out audit/security_ci/dast_auth_csrf.json --failure-limit "$AXES_FAILURE_LIMIT" --scope web
+          python scripts/security/verify_security_headers.py --base-url http://127.0.0.1:8013 --out audit/security_ci/security_headers.json --phase "$SECURITY_PHASE" --scope web --dast-report audit/security_ci/dast_auth_csrf.json --require-hsts
+
+      - name: ZAP baseline
+        run: |
+          docker run --rm --network=host -w /zap/wrk -v "${PWD}/audit/security_ci:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://127.0.0.1:8013 -m 3 -J zap_report.json -r zap_report.html || true
+
+      - name: Security gate 0 Critical / 0 High
+        run: |
+          python scripts/security/gate_security.py \
+            --input-dir audit/security_ci \
+            --out audit/security_ci/security_gate_summary.json \
+            --markdown audit/security_ci/security_gate_summary.md \
+            --strict-critical-high
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dast-report
+          path: audit/security_ci

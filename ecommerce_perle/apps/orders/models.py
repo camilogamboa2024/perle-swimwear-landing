@@ -15,6 +15,18 @@ class Cart(models.Model):
     class Meta:
         verbose_name = 'Carrito'
         verbose_name_plural = 'Carritos'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer'],
+                condition=models.Q(customer__isnull=False),
+                name='orders_cart_unique_customer_not_null',
+            ),
+            models.UniqueConstraint(
+                fields=['session_key'],
+                condition=~models.Q(session_key=''),
+                name='orders_cart_unique_session_key_not_blank',
+            ),
+        ]
 
 
 class CartItem(models.Model):

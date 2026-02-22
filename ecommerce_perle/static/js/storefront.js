@@ -153,9 +153,10 @@ function collectRenderedCartImages() {
     if (!id) return;
 
     const img = row.querySelector(".cart-item-thumb");
-    if (img && img.tagName === "IMG" && img.getAttribute("src")) {
+    const src = img && img.tagName === "IMG" ? img.getAttribute("src") : "";
+    if (src && isSafeImageUrl(src)) {
       map[id] = {
-        src: img.getAttribute("src"),
+        src,
         alt: img.getAttribute("alt") || "Producto",
       };
     }
@@ -163,36 +164,106 @@ function collectRenderedCartImages() {
   return map;
 }
 
-function cartRowTemplate(item, imageMap) {
-  const itemImage = imageMap[item.id];
-  const imageNode = itemImage
-    ? `<img src="${itemImage.src}" alt="${itemImage.alt}" class="cart-item-thumb" loading="lazy">`
-    : `<div class="cart-item-thumb product-image-fallback">Perle</div>`;
+function normalizeText(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+}
 
-  return `
-    <tr data-item-id="${item.id}">
-      <td>
-        <div class="cart-item-main">
-          ${imageNode}
-          <div>
-            <strong>${item.product_name}</strong>
-            <p class="muted">${item.size} / ${item.color}</p>
-          </div>
-        </div>
-      </td>
-      <td>
-        <div class="qty-stepper">
-          <button type="button" class="btn btn-ghost" data-cart-decrease="${item.id}" aria-label="Reducir cantidad">−</button>
-          <span data-cart-qty="${item.id}">${item.quantity}</span>
-          <button type="button" class="btn btn-ghost" data-cart-increase="${item.id}" aria-label="Aumentar cantidad">+</button>
-        </div>
-      </td>
-      <td>${formatCOP(item.unit_price)}</td>
-      <td>
-        <button type="button" class="btn btn-danger" data-cart-remove="${item.id}" aria-label="Eliminar producto">Eliminar</button>
-      </td>
-    </tr>
-  `;
+function isSafeImageUrl(rawUrl) {
+  if (!rawUrl) return false;
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    const isHttp = parsed.protocol === "http:" || parsed.protocol === "https:";
+    if (!isHttp) return false;
+    return parsed.origin === window.location.origin || parsed.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+}
+
+function buildCartItemImage(itemImage) {
+  if (itemImage && isSafeImageUrl(itemImage.src)) {
+    const image = document.createElement("img");
+    image.className = "cart-item-thumb";
+    image.loading = "lazy";
+    image.alt = normalizeText(itemImage.alt, "Producto");
+    image.src = itemImage.src;
+    return image;
+  }
+
+  const fallback = document.createElement("div");
+  fallback.className = "cart-item-thumb product-image-fallback";
+  fallback.textContent = "Perle";
+  return fallback;
+}
+
+function createCartRowNode(item, imageMap) {
+  const row = document.createElement("tr");
+  row.dataset.itemId = String(Number(item.id) || 0);
+
+  const detailsCell = document.createElement("td");
+  const detailsWrapper = document.createElement("div");
+  detailsWrapper.className = "cart-item-main";
+
+  const itemImage = imageMap[item.id];
+  detailsWrapper.appendChild(buildCartItemImage(itemImage));
+
+  const textWrapper = document.createElement("div");
+  const title = document.createElement("strong");
+  title.textContent = normalizeText(item.product_name, "Producto");
+  textWrapper.appendChild(title);
+
+  const variantInfo = document.createElement("p");
+  variantInfo.className = "muted";
+  variantInfo.textContent = `${normalizeText(item.size, "")} / ${normalizeText(item.color, "")}`;
+  textWrapper.appendChild(variantInfo);
+  detailsWrapper.appendChild(textWrapper);
+  detailsCell.appendChild(detailsWrapper);
+  row.appendChild(detailsCell);
+
+  const qtyCell = document.createElement("td");
+  const qtyStepper = document.createElement("div");
+  qtyStepper.className = "qty-stepper";
+
+  const decreaseButton = document.createElement("button");
+  decreaseButton.type = "button";
+  decreaseButton.className = "btn btn-ghost";
+  decreaseButton.dataset.cartDecrease = String(Number(item.id) || 0);
+  decreaseButton.setAttribute("aria-label", "Reducir cantidad");
+  decreaseButton.textContent = "−";
+  qtyStepper.appendChild(decreaseButton);
+
+  const qtyValue = document.createElement("span");
+  qtyValue.dataset.cartQty = String(Number(item.id) || 0);
+  qtyValue.textContent = String(Number(item.quantity) || 0);
+  qtyStepper.appendChild(qtyValue);
+
+  const increaseButton = document.createElement("button");
+  increaseButton.type = "button";
+  increaseButton.className = "btn btn-ghost";
+  increaseButton.dataset.cartIncrease = String(Number(item.id) || 0);
+  increaseButton.setAttribute("aria-label", "Aumentar cantidad");
+  increaseButton.textContent = "+";
+  qtyStepper.appendChild(increaseButton);
+
+  qtyCell.appendChild(qtyStepper);
+  row.appendChild(qtyCell);
+
+  const unitPriceCell = document.createElement("td");
+  unitPriceCell.textContent = formatCOP(item.unit_price);
+  row.appendChild(unitPriceCell);
+
+  const actionsCell = document.createElement("td");
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "btn btn-danger";
+  removeButton.dataset.cartRemove = String(Number(item.id) || 0);
+  removeButton.setAttribute("aria-label", "Eliminar producto");
+  removeButton.textContent = "Eliminar";
+  actionsCell.appendChild(removeButton);
+  row.appendChild(actionsCell);
+
+  return row;
 }
 
 function renderCartPage(payload) {
@@ -211,7 +282,12 @@ function renderCartPage(payload) {
   if (!tbody) return;
 
   const imageMap = collectRenderedCartImages();
-  tbody.innerHTML = items.map((item) => cartRowTemplate(item, imageMap)).join("");
+  tbody.textContent = "";
+  const fragment = document.createDocumentFragment();
+  items.forEach((item) => {
+    fragment.appendChild(createCartRowNode(item, imageMap));
+  });
+  tbody.appendChild(fragment);
 }
 
 async function refreshCartBadge({ render = false } = {}) {
@@ -435,7 +511,7 @@ function renderCheckoutResult(holder, confirmationUrl, whatsappUrl) {
     }
     const waLink = document.createElement("a");
     waLink.href = safeWhatsappUrl;
-    waLink.rel = "noreferrer";
+    waLink.rel = "noopener noreferrer";
     waLink.target = "_blank";
     waLink.textContent = "Finalizar por WhatsApp";
     holder.appendChild(waLink);

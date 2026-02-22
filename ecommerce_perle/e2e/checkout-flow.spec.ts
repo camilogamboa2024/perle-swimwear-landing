@@ -6,7 +6,15 @@ async function completeCheckoutFlow(page: import("@playwright/test").Page) {
 
   const addToCartButton = page.locator("[data-add-cart]").first();
   await expect(addToCartButton).toBeVisible();
+  const addToCartResponsePromise = page.waitForResponse((response) => {
+    return (
+      response.request().method() === "POST" &&
+      response.url().includes("/api/cart/items/")
+    );
+  });
   await addToCartButton.click();
+  const addToCartResponse = await addToCartResponsePromise;
+  expect(addToCartResponse.status()).toBe(201);
 
   await expect(page.locator("#cart-count")).not.toHaveText("0");
   await page.getByTestId("nav-cart").click();

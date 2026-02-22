@@ -1,0 +1,51 @@
+{% load i18n %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acceso temporalmente bloqueado</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f8fc;
+      color: #163247;
+      display: grid;
+      min-height: 100vh;
+      place-items: center;
+      padding: 16px;
+    }
+    .card {
+      width: min(560px, 100%);
+      background: #ffffff;
+      border: 1px solid #d3e1ee;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(10, 56, 88, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+    }
+    p {
+      margin: 0 0 12px;
+      line-height: 1.45;
+    }
+    .muted {
+      color: #4f6780;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Acceso temporalmente bloqueado</h1>
+    <p>Detectamos demasiados intentos fallidos de inicio de sesión.</p>
+    {% if cooloff_timedelta %}
+      <p class="muted">Espera {{ cooloff_timedelta }} antes de volver a intentar.</p>
+    {% endif %}
+    <p class="muted">Si necesitas acceso urgente, contacta al administrador del sistema.</p>
+  </main>
+</body>
+</html>

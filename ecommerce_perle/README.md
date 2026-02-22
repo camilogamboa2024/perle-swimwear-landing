@@ -58,6 +58,26 @@ Variables clave:
 - `WHATSAPP_PHONE` (opcional)
 - `LOW_STOCK_THRESHOLD`
 - `CURRENCY_USD_RATE`
+- `SECURITY_PHASE` (`monitor` o `enforce`)
+- `ADMIN_MFA_REQUIRED` (`0/1`, aplica a `staff/superusers`)
+- `AXES_FAILURE_LIMIT`
+- `AXES_COOLOFF_HOURS`
+
+## Seguridad robusta por fases
+- Fase monitor:
+  - `SECURITY_PHASE=monitor`
+  - `ADMIN_MFA_REQUIRED=0`
+  - CSP en `Content-Security-Policy-Report-Only`
+  - Lockout de admin con Axes (limite recomendado: `8`)
+- Fase enforce:
+  - `SECURITY_PHASE=enforce`
+  - `ADMIN_MFA_REQUIRED=1`
+  - CSP bloqueante (`Content-Security-Policy`)
+  - Lockout mas estricto (limite recomendado: `5`)
+
+MFA admin:
+- Se habilita flujo TOTP en rutas ` /account/... ` (two-factor).
+- Cuando `ADMIN_MFA_REQUIRED=1`, usuarios `staff/superuser` son redirigidos al flujo MFA antes de entrar a `/admin/`.
 
 ### Nota CSRF
 `storefront.js` usa cookie `csrftoken` para enviar `X-CSRFToken`, por eso `CSRF_COOKIE_HTTPONLY` permanece en `0` por defecto.  
@@ -102,13 +122,37 @@ python manage.py collectstatic --noinput
 ruff check .
 bandit -q -r apps core -lll
 pip-audit -r requirements.txt
+semgrep --config p/django --config p/python apps core
 ```
+
+Prueba dinamica local (servidor ya corriendo):
+```bash
+mkdir -p audit/security_round_local
+python scripts/security/dast_auth_csrf.py --base-url http://127.0.0.1:8000 --out audit/security_round_local/dast_auth_csrf.json --failure-limit 8 --scope web
+python scripts/security/verify_security_headers.py --base-url http://127.0.0.1:8000 --out audit/security_round_local/security_headers.json --phase monitor --scope web --dast-report audit/security_round_local/dast_auth_csrf.json
+python scripts/security/gate_security.py --input-dir audit/security_round_local --out audit/security_round_local/security_gate_summary.json --markdown audit/security_round_local/security_gate_summary.md --strict-critical-high
+```
+
+Auditoria CVE:
+- Fuente canónica: job CI (`quality-and-security`) que genera `pip-audit.json` como artifact.
+- En local sin internet, `pip-audit` puede fallar por entorno (DNS/salida).
+- Opcional local corporativo: exportar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` para usar mirror interno.
 
 ## E2E local
 ```bash
 npm install
 npx playwright install chromium
 npx playwright test --project=chromium
+```
+
+E2E QA aislado:
+```bash
+npm run test:e2e:qa
+```
+
+Estrés PostgreSQL local (dockerizado):
+```bash
+bash scripts/qa/run_pg_stress.sh
 ```
 
 ## QA manual

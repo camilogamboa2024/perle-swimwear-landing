@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import transaction
+from django.db import DatabaseError, OperationalError, transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -17,10 +17,28 @@ from .serializers import CheckoutConfirmSerializer
 from .services import CheckoutError, create_order_from_cart
 from .whatsapp import build_whatsapp_url
 
+CHECKOUT_BUSY_MESSAGE = 'El checkout está ocupado. Intenta nuevamente.'
+
 
 @ensure_csrf_cookie
 def checkout_page(request):
     return render(request, 'checkout/checkout.html')
+
+
+def _is_concurrency_error(exc):
+    if isinstance(exc, OperationalError):
+        return True
+    message = str(exc).lower()
+    return any(
+        token in message
+        for token in (
+            'locked',
+            'deadlock',
+            'could not obtain lock',
+            'serialization failure',
+            'timeout',
+        )
+    )
 
 
 class CheckoutConfirmApiView(APIView):
@@ -71,6 +89,13 @@ class CheckoutConfirmApiView(APIView):
                 )
         except CheckoutError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (OperationalError, DatabaseError) as exc:
+            if _is_concurrency_error(exc):
+                return Response(
+                    {'error': CHECKOUT_BUSY_MESSAGE, 'code': 'checkout_busy'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            raise
 
         whatsapp_url = build_whatsapp_url(order.whatsapp_message, settings.WHATSAPP_PHONE) if settings.WHATSAPP_PHONE else ''
         return Response(

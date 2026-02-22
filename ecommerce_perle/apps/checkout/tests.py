@@ -1,6 +1,8 @@
 from datetime import timedelta
 import json
+from unittest.mock import patch
 
+from django.db import OperationalError
 from django.test import Client, TestCase
 from django.utils import timezone
 
@@ -201,3 +203,16 @@ class CheckoutConfirmApiViewTest(TestCase):
         order = Order.objects.get(customer__email='valid-coupon@example.com')
         self.assertEqual(order.discount_total, 22500)
         self.assertEqual(order.grand_total, 127500)
+
+    def test_checkout_returns_409_when_db_is_busy(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        with patch(
+            'apps.checkout.views.create_order_from_cart',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self._confirm_checkout('busy-checkout@example.com')
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'checkout_busy')

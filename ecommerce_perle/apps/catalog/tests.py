@@ -83,3 +83,31 @@ class TemplateRegressionTest(TestCase):
         self.assertContains(response, 'data-cart-page')
         self.assertContains(response, 'data-testid="go-checkout"')
         self.assertContains(response, 'id="cart-items"')
+
+
+class WebSecurityHeadersTest(TestCase):
+    def test_storefront_responses_include_report_only_csp_in_monitor_phase(self):
+        for path in ('/', '/checkout/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('Content-Security-Policy-Report-Only', response)
+            self.assertNotIn('Content-Security-Policy', response)
+            self.assertIn("default-src 'self'", response['Content-Security-Policy-Report-Only'])
+            self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
+            self.assertEqual(response['X-Frame-Options'], 'DENY')
+            self.assertIn('strict-origin-when-cross-origin', response['Referrer-Policy'])
+
+    @override_settings(SECURITY_PHASE='enforce')
+    def test_storefront_responses_include_enforced_csp_in_enforce_phase(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Content-Security-Policy', response)
+        self.assertNotIn('Content-Security-Policy-Report-Only', response)
+        self.assertIn("default-src 'self'", response['Content-Security-Policy'])
+
+    @override_settings(WHATSAPP_PHONE='573001112233')
+    def test_external_blank_links_include_noopener_noreferrer(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'rel="noopener noreferrer"')
+        self.assertContains(response, 'href="https://wa.me/573001112233"')

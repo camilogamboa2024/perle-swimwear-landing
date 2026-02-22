@@ -82,9 +82,9 @@
 
       <section aria-labelledby="footer-contact">
         <h4 id="footer-contact">Contacto</h4>
-        <a href="{{ BRAND_IG }}" target="_blank" rel="noreferrer">Instagram</a>
+        <a href="{{ BRAND_IG }}" target="_blank" rel="noopener noreferrer">Instagram</a>
         {% if WHATSAPP_PHONE %}
-        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noreferrer">WhatsApp</a>
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
         {% else %}
         <p class="muted">Atención vía redes oficiales</p>
         {% endif %}
@@ -96,7 +96,7 @@
   <a
     class="fab-whatsapp"
     target="_blank"
-    rel="noreferrer"
+    rel="noopener noreferrer"
     href="https://wa.me/{{ WHATSAPP_PHONE }}?text=Hola%20Perle%2C%20quiero%20ayuda%20con%20mi%20pedido"
     aria-label="Abrir conversación de WhatsApp con Perle"
   >

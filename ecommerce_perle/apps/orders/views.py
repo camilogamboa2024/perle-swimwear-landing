@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import DatabaseError, IntegrityError, OperationalError, transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -10,9 +11,12 @@ from rest_framework.views import APIView
 
 from apps.customers.models import Customer
 from apps.checkout.whatsapp import build_whatsapp_url
+from apps.inventory.models import StockLevel
 from core.authentication import EnforcedCsrfSessionAuthentication
 from .models import Cart, CartItem, Order
 from .serializers import AddCartItemSerializer, CartSerializer, UpdateCartItemSerializer
+
+CART_BUSY_MESSAGE = 'El carrito está ocupado. Intenta nuevamente.'
 
 
 def _unique_fallback_customer_email(user_id):
@@ -66,26 +70,70 @@ def _get_or_create_customer_for_user(user):
 
 
 def _get_or_create_cart(request):
+    return _get_or_create_cart_with_locking(request, for_update=False)
+
+
+def _get_or_create_cart_with_locking(request, *, for_update=False):
     if request.user.is_authenticated:
         customer = _get_or_create_customer_for_user(request.user)
-        cart, _ = Cart.objects.get_or_create(customer=customer, defaults={'currency': 'COP'})
-        return cart
+        lookup = {'customer': customer}
+    else:
+        if not request.session.session_key:
+            request.session.create()
+        lookup = {'session_key': request.session.session_key}
 
-    if not request.session.session_key:
-        request.session.create()
-    cart, _ = Cart.objects.get_or_create(session_key=request.session.session_key, defaults={'currency': 'COP'})
-    return cart
+    with transaction.atomic():
+        queryset = Cart.objects.select_for_update() if for_update else Cart.objects
+        cart = queryset.filter(**lookup).first()
+        if cart:
+            return cart
+
+    try:
+        with transaction.atomic():
+            cart = Cart.objects.create(currency='COP', **lookup)
+            if for_update:
+                return Cart.objects.select_for_update().get(pk=cart.pk)
+            return cart
+    except IntegrityError:
+        with transaction.atomic():
+            queryset = Cart.objects.select_for_update() if for_update else Cart.objects
+            return queryset.get(**lookup)
 
 
-def _validate_stock_for_quantity(variant, quantity):
+def _is_concurrency_error(exc):
+    if isinstance(exc, OperationalError):
+        return True
+    message = str(exc).lower()
+    return any(
+        token in message
+        for token in (
+            'locked',
+            'deadlock',
+            'could not obtain lock',
+            'serialization failure',
+            'timeout',
+        )
+    )
+
+
+def _cart_busy_response():
+    return Response(
+        {'error': CART_BUSY_MESSAGE, 'code': 'cart_busy'},
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
+def _validate_stock_for_quantity(variant, quantity, *, available=None):
     if not variant.is_active:
         return f'La variante {variant.sku} no está disponible.'
-    try:
-        available = variant.stock_level.available
-    except ObjectDoesNotExist:
-        return f'Sin stock configurado para SKU {variant.sku}.'
-    if quantity > available:
-        return f'Stock insuficiente para SKU {variant.sku}. Disponible: {available}.'
+    stock_available = available
+    if stock_available is None:
+        try:
+            stock_available = variant.stock_level.available
+        except ObjectDoesNotExist:
+            return f'Sin stock configurado para SKU {variant.sku}.'
+    if quantity > stock_available:
+        return f'Stock insuficiente para SKU {variant.sku}. Disponible: {stock_available}.'
     return ''
 
 
@@ -99,54 +147,110 @@ class CartItemsApiView(APIView):
     authentication_classes = [EnforcedCsrfSessionAuthentication]
 
     def post(self, request):
-        cart = _get_or_create_cart(request)
         serializer = AddCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         variant = serializer.validated_data['variant']
         quantity = serializer.validated_data['quantity']
-        item, created = CartItem.objects.get_or_create(cart=cart, variant=variant, defaults={'quantity': quantity})
-        target_quantity = quantity if created else item.quantity + quantity
-        stock_error = _validate_stock_for_quantity(variant, target_quantity)
-        if stock_error:
-            if created:
-                item.delete()
-            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
-        if not created:
-            item.quantity = target_quantity
-            item.save(update_fields=['quantity'])
-        return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
+        try:
+            with transaction.atomic():
+                cart = _get_or_create_cart_with_locking(request, for_update=True)
+                item = CartItem.objects.select_for_update().filter(cart=cart, variant=variant).first()
+                target_quantity = quantity if item is None else item.quantity + quantity
+
+                try:
+                    stock_available = StockLevel.objects.select_for_update().get(variant=variant).available
+                except StockLevel.DoesNotExist:
+                    return Response(
+                        {'error': f'Sin stock configurado para SKU {variant.sku}.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                stock_error = _validate_stock_for_quantity(
+                    variant,
+                    target_quantity,
+                    available=stock_available,
+                )
+                if stock_error:
+                    return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+
+                if item is None:
+                    CartItem.objects.create(cart=cart, variant=variant, quantity=quantity)
+                else:
+                    item.quantity = target_quantity
+                    item.save(update_fields=['quantity'])
+                payload = CartSerializer(cart).data
+            return Response(payload, status=status.HTTP_201_CREATED)
+        except (OperationalError, DatabaseError) as exc:
+            if _is_concurrency_error(exc):
+                return _cart_busy_response()
+            raise
 
 
 class CartItemDetailApiView(APIView):
     authentication_classes = [EnforcedCsrfSessionAuthentication]
 
     def patch(self, request, item_id):
-        cart = _get_or_create_cart(request)
-        item = get_object_or_404(CartItem, id=item_id, cart=cart)
         serializer = UpdateCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_quantity = serializer.validated_data['quantity']
-        stock_error = _validate_stock_for_quantity(item.variant, new_quantity)
-        if stock_error:
-            return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
-        item.quantity = new_quantity
-        item.save(update_fields=['quantity'])
-        return Response(CartSerializer(cart).data)
+        try:
+            with transaction.atomic():
+                cart = _get_or_create_cart_with_locking(request, for_update=True)
+                item = get_object_or_404(CartItem.objects.select_for_update(), id=item_id, cart=cart)
+
+                try:
+                    stock_available = StockLevel.objects.select_for_update().get(variant=item.variant).available
+                except StockLevel.DoesNotExist:
+                    return Response(
+                        {'error': f'Sin stock configurado para SKU {item.variant.sku}.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                stock_error = _validate_stock_for_quantity(
+                    item.variant,
+                    new_quantity,
+                    available=stock_available,
+                )
+                if stock_error:
+                    return Response({'error': stock_error}, status=status.HTTP_400_BAD_REQUEST)
+
+                item.quantity = new_quantity
+                item.save(update_fields=['quantity'])
+                payload = CartSerializer(cart).data
+            return Response(payload)
+        except (OperationalError, DatabaseError) as exc:
+            if _is_concurrency_error(exc):
+                return _cart_busy_response()
+            raise
 
     def delete(self, request, item_id):
-        cart = _get_or_create_cart(request)
-        item = get_object_or_404(CartItem, id=item_id, cart=cart)
-        item.delete()
-        return Response(CartSerializer(cart).data)
+        try:
+            with transaction.atomic():
+                cart = _get_or_create_cart_with_locking(request, for_update=True)
+                item = get_object_or_404(CartItem.objects.select_for_update(), id=item_id, cart=cart)
+                item.delete()
+                payload = CartSerializer(cart).data
+            return Response(payload)
+        except (OperationalError, DatabaseError) as exc:
+            if _is_concurrency_error(exc):
+                return _cart_busy_response()
+            raise
 
 
 class CartClearApiView(APIView):
     authentication_classes = [EnforcedCsrfSessionAuthentication]
 
     def post(self, request):
-        cart = _get_or_create_cart(request)
-        cart.items.all().delete()
-        return Response(CartSerializer(cart).data)
+        try:
+            with transaction.atomic():
+                cart = _get_or_create_cart_with_locking(request, for_update=True)
+                CartItem.objects.select_for_update().filter(cart=cart).delete()
+                payload = CartSerializer(cart).data
+            return Response(payload)
+        except (OperationalError, DatabaseError) as exc:
+            if _is_concurrency_error(exc):
+                return _cart_busy_response()
+            raise
 
 
 @ensure_csrf_cookie

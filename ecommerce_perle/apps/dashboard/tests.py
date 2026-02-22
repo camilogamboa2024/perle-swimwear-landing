@@ -62,6 +62,8 @@ class AdminDashboardFeatureTest(TestCase):
         self.assertContains(response, 'kpi-status-distribution')
         self.assertContains(response, 'perle-orders-7d-chart')
         self.assertContains(response, 'perle-revenue-30d-chart')
+        self.assertContains(response, 'brand/perle-logo-admin.png')
+        self.assertNotContains(response, 'Módulos administrativos')
 
     @override_settings(ADMIN_SEED_DEMO_ENABLED=True)
     def test_seed_demo_route_is_available_when_enabled(self):
@@ -90,8 +92,17 @@ class AdminDashboardFeatureTest(TestCase):
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertContains(dashboard_response, 'perle-admin-dashboard')
         self.assertContains(dashboard_response, 'admin/perle_dashboard_v2.js')
+        self.assertContains(dashboard_response, 'brand/perle-logo-admin.png')
+        self.assertNotContains(dashboard_response, 'Módulos administrativos')
 
         orders_response = self.client.get(reverse('admin:orders_order_changelist'))
         self.assertEqual(orders_response.status_code, 200)
         self.assertContains(orders_response, 'Órdenes')
         self.assertContains(orders_response, 'perle-pill')
+
+    @override_settings(ADMIN_MFA_REQUIRED=True, HAS_TWO_FACTOR=True)
+    def test_admin_redirects_staff_to_mfa_when_enforced(self):
+        response = self.client.get(reverse('admin:index'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/account/', response.url)
+        self.assertIn('next=%2Fadmin%2F', response.url)

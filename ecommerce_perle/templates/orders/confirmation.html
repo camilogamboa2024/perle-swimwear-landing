@@ -45,7 +45,7 @@
     <div class="confirmation-actions">
       <a class="btn btn-outline" href="{% url 'home' %}#catalogo-section">Seguir comprando</a>
       {% if whatsapp_url %}
-      <a class="btn btn-primary" href="{{ whatsapp_url }}" rel="noreferrer" target="_blank" data-testid="confirmation-wa">
+      <a class="btn btn-primary" href="{{ whatsapp_url }}" rel="noopener noreferrer" target="_blank" data-testid="confirmation-wa">
         Continuar por WhatsApp
       </a>
       {% endif %}

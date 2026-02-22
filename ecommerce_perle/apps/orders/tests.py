@@ -1,6 +1,8 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import OperationalError
 from django.test import Client, TestCase, override_settings
 
 from apps.catalog.models import Category, Product, ProductVariant
@@ -314,3 +316,62 @@ class OrderConfirmationSessionGuardTest(TestCase):
         response = self.client.get(f'/orders/confirmation/{self.order.public_id}/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'wa.me/573001112233')
+        self.assertContains(response, 'rel="noopener noreferrer"')
+
+
+class CartConcurrencyHandlingTest(TestCase):
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        category = Category.objects.create(name='Concurrency', slug='concurrency')
+        product = Product.objects.create(
+            name='Concurrency Product',
+            slug='concurrency-product',
+            category=category,
+            description='x',
+        )
+        self.variant = ProductVariant.objects.create(
+            product=product,
+            sku='SKU-CONC-1',
+            size='M',
+            color='Negro',
+            price_cop=100000,
+            is_active=True,
+        )
+        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 10})
+
+    def _csrf_headers(self):
+        response = self.client.get('/')
+        token = response.cookies.get('csrftoken').value
+        return {'HTTP_X_CSRFTOKEN': token}
+
+    def test_add_item_returns_409_when_cart_is_locked(self):
+        headers = self._csrf_headers()
+        with patch(
+            'apps.orders.views._get_or_create_cart_with_locking',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self.client.post(
+                '/api/cart/items/',
+                data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+                content_type='application/json',
+                **headers,
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'cart_busy')
+
+    def test_clear_cart_returns_409_when_cart_row_is_locked(self):
+        headers = self._csrf_headers()
+        with patch(
+            'apps.orders.views._get_or_create_cart_with_locking',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self.client.post(
+                '/api/cart/clear/',
+                data=json.dumps({}),
+                content_type='application/json',
+                **headers,
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'cart_busy')

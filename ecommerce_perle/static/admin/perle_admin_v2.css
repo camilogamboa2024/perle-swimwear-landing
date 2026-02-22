@@ -56,10 +56,21 @@ body .brand-link {
   background: #ffffff;
 }
 
-body .brand-link .brand-image {
-  max-height: 34px;
-  width: auto;
+body #jazzy-logo .brand-image {
+  display: inline-block;
+  height: 30px;
+  max-height: 30px;
+  width: 30px;
+  max-width: 30px;
   object-fit: contain;
+  margin: 0 !important;
+  opacity: 1 !important;
+}
+
+body #jazzy-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 body .brand-link .brand-text {
@@ -568,6 +579,32 @@ body.perle-admin-login .content-wrapper {
 
 .perle-admin-modules table {
   background: transparent;
+}
+
+@media (min-width: 768px) {
+  body.sidebar-mini.sidebar-collapse .main-sidebar,
+  body.sidebar-mini.sidebar-collapse .main-sidebar::before {
+    width: 250px !important;
+    margin-left: -250px !important;
+  }
+
+  body.sidebar-mini.sidebar-collapse .main-header,
+  body.sidebar-mini.sidebar-collapse .content-wrapper,
+  body.sidebar-mini.sidebar-collapse .main-footer {
+    margin-left: 0 !important;
+  }
+
+  body.sidebar-mini.sidebar-collapse #jazzy-logo {
+    width: 250px !important;
+  }
+
+  body.sidebar-mini.sidebar-collapse .main-sidebar:hover,
+  body.sidebar-mini.sidebar-collapse .main-sidebar.sidebar-focused,
+  body.sidebar-mini.sidebar-collapse .main-sidebar:not(.sidebar-no-expand):hover,
+  body.sidebar-mini.sidebar-collapse .main-sidebar:not(.sidebar-no-expand).sidebar-focused {
+    width: 250px !important;
+    margin-left: -250px !important;
+  }
 }
 
 @media (max-width: 1080px) {

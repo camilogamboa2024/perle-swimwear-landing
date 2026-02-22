@@ -78,3 +78,7 @@
 6. Seed demo (`/admin/ops/seed-demo/`)
 - Disponible solo con setting habilitado.
 - Pantalla de confirmación muestra warning operativo.
+7. Verificación anti-cache (runtime)
+- `curl /admin/login/` contiene `bootswatch/flatly/bootstrap.min.css`.
+- `curl /admin/login/` contiene `admin/perle_admin_v2.css`.
+- Admin autenticado contiene `admin/perle_dashboard_v2.js`.

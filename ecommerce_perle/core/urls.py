@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
@@ -11,3 +12,9 @@ urlpatterns = [
     path('legal/privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='legal-privacy'),
     path('legal/shipping-returns/', TemplateView.as_view(template_name='legal/shipping_returns.html'), name='legal-shipping-returns'),
 ]
+
+if settings.HAS_TWO_FACTOR:
+    urlpatterns.insert(
+        1,
+        path('', include(('two_factor.urls', 'two_factor'), namespace='two_factor')),
+    )
