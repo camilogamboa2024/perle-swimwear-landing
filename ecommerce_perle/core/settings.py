@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     *(['axes'] if HAS_AXES else []),
-    *(['django_otp', 'django_otp.plugins.otp_totp'] if HAS_DJANGO_OTP else []),
+    *(['django_otp', 'django_otp.plugins.otp_totp', 'django_otp.plugins.otp_static'] if HAS_DJANGO_OTP else []),
     *(['two_factor'] if HAS_TWO_FACTOR else []),
     'rest_framework',
     'apps.catalog.apps.CatalogConfig',
@@ -143,7 +143,7 @@ else:
 
 
 AUTHENTICATION_BACKENDS = [
-    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES else []),
+    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES and not RUNNING_TESTS else []),
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -250,7 +250,7 @@ STORAGES = {
     'staticfiles': {'BACKEND': STATICFILES_STORAGE_BACKEND},
 }
 
-AXES_ENABLED = HAS_AXES and _env_bool('AXES_ENABLED', '1')
+AXES_ENABLED = HAS_AXES and _env_bool('AXES_ENABLED', '0' if RUNNING_TESTS else '1')
 AXES_FAILURE_LIMIT = int(os.getenv('AXES_FAILURE_LIMIT', '5' if SECURITY_PHASE == 'enforce' else '8'))
 AXES_COOLOFF_TIME = timedelta(hours=float(os.getenv('AXES_COOLOFF_HOURS', '1')))
 AXES_RESET_ON_SUCCESS = _env_bool('AXES_RESET_ON_SUCCESS', '1')
