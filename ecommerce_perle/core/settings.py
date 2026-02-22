@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -114,11 +115,15 @@ ASGI_APPLICATION = 'core.asgi.application'
 
 DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
 if DATABASE_URL:
+    parsed_database_url = urlparse(DATABASE_URL)
+    ssl_require = os.getenv('DB_SSL_REQUIRE', '1') == '1'
+    if parsed_database_url.scheme.startswith('sqlite'):
+        ssl_require = False
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '600')),
-            ssl_require=os.getenv('DB_SSL_REQUIRE', '1') == '1',
+            ssl_require=ssl_require,
         )
     }
 else:
