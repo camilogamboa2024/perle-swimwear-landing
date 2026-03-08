@@ -279,7 +279,13 @@ class OrderConfirmationSessionGuardTest(TestCase):
         )
         StockLevel.objects.update_or_create(variant=variant, defaults={'available': 4})
         customer = Customer.objects.create(email='guard@example.com', full_name='Guard Customer')
-        address = Address.objects.create(customer=customer, line1='Calle 1', city='Bogotá', state='DC')
+        address = Address.objects.create(
+            customer=customer,
+            line1='Calle 1',
+            city='Ciudad de Panamá',
+            state='Panamá',
+            country='Panama',
+        )
         self.order = Order.objects.create(
             customer=customer,
             address=address,

@@ -39,13 +39,13 @@
 
         <div class="form-field">
           <label for="checkout-city" class="form-label">Ciudad</label>
-          <input id="checkout-city" class="input" name="city" placeholder="Ciudad de Panamá" required autocomplete="address-level2">
+          <input id="checkout-city" class="input" name="city" placeholder="{{ MARKET_CITY }}" required autocomplete="address-level2">
           <p class="helper" data-field-error="city"></p>
         </div>
 
         <div class="form-field">
           <label for="checkout-state" class="form-label">Provincia</label>
-          <input id="checkout-state" class="input" name="state" placeholder="Panamá" required autocomplete="address-level1">
+          <input id="checkout-state" class="input" name="state" placeholder="{{ MARKET_STATE }}" required autocomplete="address-level1">
           <p class="helper" data-field-error="state"></p>
         </div>
 
@@ -81,7 +81,7 @@
           <li>Si tienes cupón, aplícalo antes de enviar el formulario.</li>
           <li>Recibirás número de pedido al finalizar.</li>
         </ul>
-        <p class="helper">Atención humana para soporte de talla y postventa en Panamá.</p>
+        <p class="helper">Atención humana para soporte de talla y postventa en {{ MARKET_COUNTRY_LABEL }}.</p>
       </div>
     </div>
   </div>

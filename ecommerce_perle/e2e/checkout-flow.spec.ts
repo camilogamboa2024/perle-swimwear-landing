@@ -30,8 +30,8 @@ async function completeCheckoutFlow(page: import("@playwright/test").Page) {
   await page.fill("#checkout-email", "cliente-e2e@example.com");
   await page.fill("#checkout-phone", "3001234567");
   await page.fill("#checkout-line1", "Calle E2E 123");
-  await page.fill("#checkout-city", "Bogota");
-  await page.fill("#checkout-state", "DC");
+  await page.fill("#checkout-city", "Ciudad de Panamá");
+  await page.fill("#checkout-state", "Panamá");
 
   await page.getByTestId("confirm-order").click();
   await expect(page.getByTestId("confirmation-page")).toBeVisible();

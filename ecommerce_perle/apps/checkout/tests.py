@@ -22,7 +22,13 @@ class CheckoutServiceTest(TestCase):
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
         self.customer = Customer.objects.create(email='test@example.com', full_name='Cliente')
-        self.address = Address.objects.create(customer=self.customer, line1='Calle 1', city='Bogotá', state='DC')
+        self.address = Address.objects.create(
+            customer=self.customer,
+            line1='Calle 1',
+            city='Ciudad de Panamá',
+            state='Panamá',
+            country='Panama',
+        )
 
     def test_stock_cannot_go_negative(self):
         cart = Cart.objects.create(customer=self.customer)
@@ -94,8 +100,8 @@ class CheckoutConfirmApiViewTest(TestCase):
             'email': email,
             'phone': '',
             'line1': 'Calle 123',
-            'city': 'Bogotá',
-            'state': 'DC',
+            'city': 'Ciudad de Panamá',
+            'state': 'Panamá',
             'coupon_code': coupon_code,
             'payment_method': 'whatsapp',
         }
@@ -203,6 +209,7 @@ class CheckoutConfirmApiViewTest(TestCase):
         order = Order.objects.get(customer__email='valid-coupon@example.com')
         self.assertEqual(order.discount_total, 22500)
         self.assertEqual(order.grand_total, 127500)
+        self.assertEqual(order.address.country, 'Panama')
 
     def test_checkout_returns_409_when_db_is_busy(self):
         add_response = self._add_to_cart(quantity=1)

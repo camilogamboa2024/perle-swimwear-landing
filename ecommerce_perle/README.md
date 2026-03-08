@@ -3,6 +3,7 @@
 Aplicación Django + DRF para catálogo, carrito, checkout y operación interna con panel admin premium.
 
 Este directorio es el runtime canónico del producto. La raíz del repo documenta qué se despliega y qué quedó archivado como legacy.
+Mercado canónico actual: Panamá-first, con moneda USD y persistencia nueva en `country='Panama'`.
 
 Branding activo: wordmark temporal limpio (`static/brand/perle-wordmark.png`) y favicon monograma (`static/brand/favicon.png`) en storefront + admin.
 Cuando se reciba el logo oficial transparente final, se reemplaza este asset sin cambios de lógica.
@@ -98,6 +99,10 @@ Variables recomendadas en Render:
 - `DB_SSL_REQUIRE=1`
 - `WHATSAPP_PHONE` (opcional)
 - `SECURE_HSTS_PRELOAD=1`
+
+Nota de dominio:
+- El runtime nuevo persiste `country='Panama'`.
+- Direcciones históricas creadas antes de esta corrección deben revisarse manualmente en admin si se sospecha que quedaron con país incorrecto por el default anterior.
 
 ## Smoke test post deploy (10 min)
 1. `/` carga estilos y cards premium.

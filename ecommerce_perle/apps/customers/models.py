@@ -21,7 +21,7 @@ class Address(models.Model):
     line2 = models.CharField(max_length=180, blank=True)
     city = models.CharField(max_length=80)
     state = models.CharField(max_length=80)
-    country = models.CharField(max_length=80, default='Colombia')
+    country = models.CharField(max_length=80, default='Panama')
     postal_code = models.CharField(max_length=20, blank=True)
     is_default = models.BooleanField(default=False)
 

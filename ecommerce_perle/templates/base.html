@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Perle Swimwear Panamá: trajes de baño premium, compra segura y soporte humano en cada pedido.{% endblock %}" />
-  <meta property="og:title" content="{% block og_title %}Perle Swimwear Panamá{% endblock %}" />
-  <meta property="og:description" content="{% block og_description %}Diseño premium de trajes de baño en Panamá con checkout simple y atención personalizada.{% endblock %}" />
+  <meta name="description" content="{% block meta_description %}Perle Swimwear {{ MARKET_COUNTRY_LABEL }}: trajes de baño premium, compra segura y soporte humano en cada pedido.{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}Perle Swimwear {{ MARKET_COUNTRY_LABEL }}{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Diseño premium de trajes de baño en {{ MARKET_COUNTRY_LABEL }} con checkout simple y atención personalizada.{% endblock %}" />
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/png" href="{% static 'brand/favicon.png' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
 </head>
 <body>
   <div class="topbar" role="note">
-    <span>Envío gratis desde $180 USD en Panamá · Curaduría editorial Perle 2026</span>
+    <span>Envío gratis desde $180 USD en {{ MARKET_COUNTRY_LABEL }} · Curaduría editorial Perle 2026</span>
   </div>
 
   <header class="site-header" role="banner">
@@ -73,7 +73,7 @@
     <div class="container footer-grid">
       <section aria-labelledby="footer-brand">
         <h4 id="footer-brand">{{ BRAND_NAME }}</h4>
-        <p>Diseño tropical premium hecho en Panamá. Piezas versátiles para una vida junto al mar.</p>
+        <p>Diseño tropical premium hecho en {{ MARKET_COUNTRY_LABEL }}. Piezas versátiles para una vida junto al mar.</p>
       </section>
 
       <section aria-labelledby="footer-legal">
@@ -92,7 +92,7 @@
         {% else %}
         <p class="muted">Atención vía redes oficiales</p>
         {% endif %}
-        <p>Ciudad de Panamá</p>
+        <p>{{ MARKET_CITY }}</p>
       </section>
     </div>
   </footer>

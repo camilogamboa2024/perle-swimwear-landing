@@ -157,7 +157,7 @@ LANGUAGE_CODE = 'es'
 LANGUAGES = [
     ('es', 'Español'),
 ]
-TIME_ZONE = 'America/Bogota'
+TIME_ZONE = 'America/Panama'
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = '/static/'
@@ -168,6 +168,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 WHATSAPP_PHONE = os.getenv('WHATSAPP_PHONE', '')
+MARKET_COUNTRY_NAME = 'Panama'
+MARKET_COUNTRY_LABEL = 'Panamá'
+MARKET_CITY = 'Ciudad de Panamá'
+MARKET_STATE = 'Panamá'
 
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {

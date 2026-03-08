@@ -51,6 +51,11 @@ python manage.py collectstatic --noinput
   - request incluye `X-CSRFToken`
   - `CSRF_TRUSTED_ORIGINS` incluye dominio frontend.
 
+### 5.4 Direcciones históricas con país inconsistente
+- Desde esta versión, el checkout nuevo persiste `country='Panama'`.
+- No se hizo backfill masivo sobre datos previos para no reescribir histórico legítimo.
+- Si detectas pedidos antiguos creados con `country='Colombia'` por el default anterior, corrígelos manualmente en admin solo después de validar el contexto real del pedido.
+
 ## 6. Validación pre-release
 ```bash
 python manage.py check

@@ -148,8 +148,8 @@ def check_checkout_csrf(base_url):
         'email': f'csrf-checkout-{int(time.time())}@example.com',
         'phone': '',
         'line1': 'Calle QA',
-        'city': 'Bogota',
-        'state': 'DC',
+        'city': 'Ciudad de Panamá',
+        'state': 'Panamá',
         'coupon_code': '',
         'payment_method': 'whatsapp',
     }
@@ -314,8 +314,8 @@ def check_confirmation_idor(base_url):
         'email': f'idor-{int(time.time())}@example.com',
         'phone': '',
         'line1': 'Calle QA 10',
-        'city': 'Bogota',
-        'state': 'DC',
+        'city': 'Ciudad de Panamá',
+        'state': 'Panamá',
         'coupon_code': '',
         'payment_method': 'whatsapp',
     }

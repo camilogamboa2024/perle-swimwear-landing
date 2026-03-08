@@ -76,7 +76,7 @@ class CheckoutConfirmApiView(APIView):
                     line1=data['line1'],
                     city=data['city'],
                     state=data['state'],
-                    country='Colombia',
+                    country=settings.MARKET_COUNTRY_NAME,
                     label='Checkout',
                 )
                 order = create_order_from_cart(

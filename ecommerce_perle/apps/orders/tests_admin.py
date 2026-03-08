@@ -31,7 +31,13 @@ class OrderAdminActionsTest(TestCase):
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
         customer = Customer.objects.create(email='order-admin@example.com', full_name='Order Admin Customer')
-        address = Address.objects.create(customer=customer, line1='Calle 1', city='Bogotá', state='DC')
+        address = Address.objects.create(
+            customer=customer,
+            line1='Calle 1',
+            city='Ciudad de Panamá',
+            state='Panamá',
+            country='Panama',
+        )
         self.order = Order.objects.create(
             customer=customer,
             address=address,
