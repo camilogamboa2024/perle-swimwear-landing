@@ -62,6 +62,7 @@ python manage.py check
 DEBUG=0 DJANGO_SECRET_KEY='long-secret-50-plus-characters' ALLOWED_HOSTS='perle-ecommerce.onrender.com' CSRF_TRUSTED_ORIGINS='https://perle-ecommerce.onrender.com' DATABASE_URL='sqlite:///db.sqlite3' python manage.py check --deploy
 python manage.py makemigrations --check --dry-run
 python manage.py test
+coverage run manage.py test && coverage report
 ruff check .
 bandit -q -r apps core -lll
 pip-audit -r requirements.txt
@@ -70,6 +71,7 @@ semgrep --config p/django --config p/python apps core
 
 Notas operativas:
 - La auditoria CVE canónica es el job CI (`quality-and-security`) que publica `pip-audit.json`.
+- Coverage visible canónica: el mismo job publica `coverage.txt` y `coverage.xml`.
 - En local sin salida a internet, `pip-audit` puede fallar por DNS/red.
 - Para redes corporativas, configurar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` hacia mirror interno.
 - Estrés PostgreSQL local reproducible: `bash scripts/qa/run_pg_stress.sh`.

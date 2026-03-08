@@ -314,6 +314,8 @@ class OrderConfirmationSessionGuardTest(TestCase):
         response = self.client.get(f'/orders/confirmation/{self.order.public_id}/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(self.order.public_id))
+        self.assertContains(response, 'Paso 3 de 3')
+        self.assertContains(response, 'Perle Panamá')
 
     def test_confirmation_blocks_other_session(self):
         other_client = Client()
@@ -391,3 +393,12 @@ class CartConcurrencyHandlingTest(TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json().get('code'), 'cart_busy')
+
+
+class CartTemplateStateTest(TestCase):
+    def test_empty_cart_page_exposes_live_feedback_regions(self):
+        response = self.client.get('/cart/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Tu bolsa está vacía')
+        self.assertContains(response, 'id="cart-status"')
+        self.assertContains(response, 'aria-live="polite"')

@@ -40,8 +40,28 @@ jobs:
           python manage.py check
           DEBUG=0 DJANGO_SECRET_KEY="$DJANGO_SECRET_KEY" ALLOWED_HOSTS="perle-ecommerce.onrender.com" CSRF_TRUSTED_ORIGINS="https://perle-ecommerce.onrender.com" DATABASE_URL="$DATABASE_URL" python manage.py check --deploy
           python manage.py makemigrations --check --dry-run
-          python manage.py test
+          coverage run manage.py test
+          coverage report > coverage.txt
+          coverage xml -o coverage.xml
           python manage.py collectstatic --noinput
+
+      - name: Publish coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Coverage"
+            echo ""
+            cat coverage.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            ecommerce_perle/coverage.txt
+            ecommerce_perle/coverage.xml
 
       - name: Ruff
         run: ruff check .

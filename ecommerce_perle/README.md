@@ -125,6 +125,7 @@ python manage.py check
 DEBUG=0 DJANGO_SECRET_KEY='long-secret-50-plus-characters' ALLOWED_HOSTS='perle-ecommerce.onrender.com' CSRF_TRUSTED_ORIGINS='https://perle-ecommerce.onrender.com' DATABASE_URL='sqlite:///db.sqlite3' python manage.py check --deploy
 python manage.py makemigrations --check --dry-run
 python manage.py test
+coverage run manage.py test && coverage report
 python manage.py collectstatic --noinput
 ruff check .
 bandit -q -r apps core -lll
@@ -142,6 +143,7 @@ python scripts/security/gate_security.py --input-dir audit/security_round_local 
 
 Auditoria CVE:
 - Fuente canónica: job CI (`quality-and-security`) que genera `pip-audit.json` como artifact.
+- Coverage visible: el mismo job publica `coverage.txt` y `coverage.xml` como artifacts y resumen.
 - En local sin internet, `pip-audit` puede fallar por entorno (DNS/salida).
 - Opcional local corporativo: exportar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` para usar mirror interno.
 
