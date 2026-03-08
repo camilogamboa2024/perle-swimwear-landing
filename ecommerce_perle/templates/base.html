@@ -5,51 +5,113 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Perle Swimwear Panamá: trajes de baño premium, compra segura y soporte humano en cada pedido.{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}Perle Swimwear Panamá{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Diseño premium de trajes de baño en Panamá con checkout simple y atención personalizada.{% endblock %}" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/png" href="{% static 'brand/favicon.png' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/perle.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/perle_editorial.css' %}" />
 </head>
 <body>
-<div class="topbar">
-  <span>Hecho en Colombia · Calidad premium</span>
-  <span>Cambios fáciles · Atención por WhatsApp</span>
-</div>
-<header class="site-header">
-  <a href="/" class="brand">PERLE <small>swimwear</small></a>
-  <nav class="nav-right">
-    <a href="/">Inicio</a>
-    <a href="/">Colección</a>
-    <a href="/cart/" class="cart-badge">Bolsa <span class="badge" id="cart-count">0</span></a>
-    <span id="cart-total" class="cart-total"></span>
-    <a href="/checkout/">Checkout</a>
-  </nav>
-</header>
-
-<main id="main-content">{% block content %}{% endblock %}</main>
-
-<footer class="site-footer">
-  <div>
-    <h4>{{ BRAND_NAME }}</h4>
-    <p>Diseño boutique, confección cuidada y soporte humano.</p>
+  <div class="topbar" role="note">
+    <span>Envío gratis desde $180 USD en Panamá · Curaduría editorial Perle 2026</span>
   </div>
-  <div>
-    <h4>Ayuda</h4>
-    <a href="/legal/terms/">Términos</a>
-    <a href="/legal/privacy/">Privacidad</a>
-    <a href="/legal/shipping-returns/">Envíos y devoluciones</a>
-  </div>
-  <div>
-    <h4>Conecta</h4>
-    <a href="{{ BRAND_IG }}" target="_blank" rel="noreferrer">Instagram</a>
-    {% if WHATSAPP_PHONE %}<a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noreferrer">WhatsApp</a>{% endif %}
-  </div>
-</footer>
 
-{% if WHATSAPP_PHONE %}<a class="fab-whatsapp" target="_blank" rel="noreferrer" href="https://wa.me/{{ WHATSAPP_PHONE }}?text=Hola%20Perle%2C%20quiero%20ayuda%20con%20mi%20pedido">WhatsApp</a>{% endif %}
-<div id="app-toast" class="toast"></div>
+  <header class="site-header" role="banner">
+    <div class="container site-header-inner">
+      <a href="{% url 'home' %}" class="brand" aria-label="Ir al inicio de Perle">
+        <img
+          src="{% static 'brand/perle-wordmark.png' %}"
+          alt="Perle Swimwear"
+          class="brand-mark"
+          width="186"
+          height="54"
+        />
+      </a>
 
-<script src="{% static 'js/storefront.js' %}" defer></script>
-{% block scripts %}{% endblock %}
+      <button
+        type="button"
+        class="btn btn-ghost mobile-nav-toggle"
+        data-nav-toggle
+        aria-expanded="false"
+        aria-controls="site-navigation"
+        aria-label="Abrir menú de navegación"
+      >
+        Menú
+      </button>
+
+      <nav id="site-navigation" class="nav-right" aria-label="Navegación principal">
+        <a href="{% url 'home' %}">Inicio</a>
+        <a href="{% url 'home' %}#catalogo-section">Colección +</a>
+        <a href="{% url 'home' %}#guide-section">Guía de tallas</a>
+        <a href="{% url 'home' %}#insiders-section">Contacto</a>
+        {% if request.user.is_staff %}
+        <a href="{% url 'admin:index' %}">Admin</a>
+        {% endif %}
+        <a href="{% url 'cart-page' %}" class="cart-badge" data-testid="nav-cart" aria-label="Abrir carrito">
+          <span>Carrito</span>
+          <span class="badge" id="cart-count">0</span>
+        </a>
+        <a href="{% url 'checkout-page' %}" data-testid="nav-checkout">Checkout</a>
+        <span id="cart-total" class="cart-total" aria-live="polite"></span>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" class="nav-wa" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="site-main" role="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-grid">
+      <section aria-labelledby="footer-brand">
+        <h4 id="footer-brand">{{ BRAND_NAME }}</h4>
+        <p>Diseño tropical premium hecho en Panamá. Piezas versátiles para una vida junto al mar.</p>
+      </section>
+
+      <section aria-labelledby="footer-legal">
+        <h4 id="footer-legal">Navegación</h4>
+        <a href="{% url 'home' %}#catalogo-section">Catálogo</a>
+        <a href="{% url 'home' %}#guide-section">Guía de tallas</a>
+        <a href="{% url 'cart-page' %}">Carrito</a>
+        <a href="{% url 'legal-terms' %}">Términos</a>
+      </section>
+
+      <section aria-labelledby="footer-contact">
+        <h4 id="footer-contact">Contacto</h4>
+        <a href="{{ BRAND_IG }}" target="_blank" rel="noopener noreferrer">Instagram {{ BRAND_IG|cut:"https://instagram.com/"|cut:"https://www.instagram.com/" }}</a>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer">WhatsApp +{{ WHATSAPP_PHONE }}</a>
+        {% else %}
+        <p class="muted">Atención vía redes oficiales</p>
+        {% endif %}
+        <p>Ciudad de Panamá</p>
+      </section>
+    </div>
+  </footer>
+
+  {% if WHATSAPP_PHONE %}
+  <a
+    class="fab-whatsapp"
+    target="_blank"
+    rel="noopener noreferrer"
+    href="https://wa.me/{{ WHATSAPP_PHONE }}?text=Hola%20Perle%2C%20quiero%20ayuda%20con%20mi%20pedido"
+    aria-label="Abrir conversación de WhatsApp con Perle"
+  >
+    WhatsApp
+  </a>
+  {% endif %}
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="{% static 'js/storefront.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

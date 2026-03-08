@@ -1,0 +1,105 @@
+{
+  "tool": "verify_security_headers",
+  "phase": "monitor",
+  "scope": "web",
+  "base_url": "http://127.0.0.1:8016",
+  "paths_checked": [
+    "/",
+    "/cart/",
+    "/checkout/",
+    "/orders/confirmation/489ee722-499b-43b1-80ac-6162b717e2de/"
+  ],
+  "checks": [
+    {
+      "path": "/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sun, 22 Feb 2026 00:38:45 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "11938",
+        "content-language": "es",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "geolocation=(), camera=(), microphone=()",
+        "content-security-policy-report-only": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=EADLInoZum0YdJlCelme5hl76SM7UDXB; expires=Sun, 21 Feb 2027 00:38:45 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": []
+    },
+    {
+      "path": "/cart/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sun, 22 Feb 2026 00:38:45 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "6046",
+        "content-language": "es",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "geolocation=(), camera=(), microphone=()",
+        "content-security-policy-report-only": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "sessionid=bv0q9wiwwkkysomtr083y1h48e0ihrru; expires=Sun, 08 Mar 2026 00:38:45 GMT; HttpOnly; Max-Age=1209600; Path=/; SameSite=Lax"
+      },
+      "missing": []
+    },
+    {
+      "path": "/checkout/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sun, 22 Feb 2026 00:38:45 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "7344",
+        "content-language": "es",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "geolocation=(), camera=(), microphone=()",
+        "content-security-policy-report-only": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=XmGtuTgXGtYPoA9ADaoP3qPBuoo4VuAd; expires=Sun, 21 Feb 2027 00:38:45 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": []
+    },
+    {
+      "path": "/orders/confirmation/489ee722-499b-43b1-80ac-6162b717e2de/",
+      "status_code": 404,
+      "headers": {
+        "date": "Sun, 22 Feb 2026 00:38:45 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "179",
+        "content-language": "es",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "geolocation=(), camera=(), microphone=()",
+        "content-security-policy-report-only": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=sUfoYSuyLkf6XLTukc9LUOsRAsIES78h; expires=Sun, 21 Feb 2027 00:38:45 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": []
+    }
+  ],
+  "findings": [],
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  }
+}

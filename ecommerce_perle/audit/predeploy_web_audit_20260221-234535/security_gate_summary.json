@@ -1,0 +1,50 @@
+{
+  "input_dir": "audit/predeploy_web_audit_20260221-234535",
+  "verdict": "FAIL",
+  "totals": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  },
+  "per_source": {
+    "pip-audit": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "semgrep": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "zap": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "findings": [
+    {
+      "source": "pip-audit",
+      "id": "pip_audit_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear pip-audit.json"
+    },
+    {
+      "source": "semgrep",
+      "id": "semgrep_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear semgrep.json"
+    },
+    {
+      "source": "zap",
+      "id": "zap_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear zap_report.json"
+    }
+  ]
+}

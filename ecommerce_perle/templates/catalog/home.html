@@ -1,33 +1,162 @@
 {% extends 'base.html' %}
-{% block title %}Perle | Home{% endblock %}
+{% load money %}
+{% block title %}Perle Panamá | Luxury Aqua Swimwear{% endblock %}
 {% block content %}
-<section class="hero"><h1>Colección Perle</h1><p>Boutique premium, tallas reales y stock en vivo.</p></section>
-<section class="container">
-  <h2>Productos</h2>
-  <div id="products-grid" class="grid">
-    {% for product in products %}
-    <article class="card">
+<section class="hero hero-editorial">
+  <div class="container hero-editorial-grid">
+    <div class="hero-copy-wrap fx-reveal">
+      <p class="eyebrow">Marea Editorial 2026</p>
+      <h1>Bikinis que se sienten como portada de verano.</h1>
+      <p class="hero-copy">
+        Selección premium de Perle Panamá con siluetas limpias, ajuste real y acabados de confección fina.
+        Una experiencia de compra más ágil, clara y con personalidad.
+      </p>
+      <div class="hero-editorial-actions">
+        <a href="#catalogo-section" class="btn btn-primary">Ver colección</a>
+        {% if WHATSAPP_PHONE %}
+        <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Asesoría WhatsApp</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hero-art fx-reveal" aria-hidden="true">
+      <div class="hero-art-glow"></div>
+      <div class="hero-art-panel">
+        <p class="hero-art-title">Perle Insiders</p>
+        <p>Nuevos drops antes que nadie.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container section-space editorial-metrics fx-reveal" id="guide-section" aria-label="Métricas de servicio">
+  <article class="metric-card">
+    <strong>24h</strong>
+    <span>Respuesta promedio por WhatsApp</span>
+  </article>
+  <article class="metric-card">
+    <strong>8 estilos</strong>
+    <span>En el drop editorial actual</span>
+  </article>
+  <article class="metric-card">
+    <strong>$180</strong>
+    <span>Umbral para envío gratis en Panamá</span>
+  </article>
+</section>
+
+<section class="container section-space fx-reveal">
+  <div class="section-head">
+    <h2>Más vendidos</h2>
+    <p>Las referencias favoritas de nuestras clientas esta semana.</p>
+  </div>
+  <div class="product-grid">
+    {% for product in products|slice:":4" %}
+    <article class="product-card">
       {% with img=product.images.first %}
       {% if img %}
-      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" style="width:100%;border-radius:12px;aspect-ratio:4/5;object-fit:cover;">
+      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" class="product-image">
       {% else %}
-      <div style="width:100%;border-radius:12px;aspect-ratio:4/5;background:#f7edf1;display:grid;place-items:center;">Perle</div>
+      <div class="product-image product-image-fallback">Perle</div>
       {% endif %}
       {% endwith %}
-      <h3><a href="/product/{{ product.slug }}/">{{ product.name }}</a></h3>
-      <p>{{ product.description|default:'Sin descripción'|truncatechars:120 }}</p>
+      <div class="product-content">
+        <h3><a href="{% url 'product-detail' slug=product.slug %}">{{ product.name }}</a></h3>
+        <p>{{ product.description|default:'Sin descripción'|truncatechars:110 }}</p>
+      </div>
       {% with v=product.variants.all|first %}
       {% if v %}
-      <p><strong>${{ v.price_cop }}</strong> COP</p>
-      <button class="btn" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
+      <div class="product-meta">
+        <p class="price"><strong>{{ v.price_usd_cents|usd }}</strong></p>
+        <div>
+          <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-outline">Ver detalle</a>
+          <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir</button>
+        </div>
+      </div>
+      {% endif %}
+      {% endwith %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="container section-space fx-reveal" id="catalogo-section">
+  <div class="section-head">
+    <h2>Nuevos drops</h2>
+    <p>Piezas editoriales con paleta aqua-marfil y construcción premium para playa, resort y ciudad.</p>
+  </div>
+  <div id="products-grid" class="product-grid" data-testid="products-grid">
+    {% for product in products|slice:"4:8" %}
+    <article class="product-card">
+      {% with img=product.images.first %}
+      {% if img %}
+      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" class="product-image">
+      {% else %}
+      <div class="product-image product-image-fallback">Perle</div>
+      {% endif %}
+      {% endwith %}
+      <div class="product-content">
+        <h3><a href="{% url 'product-detail' slug=product.slug %}">{{ product.name }}</a></h3>
+        <p>{{ product.description|default:'Sin descripción'|truncatechars:110 }}</p>
+      </div>
+      {% with v=product.variants.all|first %}
+      {% if v %}
+      <div class="product-meta">
+        <p class="price"><strong>{{ v.price_usd_cents|usd }}</strong></p>
+        <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
+      </div>
       {% endif %}
       {% endwith %}
     </article>
     {% empty %}
-    <p>No hay productos aún.</p>
+    <article class="empty-state">
+      <h3>No hay productos aún</h3>
+      <p>Ejecuta <code>python manage.py seed_demo</code> para cargar catálogo demo.</p>
+    </article>
     {% endfor %}
   </div>
 </section>
+
+<section class="container section-space fx-reveal" id="insiders-section">
+  <article class="insiders-card">
+    <p class="eyebrow">Perle Insiders</p>
+    <h2>Nuevos drops antes que nadie</h2>
+    <p>Recibe alertas de stock, guía de fit y preventas de colecciones editoriales.</p>
+    <form class="insiders-form" action="#" method="post">
+      <label class="sr-only" for="insiders-email">Correo para novedades</label>
+      <input id="insiders-email" type="email" class="input" placeholder="tu@email.com" autocomplete="email">
+      <button type="submit" class="btn btn-primary">Suscribirme</button>
+    </form>
+  </article>
+</section>
+
+<section class="container section-space fx-reveal">
+  <div class="section-head">
+    <h2>Colecciones</h2>
+    <p>Selección curada para playa, resort y escapadas de fin de semana.</p>
+  </div>
+  <div class="product-grid">
+    {% for product in products|slice:"8:12" %}
+    <article class="product-card">
+      {% with img=product.images.first %}
+      {% if img %}
+      <img src="{{ img.image_url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" class="product-image">
+      {% else %}
+      <div class="product-image product-image-fallback">Perle</div>
+      {% endif %}
+      {% endwith %}
+      <div class="product-content">
+        <h3><a href="{% url 'product-detail' slug=product.slug %}">{{ product.name }}</a></h3>
+        <p>{{ product.description|default:'Sin descripción'|truncatechars:110 }}</p>
+      </div>
+      <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-outline">Ver detalle</a>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="skeleton-grid" aria-hidden="true">
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+  </div>
+</section>
 {{ products_payload|json_script:'products-data' }}
-<script id="fx-data" type="application/json">{"usdRate": {{ exchange_rate }}}</script>
 {% endblock %}

@@ -1,0 +1,9 @@
+<svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="220" height="60" rx="14" fill="#0F4C5C"/>
+  <path d="M27 16h20v4H31v9h14v4H31v11h-4V16z" fill="#F8EFEA"/>
+  <path d="M55 16h4v24h14v4H55V16z" fill="#F8EFEA"/>
+  <path d="M78 16h4v28h-4V16z" fill="#F8EFEA"/>
+  <path d="M91 16h20v4H95v8h13v4H95v8h16v4H91V16z" fill="#F8EFEA"/>
+  <path d="M117 16h4v24h14v4h-18V16z" fill="#F8EFEA"/>
+  <text x="146" y="36" fill="#F8EFEA" font-size="15" font-family="Montserrat, Arial, sans-serif" font-weight="600">swimwear</text>
+</svg>

@@ -1,6 +1,10 @@
+from datetime import timedelta
 import json
+from unittest.mock import patch
 
+from django.db import OperationalError
 from django.test import Client, TestCase
+from django.utils import timezone
 
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.customers.models import Address, Customer
@@ -14,7 +18,7 @@ class CheckoutServiceTest(TestCase):
         category = Category.objects.create(name='Bikinis', slug='bikinis')
         product = Product.objects.create(name='Test', slug='test', category=category, description='x')
         self.variant = ProductVariant.objects.create(
-            product=product, sku='SKU-1', size='S', color='Negro', price_cop=100000
+            product=product, sku='SKU-1', size='S', color='Negro', price_usd_cents=100000
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
         self.customer = Customer.objects.create(email='test@example.com', full_name='Cliente')
@@ -60,6 +64,14 @@ class CheckoutServiceTest(TestCase):
         with self.assertRaisesMessage(ValueError, 'Sin stock configurado'):
             create_order_from_cart(customer=self.customer, address=self.address, cart=cart)
 
+    def test_total_never_negative_with_full_discount_coupon(self):
+        cart = Cart.objects.create(customer=self.customer)
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+        coupon = Coupon.objects.create(code='FREE100', percentage=100, is_active=True)
+        order = create_order_from_cart(customer=self.customer, address=self.address, cart=cart, coupon=coupon)
+        self.assertEqual(order.discount_total, 100000)
+        self.assertEqual(order.grand_total, 0)
+
 
 class CheckoutConfirmApiViewTest(TestCase):
     def setUp(self):
@@ -67,7 +79,7 @@ class CheckoutConfirmApiViewTest(TestCase):
         category = Category.objects.create(name='One Piece', slug='one-piece')
         product = Product.objects.create(name='Model', slug='model', category=category, description='x')
         self.variant = ProductVariant.objects.create(
-            product=product, sku='SKU-API-1', size='M', color='Negro', price_cop=150000
+            product=product, sku='SKU-API-1', size='M', color='Negro', price_usd_cents=150000
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 1})
 
@@ -76,7 +88,7 @@ class CheckoutConfirmApiViewTest(TestCase):
         token = response.cookies.get('csrftoken').value
         return {'HTTP_X_CSRFTOKEN': token}
 
-    def _payload(self, email):
+    def _payload(self, email, coupon_code=''):
         return {
             'full_name': 'Cliente API',
             'email': email,
@@ -84,7 +96,7 @@ class CheckoutConfirmApiViewTest(TestCase):
             'line1': 'Calle 123',
             'city': 'Bogotá',
             'state': 'DC',
-            'coupon_code': '',
+            'coupon_code': coupon_code,
             'payment_method': 'whatsapp',
         }
 
@@ -97,11 +109,11 @@ class CheckoutConfirmApiViewTest(TestCase):
             **headers,
         )
 
-    def _confirm_checkout(self, email, with_csrf=True):
+    def _confirm_checkout(self, email, with_csrf=True, coupon_code=''):
         headers = self._csrf_headers('/checkout/') if with_csrf else {}
         return self.client.post(
             '/checkout/api/checkout/confirm/',
-            data=json.dumps(self._payload(email)),
+            data=json.dumps(self._payload(email, coupon_code=coupon_code)),
             content_type='application/json',
             **headers,
         )
@@ -150,3 +162,57 @@ class CheckoutConfirmApiViewTest(TestCase):
         self.assertEqual(second_response.status_code, 400)
         self.assertIn('vacío', second_response.json().get('error', '').lower())
         self.assertEqual(Order.objects.filter(customer__email='double-submit@example.com').count(), 1)
+
+    def test_invalid_coupon_returns_400_with_stable_error_code(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        response = self._confirm_checkout('invalid-coupon@example.com', coupon_code='NOEXISTE')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json().get('code'), 'invalid_coupon')
+        self.assertIn('cupón inválido', response.json().get('error', '').lower())
+        self.assertEqual(Order.objects.filter(customer__email='invalid-coupon@example.com').count(), 0)
+
+    def test_expired_coupon_returns_400_with_stable_error_code(self):
+        Coupon.objects.create(
+            code='EXP10',
+            percentage=10,
+            is_active=True,
+            expires_at=timezone.now() - timedelta(hours=1),
+        )
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        response = self._confirm_checkout('expired-coupon@example.com', coupon_code='EXP10')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json().get('code'), 'invalid_coupon')
+        self.assertIn('cupón inválido', response.json().get('error', '').lower())
+
+    def test_valid_coupon_applies_discount_on_checkout(self):
+        Coupon.objects.create(
+            code='PERLE15',
+            percentage=15,
+            is_active=True,
+            expires_at=timezone.now() + timedelta(days=1),
+        )
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        response = self._confirm_checkout('valid-coupon@example.com', coupon_code='PERLE15')
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.get(customer__email='valid-coupon@example.com')
+        self.assertEqual(order.discount_total, 22500)
+        self.assertEqual(order.grand_total, 127500)
+
+    def test_checkout_returns_409_when_db_is_busy(self):
+        add_response = self._add_to_cart(quantity=1)
+        self.assertEqual(add_response.status_code, 201)
+
+        with patch(
+            'apps.checkout.views.create_order_from_cart',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self._confirm_checkout('busy-checkout@example.com')
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'checkout_busy')

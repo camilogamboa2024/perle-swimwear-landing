@@ -1,0 +1,439 @@
+{
+  "summary": {
+    "workers": 60,
+    "duration_ms": 2598,
+    "checkout_status_counts": {
+      "429": 40,
+      "201": 8,
+      "400": 12
+    },
+    "checkout_success_201": 8,
+    "checkout_controlled_400": 12,
+    "checkout_controlled_409": 0,
+    "checkout_throttled_429": 40,
+    "checkout_5xx": 0,
+    "exceptions": 0
+  },
+  "workers": [
+    {
+      "worker": 25,
+      "home": 200,
+      "add": 201,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 20,
+      "home": 200,
+      "add": 201,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 5,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 43,
+      "home": 200,
+      "add": 201,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 2,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 23,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 6,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 0,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 8,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 13,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 3,
+      "home": 200,
+      "add": 201,
+      "checkout": 201,
+      "exception": null
+    },
+    {
+      "worker": 10,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 18,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 9,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 12,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 11,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 17,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 19,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 16,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 15,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 48,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 40,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 29,
+      "home": 200,
+      "add": 201,
+      "checkout": 400,
+      "exception": null
+    },
+    {
+      "worker": 21,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 22,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 1,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 46,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 52,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 44,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 45,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 7,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 42,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 27,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 58,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 49,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 53,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 50,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 51,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 4,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 47,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 31,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 56,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 36,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 26,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 32,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 28,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 35,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 59,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 34,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 33,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 30,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 54,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 39,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 55,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 41,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 38,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 57,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 24,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 14,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    },
+    {
+      "worker": 37,
+      "home": 200,
+      "add": 400,
+      "checkout": 429,
+      "exception": null
+    }
+  ]
+}

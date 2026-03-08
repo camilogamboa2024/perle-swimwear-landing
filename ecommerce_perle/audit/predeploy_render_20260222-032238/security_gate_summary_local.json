@@ -1,0 +1,116 @@
+{
+  "input_dir": "audit/predeploy_render_20260222-032238/security-dast-report",
+  "verdict": "PASS",
+  "totals": {
+    "critical": 0,
+    "high": 0,
+    "medium": 5,
+    "low": 10
+  },
+  "per_source": {
+    "semgrep": {
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 0
+    },
+    "zap": {
+      "critical": 0,
+      "high": 0,
+      "medium": 4,
+      "low": 10
+    }
+  },
+  "findings": [
+    {
+      "source": "semgrep",
+      "id": "python.flask.security.audit.directly-returned-format-string.directly-returned-format-string",
+      "severity": "medium",
+      "message": "Detected Flask route directly returning a formatted string. This is subject to cross-site scripting if user input can reach the string. Consider using the template engine instead and rendering pages with 'render_template()'."
+    },
+    {
+      "source": "zap",
+      "id": "10202",
+      "severity": "medium",
+      "message": "Absence of Anti-CSRF Tokens"
+    },
+    {
+      "source": "zap",
+      "id": "10038",
+      "severity": "medium",
+      "message": "Content Security Policy (CSP) Header Not Set"
+    },
+    {
+      "source": "zap",
+      "id": "10098",
+      "severity": "medium",
+      "message": "Cross-Domain Misconfiguration"
+    },
+    {
+      "source": "zap",
+      "id": "90003",
+      "severity": "medium",
+      "message": "Sub Resource Integrity Attribute Missing"
+    },
+    {
+      "source": "zap",
+      "id": "10010",
+      "severity": "low",
+      "message": "Cookie No HttpOnly Flag"
+    },
+    {
+      "source": "zap",
+      "id": "90004",
+      "severity": "low",
+      "message": "Cross-Origin-Embedder-Policy Header Missing or Invalid"
+    },
+    {
+      "source": "zap",
+      "id": "90004",
+      "severity": "low",
+      "message": "Cross-Origin-Resource-Policy Header Missing or Invalid"
+    },
+    {
+      "source": "zap",
+      "id": "10063",
+      "severity": "low",
+      "message": "Permissions Policy Header Not Set"
+    },
+    {
+      "source": "zap",
+      "id": "10036",
+      "severity": "low",
+      "message": "Server Leaks Version Information via \"Server\" HTTP Response Header Field"
+    },
+    {
+      "source": "zap",
+      "id": "10038",
+      "severity": "low",
+      "message": "Content Security Policy (CSP) Report-Only Header Found"
+    },
+    {
+      "source": "zap",
+      "id": "10024",
+      "severity": "low",
+      "message": "Information Disclosure - Sensitive Information in URL"
+    },
+    {
+      "source": "zap",
+      "id": "10112",
+      "severity": "low",
+      "message": "Session Management Response Identified"
+    },
+    {
+      "source": "zap",
+      "id": "10049",
+      "severity": "low",
+      "message": "Storable and Cacheable Content"
+    },
+    {
+      "source": "zap",
+      "id": "10031",
+      "severity": "low",
+      "message": "User Controllable HTML Element Attribute (Potential XSS)"
+    }
+  ]
+}

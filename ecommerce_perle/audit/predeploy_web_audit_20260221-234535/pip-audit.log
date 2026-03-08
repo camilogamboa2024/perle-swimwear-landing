@@ -1,0 +1,1 @@
+ERROR:pip_audit._cli:Failed to upgrade `pip`: ['/tmp/user/1000/tmphrgik7_q/bin/python3.11', '-m', 'pip', 'install', '--upgrade', 'pip', 'wheel', 'setuptools']

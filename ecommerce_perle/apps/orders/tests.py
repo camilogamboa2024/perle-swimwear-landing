@@ -1,11 +1,14 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.db import OperationalError
+from django.test import Client, TestCase, override_settings
 
 from apps.catalog.models import Category, Product, ProductVariant
-from apps.customers.models import Customer
+from apps.customers.models import Address, Customer
 from apps.inventory.models import StockLevel
+from apps.orders.models import Order, OrderItem
 
 
 class CartApiCsrfTest(TestCase):
@@ -18,7 +21,7 @@ class CartApiCsrfTest(TestCase):
             sku='SKU-CSRF-1',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
@@ -90,7 +93,7 @@ class CartStockValidationTest(TestCase):
             sku='SKU-STOCK-1',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 2})
@@ -124,7 +127,17 @@ class CartStockValidationTest(TestCase):
             **headers,
         )
         self.assertEqual(add_response.status_code, 201)
-        item_id = add_response.json()['items'][0]['id']
+        add_payload = add_response.json()
+        item_payload = add_payload['items'][0]
+        self.assertIn('unit_price_cents', item_payload)
+        self.assertIn('unit_price_usd', item_payload)
+        self.assertIn('unit_price', item_payload)
+        self.assertEqual(item_payload['unit_price_cents'], item_payload['unit_price'])
+        self.assertIn('subtotal_cents', add_payload['totals'])
+        self.assertIn('discount_total_cents', add_payload['totals'])
+        self.assertIn('grand_total_cents', add_payload['totals'])
+        self.assertIn('subtotal', add_payload['totals'])
+        item_id = item_payload['id']
 
         patch_response = self.client.patch(
             f'/api/cart/items/{item_id}/',
@@ -188,3 +201,187 @@ class AuthenticatedCustomerReuseTest(TestCase):
         second_customer = Customer.objects.get(user=second_user)
         self.assertNotEqual(second_customer.email, 'shared-customer@example.com')
         self.assertIn(f'user-{second_user.id}', second_customer.email)
+
+
+class CartCrudFlowTest(TestCase):
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        category = Category.objects.create(name='CRUD', slug='crud')
+        product = Product.objects.create(name='CRUD Product', slug='crud-product', category=category, description='x')
+        self.variant = ProductVariant.objects.create(
+            product=product,
+            sku='SKU-CRUD-1',
+            size='M',
+            color='Azul',
+            price_usd_cents=89000,
+            is_active=True,
+        )
+        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 6})
+
+    def _csrf_headers(self):
+        response = self.client.get('/')
+        token = response.cookies.get('csrftoken').value
+        return {'HTTP_X_CSRFTOKEN': token}
+
+    def test_add_update_delete_and_clear_cart_flow(self):
+        headers = self._csrf_headers()
+        add_response = self.client.post(
+            '/api/cart/items/',
+            data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+            content_type='application/json',
+            **headers,
+        )
+        self.assertEqual(add_response.status_code, 201)
+        item_id = add_response.json()['items'][0]['id']
+
+        patch_response = self.client.patch(
+            f'/api/cart/items/{item_id}/',
+            data=json.dumps({'quantity': 3}),
+            content_type='application/json',
+            **headers,
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(patch_response.json()['items'][0]['quantity'], 3)
+
+        delete_response = self.client.delete(
+            f'/api/cart/items/{item_id}/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **headers,
+        )
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(delete_response.json()['items'], [])
+
+        add_again = self.client.post(
+            '/api/cart/items/',
+            data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+            content_type='application/json',
+            **headers,
+        )
+        self.assertEqual(add_again.status_code, 201)
+        clear_response = self.client.post('/api/cart/clear/', data=json.dumps({}), content_type='application/json', **headers)
+        self.assertEqual(clear_response.status_code, 200)
+        self.assertEqual(clear_response.json()['items'], [])
+
+
+class OrderConfirmationSessionGuardTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        category = Category.objects.create(name='Guard', slug='guard')
+        product = Product.objects.create(name='Guard Product', slug='guard-product', category=category, description='x')
+        variant = ProductVariant.objects.create(
+            product=product,
+            sku='SKU-GUARD-1',
+            size='S',
+            color='Negro',
+            price_usd_cents=120000,
+            is_active=True,
+        )
+        StockLevel.objects.update_or_create(variant=variant, defaults={'available': 4})
+        customer = Customer.objects.create(email='guard@example.com', full_name='Guard Customer')
+        address = Address.objects.create(customer=customer, line1='Calle 1', city='Bogotá', state='DC')
+        self.order = Order.objects.create(
+            customer=customer,
+            address=address,
+            status=Order.CONFIRMED,
+            subtotal=120000,
+            discount_total=0,
+            grand_total=120000,
+            session_key='',
+            whatsapp_message='Hola Perle',
+        )
+        OrderItem.objects.create(
+            order=self.order,
+            variant=variant,
+            quantity=1,
+            unit_price=120000,
+            line_total=120000,
+        )
+
+        session = self.client.session
+        session['order_access'] = 'ok'
+        session.save()
+        self.order.session_key = session.session_key
+        self.order.save(update_fields=['session_key'])
+
+    def test_confirmation_allows_owner_session(self):
+        response = self.client.get(f'/orders/confirmation/{self.order.public_id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(self.order.public_id))
+
+    def test_confirmation_blocks_other_session(self):
+        other_client = Client()
+        other_client.get('/')
+        response = other_client.get(f'/orders/confirmation/{self.order.public_id}/')
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(WHATSAPP_PHONE='')
+    def test_confirmation_hides_whatsapp_link_when_phone_missing(self):
+        response = self.client.get(f'/orders/confirmation/{self.order.public_id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'wa.me/')
+
+    @override_settings(WHATSAPP_PHONE='573001112233')
+    def test_confirmation_shows_whatsapp_link_when_phone_is_set(self):
+        response = self.client.get(f'/orders/confirmation/{self.order.public_id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'wa.me/573001112233')
+        self.assertContains(response, 'rel="noopener noreferrer"')
+
+
+class CartConcurrencyHandlingTest(TestCase):
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        category = Category.objects.create(name='Concurrency', slug='concurrency')
+        product = Product.objects.create(
+            name='Concurrency Product',
+            slug='concurrency-product',
+            category=category,
+            description='x',
+        )
+        self.variant = ProductVariant.objects.create(
+            product=product,
+            sku='SKU-CONC-1',
+            size='M',
+            color='Negro',
+            price_usd_cents=100000,
+            is_active=True,
+        )
+        StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 10})
+
+    def _csrf_headers(self):
+        response = self.client.get('/')
+        token = response.cookies.get('csrftoken').value
+        return {'HTTP_X_CSRFTOKEN': token}
+
+    def test_add_item_returns_409_when_cart_is_locked(self):
+        headers = self._csrf_headers()
+        with patch(
+            'apps.orders.views._get_or_create_cart_with_locking',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self.client.post(
+                '/api/cart/items/',
+                data=json.dumps({'variant_id': self.variant.id, 'quantity': 1}),
+                content_type='application/json',
+                **headers,
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'cart_busy')
+
+    def test_clear_cart_returns_409_when_cart_row_is_locked(self):
+        headers = self._csrf_headers()
+        with patch(
+            'apps.orders.views._get_or_create_cart_with_locking',
+            side_effect=OperationalError('database is locked'),
+        ):
+            response = self.client.post(
+                '/api/cart/clear/',
+                data=json.dumps({}),
+                content_type='application/json',
+                **headers,
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json().get('code'), 'cart_busy')

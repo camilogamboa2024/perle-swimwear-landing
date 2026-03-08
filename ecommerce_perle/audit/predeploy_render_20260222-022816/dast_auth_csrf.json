@@ -1,0 +1,50 @@
+{
+  "tool": "dast_auth_csrf",
+  "scope": "web",
+  "base_url": "http://127.0.0.1:8013",
+  "checks": [
+    {
+      "id": "csrf_cart_mutation",
+      "passed": false,
+      "variant_id": null,
+      "details": "No hay variante disponible."
+    },
+    {
+      "id": "csrf_checkout_confirm",
+      "passed": false,
+      "status_code": null,
+      "details": "Posible bypass CSRF en checkout."
+    },
+    {
+      "id": "order_confirmation_idor",
+      "passed": false,
+      "variant_id": null,
+      "details": "No hay variante disponible."
+    }
+  ],
+  "findings": [
+    {
+      "id": "csrf_cart_setup_failed",
+      "severity": "high",
+      "message": "No se encontro variante con stock para prueba CSRF de carrito."
+    },
+    {
+      "id": "csrf_checkout_bypass",
+      "severity": "critical",
+      "message": "Checkout acepto confirmacion sin CSRF (status None)."
+    },
+    {
+      "id": "idor_setup_failed_variant",
+      "severity": "high",
+      "message": "No se encontro variante con stock para prueba IDOR."
+    }
+  ],
+  "summary": {
+    "critical": 1,
+    "high": 2,
+    "medium": 0,
+    "low": 0,
+    "total_checks": 3,
+    "passed_checks": 0
+  }
+}

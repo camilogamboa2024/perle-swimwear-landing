@@ -1,0 +1,40 @@
+{
+  "tool": "dast_auth_csrf",
+  "scope": "web",
+  "base_url": "http://127.0.0.1:8013",
+  "checks": [
+    {
+      "id": "csrf_cart_mutation",
+      "passed": true,
+      "variant_id": 1,
+      "status_code": 403,
+      "details": "Mutacion de carrito rechazada sin CSRF."
+    },
+    {
+      "id": "csrf_checkout_confirm",
+      "passed": true,
+      "status_code": 403,
+      "details": "Checkout rechazo confirmacion sin CSRF."
+    },
+    {
+      "id": "order_confirmation_idor",
+      "passed": true,
+      "variant_id": 1,
+      "add_to_cart_status": 201,
+      "checkout_status": 201,
+      "confirmation_url": "/orders/confirmation/382dde10-211f-4300-8637-96cfcfef66e4/",
+      "owner_confirmation_status": 200,
+      "attacker_confirmation_status": 404,
+      "details": "IDOR bloqueado correctamente para sesion ajena."
+    }
+  ],
+  "findings": [],
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "total_checks": 3,
+    "passed_checks": 3
+  }
+}

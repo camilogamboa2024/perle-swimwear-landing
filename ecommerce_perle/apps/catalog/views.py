@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -52,7 +51,6 @@ def home(request):
     return render(request, 'catalog/home.html', {
         'products': products,
         'products_payload': payload,
-        'exchange_rate': settings.CURRENCY_USD_RATE,
     })
 
 
@@ -67,4 +65,19 @@ def product_detail(request, slug):
         slug=slug,
         is_active=True,
     )
-    return render(request, 'catalog/product_detail.html', {'product': product})
+    related_products = (
+        Product.objects.filter(
+            is_active=True,
+            category=product.category,
+        )
+        .exclude(id=product.id)
+        .prefetch_related('images', active_variants)[:4]
+    )
+    return render(
+        request,
+        'catalog/product_detail.html',
+        {
+            'product': product,
+            'related_products': related_products,
+        },
+    )

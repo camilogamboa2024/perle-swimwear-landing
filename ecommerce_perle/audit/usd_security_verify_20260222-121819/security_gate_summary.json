@@ -1,0 +1,110 @@
+{
+  "input_dir": "audit/usd_security_verify_20260222-121819",
+  "verdict": "FAIL",
+  "totals": {
+    "critical": 1,
+    "high": 9,
+    "medium": 0,
+    "low": 0
+  },
+  "per_source": {
+    "bandit": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "pip-audit": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "semgrep": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "dast_auth_csrf": {
+      "critical": 1,
+      "high": 2,
+      "medium": 0,
+      "low": 0
+    },
+    "security_headers": {
+      "critical": 0,
+      "high": 3,
+      "medium": 0,
+      "low": 0
+    },
+    "zap": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "findings": [
+    {
+      "source": "bandit",
+      "id": "bandit_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear bandit.json"
+    },
+    {
+      "source": "pip-audit",
+      "id": "pip_audit_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear pip-audit.json"
+    },
+    {
+      "source": "semgrep",
+      "id": "semgrep_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear semgrep.json"
+    },
+    {
+      "source": "dast_auth_csrf",
+      "id": "csrf_cart_setup_failed",
+      "severity": "high",
+      "message": "No se encontro variante con stock para prueba CSRF de carrito."
+    },
+    {
+      "source": "dast_auth_csrf",
+      "id": "csrf_checkout_bypass",
+      "severity": "critical",
+      "message": "Checkout acepto confirmacion sin CSRF (status None)."
+    },
+    {
+      "source": "dast_auth_csrf",
+      "id": "idor_setup_failed_variant",
+      "severity": "high",
+      "message": "No se encontro variante con stock para prueba IDOR."
+    },
+    {
+      "source": "security_headers",
+      "id": "headers_unreachable_/",
+      "severity": "high",
+      "message": "No se pudo consultar /."
+    },
+    {
+      "source": "security_headers",
+      "id": "headers_unreachable_/cart/",
+      "severity": "high",
+      "message": "No se pudo consultar /cart/."
+    },
+    {
+      "source": "security_headers",
+      "id": "headers_unreachable_/checkout/",
+      "severity": "high",
+      "message": "No se pudo consultar /checkout/."
+    },
+    {
+      "source": "zap",
+      "id": "zap_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear zap_report.json"
+    }
+  ]
+}

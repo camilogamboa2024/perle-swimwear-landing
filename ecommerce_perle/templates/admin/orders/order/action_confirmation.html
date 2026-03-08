@@ -1,0 +1,50 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<section class="perle-admin-dashboard">
+  <article class="card">
+    <div class="card-header">
+      <h1>{{ title }}</h1>
+    </div>
+    <div class="card-body">
+      <p>Confirma este cambio masivo de estado. Se registrará un historial de transición por cada orden afectada.</p>
+      <div class="perle-table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Orden</th>
+              <th>Cliente</th>
+              <th>Estado actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in orders %}
+            <tr>
+              <td>#{{ order.id }}</td>
+              <td>{{ order.public_id }}</td>
+              <td>{{ order.customer.email }}</td>
+              <td>{{ order.get_status_display }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </article>
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body perle-admin-actions">
+      {% for order in orders %}
+      <input type="hidden" name="{{ action_checkbox_name }}" value="{{ order.pk }}">
+      {% endfor %}
+      <input type="hidden" name="action" value="{{ action_name }}">
+      <input type="hidden" name="apply" value="1">
+      <button type="submit" class="btn btn-primary">Confirmar cambio</button>
+      <a href="{% url 'admin:orders_order_changelist' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

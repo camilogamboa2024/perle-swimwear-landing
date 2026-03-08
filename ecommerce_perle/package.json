@@ -1,0 +1,12 @@
+{
+  "name": "perle-ecommerce-e2e",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:qa": "playwright test --config=playwright.qa.config.ts --project=chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0"
+  }
+}

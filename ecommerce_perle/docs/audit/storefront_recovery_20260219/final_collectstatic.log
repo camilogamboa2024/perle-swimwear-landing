@@ -1,0 +1,4 @@
+Found another file with the destination path 'admin/js/cancel.js'. It will be ignored since only the first encountered file is collected. If this is not what you want, make sure every static file has a unique path.
+Found another file with the destination path 'admin/js/popup_response.js'. It will be ignored since only the first encountered file is collected. If this is not what you want, make sure every static file has a unique path.
+
+1 static file copied to '/home/kicksdoors/Desktop/perle-swimwear-landing/ecommerce_perle/staticfiles', 260 unmodified, 593 post-processed.

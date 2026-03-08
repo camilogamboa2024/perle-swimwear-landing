@@ -1,396 +1,179 @@
-# Perle E-commerce MVP (Django)
+# Perle E-commerce (Production-Ready + Premium UI)
 
-Implementación de e-commerce boutique para Perle Swimwear, enfocada en flujo de compra rápido, control de inventario y checkout asistido por WhatsApp.
+Aplicación Django + DRF para catálogo, carrito, checkout y operación interna con panel admin premium.
 
-## 1. Resumen ejecutivo
-Este repositorio contiene una aplicación Django + DRF con:
+Branding activo: wordmark temporal limpio (`static/brand/perle-wordmark.png`) y favicon monograma (`static/brand/favicon.png`) en storefront + admin.
+Cuando se reciba el logo oficial transparente final, se reemplaza este asset sin cambios de lógica.
 
-- Catálogo público y detalle de productos con variantes activas.
-- Carrito por sesión (anónimo) o por usuario autenticado.
-- Checkout transaccional con bloqueo de stock (`select_for_update`).
-- Confirmación de pedido protegida por `public_id` + `session_key`.
-- Integración de salida a WhatsApp (`wa.me`) para cierre de venta.
-- Endpoints mutables protegidos por validación CSRF de sesión.
+## Stack
+- Django 5.x + DRF
+- Templates + CSS/JS vanilla (`static/css/perle.css`, `static/js/storefront.js`)
+- Tipografía storefront: `Manrope` (Google Fonts) + fallback system
+- WhiteNoise + Gunicorn
+- SQLite (local) / PostgreSQL (`DATABASE_URL`) en producción
+- Theme admin: Jazzmin
+- E2E: Playwright (Chromium CI)
 
-## 2. Stack técnico
-- Backend: Django 5, Django REST Framework.
-- Frontend: Django Templates + JavaScript vanilla (`static/js/storefront.js`).
-- DB local: SQLite.
-- Producción recomendada: PostgreSQL (vía `DATABASE_URL`).
-- Servidor: Gunicorn + WhiteNoise (estáticos).
+## Funcionalidades principales
+- Catálogo y detalle de producto con variantes activas.
+- Carrito API/SSR (add, update, delete, clear).
+- Checkout transaccional con lock de stock.
+- Confirmación protegida por `public_id + session_key`.
+- Precios y totales en USD (almacenados como centavos enteros para precisión).
+- WhatsApp opcional:
+  - Si `WHATSAPP_PHONE` está vacío: no se renderiza `wa.me` ni FAB.
+  - Si tiene valor: se renderizan enlaces seguros.
+- Admin operativo:
+  - Órdenes con acciones masivas (`paid`, `shipped`, `delivered`, `cancelled`) y confirmación.
+  - Inventario con ajuste masivo y registro en `InventoryMovement`.
+  - Cupones con activación/desactivación + expiración.
+  - Dashboard admin premium con KPIs, tendencias y módulos accionables.
+  - Interfaz admin en español con estilo luxury dark-slate.
 
-Dependencias principales en `requirements.txt`:
-- `Django`
-- `djangorestframework`
-- `gunicorn`
-- `whitenoise`
-- `psycopg[binary]`
-- `dj-database-url`
-
-## 3. Arquitectura por módulos
-- `apps/catalog`: categorías, productos, variantes, imágenes y APIs de catálogo.
-- `apps/inventory`: stock actual (`StockLevel`) y movimientos (`InventoryMovement`).
-- `apps/orders`: carrito, órdenes, historial de estado y APIs de carrito.
-- `apps/checkout`: confirmación de checkout y construcción de mensajes WhatsApp.
-- `apps/customers`: clientes y direcciones.
-- `core`: configuración global, URLs, context processors y autenticación CSRF reforzada.
-
-## 4. Flujos críticos implementados
-1. Visualizar catálogo (`/`, `/product/<slug>/`).
-2. Añadir/editar/eliminar ítems de carrito vía API.
-3. Confirmar checkout vía `POST /checkout/api/checkout/confirm/`.
-4. Descontar inventario y registrar movimientos en transacción atómica.
-5. Consultar confirmación de pedido por `public_id` solo con sesión autorizada.
-6. Abrir finalización por WhatsApp cuando `WHATSAPP_PHONE` está configurado.
-
-## 5. Modelo de datos (resumen)
-- Catálogo:
-  - `Category -> Product -> ProductVariant -> StockLevel`
-  - `Product -> ProductImage`
-- Órdenes:
-  - `Cart -> CartItem`
-  - `Order -> OrderItem`
-  - `Order -> OrderStatusHistory`
-  - `Order` referencia `Customer`, `Address` y opcional `Coupon`.
-- Inventario:
-  - `StockLevel` (cantidad disponible actual)
-  - `InventoryMovement` (histórico de entradas/salidas/ajustes)
-
-## 6. Endpoints principales
-Vistas web:
-- `GET /`
-- `GET /product/<slug>/`
-- `GET /cart/`
-- `GET /checkout/`
-- `GET /orders/confirmation/<uuid:public_id>/`
-- `GET /legal/terms/`
-- `GET /legal/privacy/`
-- `GET /legal/shipping-returns/`
-
-APIs:
-- `GET /api/products/`
-- `GET /api/products/<slug>/`
-- `GET /api/cart/`
-- `POST /api/cart/items/`
-- `PATCH /api/cart/items/<item_id>/`
-- `DELETE /api/cart/items/<item_id>/`
-- `POST /api/cart/clear/`
-- `POST /checkout/api/checkout/confirm/`
-
-Ejemplo de `POST /checkout/api/checkout/confirm/`:
-
-```json
-{
-  "full_name": "Cliente Demo",
-  "email": "cliente@example.com",
-  "phone": "3001234567",
-  "line1": "Calle 123",
-  "city": "Bogota",
-  "state": "DC",
-  "coupon_code": "",
-  "payment_method": "whatsapp"
-}
-```
-
-Respuesta exitosa (201):
-
-```json
-{
-  "order_id": 10,
-  "order_public_id": "uuid",
-  "whatsapp_url": "https://wa.me/...",
-  "confirmation_url": "/orders/confirmation/uuid/"
-}
-```
-
-## 7. Seguridad implementada
-- CSRF reforzado en endpoints mutables por sesión:
-  - `POST /api/cart/items/`
-  - `PATCH/DELETE /api/cart/items/<item_id>/`
-  - `POST /api/cart/clear/`
-  - `POST /checkout/api/checkout/confirm/`
-- Checkout en transacción atómica:
-  - crea orden + descuenta stock + crea movimientos + limpia carrito.
-- Validaciones de negocio:
-  - carrito no vacío
-  - variante activa
-  - stock configurado y suficiente
-  - rollback de datos de cliente/dirección ante error de checkout.
-- Confirmación de pedido protegida por sesión:
-  - si la sesión no coincide con la de la orden, responde 404.
-- Frontend de checkout:
-  - renderizado seguro de errores/links (sin inyección HTML directa).
-- Rate limit DRF:
-  - checkout: `20/hour`.
-
-## 8. Instalación paso a paso (Linux y Windows)
-
-### 8.1 Prerrequisitos
-- Python `3.11+` instalado.
-- `pip` disponible.
-- Git instalado.
-- Terminal:
-  - Linux/macOS: Bash/Zsh.
-  - Windows: PowerShell o CMD.
-
-Verifica versión de Python:
-
+## Setup local
 ```bash
-python --version
-```
-
-Si tu sistema usa `python3`, reemplaza `python` por `python3` en todos los comandos.
-
-### 8.2 Linux/macOS (Bash/Zsh)
-1. Clonar y entrar al proyecto:
-
-```bash
-git clone <URL_DEL_REPO>
 cd ecommerce_perle
-```
-
-2. Crear y activar entorno virtual:
-
-```bash
 python -m venv .venv
 source .venv/bin/activate
-```
-
-3. Instalar dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Crear archivo de entorno:
-
-```bash
+pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env
-```
-
-5. Ejecutar migraciones:
-
-```bash
 python manage.py migrate --noinput
-```
-
-6. Cargar datos demo:
-
-```bash
 python manage.py seed_demo
-```
-
-7. Crear superusuario (opcional pero recomendado):
-
-```bash
 python manage.py createsuperuser
-```
-
-8. Levantar servidor:
-
-```bash
 python manage.py runserver
 ```
 
-9. Abrir en navegador:
-- `http://127.0.0.1:8000/`
-- `http://127.0.0.1:8000/admin/`
+Rutas:
+- Storefront: `http://127.0.0.1:8000/`
+- Admin: `http://127.0.0.1:8000/admin/`
 
-### 8.3 Windows (PowerShell)
-1. Clonar y entrar al proyecto:
+## Variables de entorno mínimas
+Archivo base: `.env.example`
 
-```powershell
-git clone <URL_DEL_REPO>
-cd ecommerce_perle
-```
-
-2. Crear entorno virtual:
-
-```powershell
-py -m venv .venv
-```
-
-3. Activar entorno virtual:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-Si PowerShell bloquea scripts, habilita ejecución para tu usuario y vuelve a activar:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.venv\Scripts\Activate.ps1
-```
-
-4. Instalar dependencias:
-
-```powershell
-pip install -r requirements.txt
-```
-
-5. Crear archivo de entorno:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-6. Ejecutar migraciones y seed:
-
-```powershell
-python manage.py migrate --noinput
-python manage.py seed_demo
-```
-
-7. Crear superusuario (opcional):
-
-```powershell
-python manage.py createsuperuser
-```
-
-8. Levantar servidor:
-
-```powershell
-python manage.py runserver
-```
-
-### 8.4 Windows (CMD)
-1. Clonar y entrar al proyecto:
-
-```bat
-git clone <URL_DEL_REPO>
-cd ecommerce_perle
-```
-
-2. Crear entorno virtual:
-
-```bat
-py -m venv .venv
-```
-
-3. Activar entorno virtual:
-
-```bat
-.venv\Scripts\activate.bat
-```
-
-4. Instalar dependencias:
-
-```bat
-pip install -r requirements.txt
-```
-
-5. Crear archivo de entorno:
-
-```bat
-copy .env.example .env
-```
-
-6. Ejecutar migraciones y seed:
-
-```bat
-python manage.py migrate --noinput
-python manage.py seed_demo
-```
-
-7. Crear superusuario (opcional):
-
-```bat
-python manage.py createsuperuser
-```
-
-8. Levantar servidor:
-
-```bat
-python manage.py runserver
-```
-
-### 8.5 Verificación rápida post-instalación
-Con el servidor arriba, valida:
-- `GET /` home
-- `GET /cart/`
-- `GET /checkout/`
-- `GET /legal/terms/`
-
-Comandos recomendados:
-
-```bash
-python manage.py check
-python manage.py test
-```
-
-## 9. Variables de entorno
-Base (`.env.example`):
-- `DJANGO_SECRET_KEY`
+Variables clave:
+- `DJANGO_SECRET_KEY` (en prod usar valor largo y aleatorio)
 - `DEBUG`
 - `ALLOWED_HOSTS`
 - `CSRF_TRUSTED_ORIGINS`
 - `DATABASE_URL`
-- `DB_ENGINE`, `DB_NAME`, `DB_CONN_MAX_AGE`, `DB_SSL_REQUIRE`
-- `WHATSAPP_PHONE`
-- `CURRENCY_USD_RATE`
+- `WHATSAPP_PHONE` (opcional)
+- `LOW_STOCK_THRESHOLD`
+- `SECURITY_PHASE` (`monitor` o `enforce`)
+- `ADMIN_MFA_REQUIRED` (`0/1`, aplica a `staff/superusers`)
+- `AXES_FAILURE_LIMIT`
+- `AXES_COOLOFF_HOURS`
 
-Hardening recomendado en producción:
+## Seguridad robusta por fases
+- Fase monitor:
+  - `SECURITY_PHASE=monitor`
+  - `ADMIN_MFA_REQUIRED=0`
+  - CSP en `Content-Security-Policy-Report-Only`
+  - Lockout de admin con Axes (limite recomendado: `8`)
+- Fase enforce:
+  - `SECURITY_PHASE=enforce`
+  - `ADMIN_MFA_REQUIRED=1`
+  - CSP bloqueante (`Content-Security-Policy`)
+  - Lockout mas estricto (limite recomendado: `5`)
+
+MFA admin:
+- Se habilita flujo TOTP en rutas ` /account/... ` (two-factor).
+- Cuando `ADMIN_MFA_REQUIRED=1`, usuarios `staff/superuser` son redirigidos al flujo MFA antes de entrar a `/admin/`.
+
+### Nota CSRF
+`storefront.js` usa cookie `csrftoken` para enviar `X-CSRFToken`, por eso `CSRF_COOKIE_HTTPONLY` permanece en `0` por defecto.  
+Si cambias a `1`, debes migrar a estrategia con token en DOM/meta.
+
+## Render (Blueprint)
+En la raíz del repo existe `render.yaml` con `rootDir: ecommerce_perle`.
+
+Variables recomendadas en Render:
+- `DJANGO_SECRET_KEY` (generateValue)
 - `DEBUG=0`
-- `SECURE_SSL_REDIRECT=1`
-- `SECURE_HSTS_SECONDS` (ej. `300` inicial, luego mayor)
-- `SECURE_HSTS_INCLUDE_SUBDOMAINS=1`
-- `SECURE_HSTS_PRELOAD` según política de dominio
-- `SESSION_COOKIE_SAMESITE=Lax`
-- `CSRF_COOKIE_SAMESITE=Lax`
+- `ALLOWED_HOSTS=<tu-dominio-render>`
+- `CSRF_TRUSTED_ORIGINS=https://<tu-dominio-render>`
+- `DATABASE_URL` (desde la DB de Render)
+- `DB_CONN_MAX_AGE=600`
+- `DB_SSL_REQUIRE=1`
+- `WHATSAPP_PHONE` (opcional)
+- `SECURE_HSTS_PRELOAD=1`
 
-Nota:
-- Si `DATABASE_URL` está vacío, usa fallback de engine local.
-- En `DEBUG=0`, el proyecto bloquea SQLite por seguridad de despliegue.
+## Smoke test post deploy (10 min)
+1. `/` carga estilos y cards premium.
+2. Agregar producto al carrito actualiza badge y total.
+3. `/cart/` permite subir/bajar cantidad, eliminar y vaciar.
+4. `/checkout/` confirma orden y muestra confirmación.
+5. `/orders/confirmation/<uuid>/`:
+   - misma sesión: `200`
+   - sesión diferente: `404`
+6. Con `WHATSAPP_PHONE=""`: no debe existir `wa.me`.
+7. Con `WHATSAPP_PHONE` con valor: aparecen links WA en footer/FAB/confirmación.
+8. Admin:
+   - KPIs visibles en home de admin.
+   - acciones masivas de órdenes funcionan.
+   - ajuste de inventario registra movimientos.
 
-## 10. Comandos de calidad recomendados
+## Calidad, seguridad y tests
 ```bash
 python manage.py check
-python manage.py check --deploy
+DEBUG=0 DJANGO_SECRET_KEY='long-secret-50-plus-characters' ALLOWED_HOSTS='perle-ecommerce.onrender.com' CSRF_TRUSTED_ORIGINS='https://perle-ecommerce.onrender.com' DATABASE_URL='sqlite:///db.sqlite3' python manage.py check --deploy
 python manage.py makemigrations --check --dry-run
 python manage.py test
 python manage.py collectstatic --noinput
-python -m compileall .
+ruff check .
+bandit -q -r apps core -lll
+pip-audit -r requirements.txt
+semgrep --config p/django --config p/python apps core
 ```
 
-## 11. Deploy en Render
-Recomendaciones:
-- `render.yaml` en raíz del repo (con `rootDir: ecommerce_perle`).
-- Build:
-  - `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput`
-- Start:
-  - `gunicorn core.wsgi:application`
+Prueba dinamica local (servidor ya corriendo):
+```bash
+mkdir -p audit/security_round_local
+python scripts/security/dast_auth_csrf.py --base-url http://127.0.0.1:8000 --out audit/security_round_local/dast_auth_csrf.json --failure-limit 8 --scope web
+python scripts/security/verify_security_headers.py --base-url http://127.0.0.1:8000 --out audit/security_round_local/security_headers.json --phase monitor --scope web --dast-report audit/security_round_local/dast_auth_csrf.json
+python scripts/security/gate_security.py --input-dir audit/security_round_local --out audit/security_round_local/security_gate_summary.json --markdown audit/security_round_local/security_gate_summary.md --strict-critical-high
+```
 
-Importante:
-- Ejecutar `python manage.py seed_demo` solo una vez en producción.
-- No hardcodear `WHATSAPP_PHONE` en código; definirlo como variable de entorno.
+Auditoria CVE:
+- Fuente canónica: job CI (`quality-and-security`) que genera `pip-audit.json` como artifact.
+- En local sin internet, `pip-audit` puede fallar por entorno (DNS/salida).
+- Opcional local corporativo: exportar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` para usar mirror interno.
 
-## 12. Smoke test post-deploy (10 min)
-1. `/` carga con estilos y productos.
-2. Añadir al carrito actualiza badge y total.
-3. `/cart/` muestra ítems y totales correctos.
-4. `/checkout/` crea orden y devuelve links.
-5. `/orders/confirmation/<uuid>/` funciona con la misma sesión y bloquea otras.
-6. Legales (`/legal/*`) responden 200.
-7. Con `WHATSAPP_PHONE` vacío: sin links/FAB WhatsApp.
+## E2E local
+```bash
+npm install
+npx playwright install chromium
+npx playwright test --project=chromium
+```
 
-## 13. Estado actual y limitaciones conocidas
-- `wompi/stripe` están declarados como opciones, pero no hay integración de cobro real todavía (gateway actual es dummy).
-- El flujo principal está orientado a checkout por WhatsApp.
-- La app no implementa upload de archivos de usuario.
+E2E QA aislado:
+```bash
+npm run test:e2e:qa
+```
 
-## 14. Auditoría y trazabilidad
-Se dejó carpeta `audit/` con evidencia técnica de revisión AppSec + QA:
-- baseline de entorno
-- smoke
-- pruebas dinámicas manuales
-- regresión post-fix
-- reporte final y checklist de release
+Estrés PostgreSQL local (dockerizado):
+```bash
+bash scripts/qa/run_pg_stress.sh
+```
 
-Archivos clave:
-- `audit/final_report.md`
-- `audit/release_checklist.md`
-- `audit/commands.log`
+## QA manual
+Checklist completa: `docs/QA_CHECKLIST.md`
 
----
-Si quieres convertir este MVP en versión productiva “ready-to-scale”, el siguiente paso recomendado es integrar pasarela real de pagos, observabilidad centralizada y pipeline CI con SAST/CVE/coverage automáticos.
+## Runbook de operación
+`docs/RUNBOOK.md`
+
+## Screenshots
+- `docs/screenshots/home_desktop.png`
+- `docs/screenshots/home_mobile360.png`
+- `docs/screenshots/product_desktop.png`
+- `docs/screenshots/product_mobile360.png`
+- `docs/screenshots/cart_desktop.png`
+- `docs/screenshots/cart_mobile360.png`
+- `docs/screenshots/checkout_desktop.png`
+- `docs/screenshots/checkout_mobile360.png`
+- `docs/screenshots/confirmation_desktop.png`
+- `docs/screenshots/confirmation_mobile360.png`
+- `docs/screenshots/admin-login.png`
+- `docs/screenshots/admin-dashboard-premium.png`
+- `docs/screenshots/admin-orders-changelist.png`
+- `docs/screenshots/admin-orders-action-confirmation.png`
+- `docs/screenshots/admin-stock-adjust-confirmation.png`

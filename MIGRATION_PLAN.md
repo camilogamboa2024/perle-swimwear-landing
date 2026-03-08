@@ -83,3 +83,16 @@ Order *---0..1 Coupon
 - [ ] Sin errores en consola
 - [ ] Imágenes lazy-load
 - [ ] Lighthouse básico (Perf/Acc/Best Practices)
+
+## OUTPUT 5 — Actualización premium (2026-02)
+- Frontend público migrado a sistema de diseño con tokens (`perle.css`) y layout responsive premium.
+- Admin migrado a tema moderno (Jazzmin) y panel operativo con acciones masivas de órdenes + dashboard KPI.
+- Dominio extendido:
+  - `Order.STATUS_CHOICES` incorpora `shipped` y `delivered`.
+  - `Coupon` incorpora `expires_at` y validación de porcentaje `0..100`.
+- Checkout endurecido para cupones:
+  - cupón inválido/expirado retorna `400` con `code=invalid_coupon`.
+- QA y seguridad:
+  - tests unit/integration ampliados
+  - base E2E con Playwright
+  - CI con check/migrations/tests/lint/bandit/pip-audit/e2e.

@@ -8,3 +8,8 @@ db.sqlite3
 .env
 staticfiles/
 .pytest_cache/
+node_modules/
+playwright-report/
+playwright-report-qa/
+test-results/
+test-results-qa/

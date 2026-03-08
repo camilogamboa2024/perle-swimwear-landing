@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "violations": [],
+  "observed": {
+    "cart_5xx": 0,
+    "checkout_5xx": 0,
+    "checkout_success_201": 8,
+    "stock_final": 0,
+    "stock_cap": 20
+  }
+}

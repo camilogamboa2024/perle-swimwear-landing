@@ -1,0 +1,140 @@
+{
+  "input_dir": "audit/security_round_20260221-121734",
+  "verdict": "FAIL",
+  "totals": {
+    "critical": 0,
+    "high": 5,
+    "medium": 3,
+    "low": 9
+  },
+  "per_source": {
+    "semgrep": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "dast_auth_csrf": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "security_headers": {
+      "critical": 0,
+      "high": 3,
+      "medium": 0,
+      "low": 0
+    },
+    "zap": {
+      "critical": 0,
+      "high": 0,
+      "medium": 3,
+      "low": 9
+    }
+  },
+  "findings": [
+    {
+      "source": "semgrep",
+      "id": "semgrep_report_missing",
+      "severity": "high",
+      "message": "No se encontro o no se pudo parsear semgrep.json"
+    },
+    {
+      "source": "dast_auth_csrf",
+      "id": "admin_bruteforce_no_lockout",
+      "severity": "high",
+      "message": "No se detecto lockout de admin tras 10 intentos fallidos."
+    },
+    {
+      "source": "security_headers",
+      "id": "missing_content-security-policy-report-only_/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /."
+    },
+    {
+      "source": "security_headers",
+      "id": "missing_content-security-policy-report-only_/admin/login/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /admin/login/."
+    },
+    {
+      "source": "security_headers",
+      "id": "missing_content-security-policy-report-only_/checkout/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /checkout/."
+    },
+    {
+      "source": "zap",
+      "id": "10038",
+      "severity": "medium",
+      "message": "Content Security Policy (CSP) Header Not Set"
+    },
+    {
+      "source": "zap",
+      "id": "10098",
+      "severity": "medium",
+      "message": "Cross-Domain Misconfiguration"
+    },
+    {
+      "source": "zap",
+      "id": "90003",
+      "severity": "medium",
+      "message": "Sub Resource Integrity Attribute Missing"
+    },
+    {
+      "source": "zap",
+      "id": "10010",
+      "severity": "low",
+      "message": "Cookie No HttpOnly Flag"
+    },
+    {
+      "source": "zap",
+      "id": "90004",
+      "severity": "low",
+      "message": "Cross-Origin-Embedder-Policy Header Missing or Invalid"
+    },
+    {
+      "source": "zap",
+      "id": "90004",
+      "severity": "low",
+      "message": "Cross-Origin-Resource-Policy Header Missing or Invalid"
+    },
+    {
+      "source": "zap",
+      "id": "10063",
+      "severity": "low",
+      "message": "Permissions Policy Header Not Set"
+    },
+    {
+      "source": "zap",
+      "id": "10036",
+      "severity": "low",
+      "message": "Server Leaks Version Information via \"Server\" HTTP Response Header Field"
+    },
+    {
+      "source": "zap",
+      "id": "10024",
+      "severity": "low",
+      "message": "Information Disclosure - Sensitive Information in URL"
+    },
+    {
+      "source": "zap",
+      "id": "10112",
+      "severity": "low",
+      "message": "Session Management Response Identified"
+    },
+    {
+      "source": "zap",
+      "id": "10049",
+      "severity": "low",
+      "message": "Storable and Cacheable Content"
+    },
+    {
+      "source": "zap",
+      "id": "10031",
+      "severity": "low",
+      "message": "User Controllable HTML Element Attribute (Potential XSS)"
+    }
+  ]
+}

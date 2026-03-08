@@ -1,5 +1,6 @@
 from django.test import TestCase, override_settings
 
+from apps.catalog.admin import ProductVariantPricingForm
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.inventory.models import StockLevel
 
@@ -27,7 +28,7 @@ class ActiveVariantsVisibilityTest(TestCase):
             sku='SKU-ACTIVA',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         self.inactive_variant = ProductVariant.objects.create(
@@ -35,7 +36,7 @@ class ActiveVariantsVisibilityTest(TestCase):
             sku='SKU-INACTIVA',
             size='L',
             color='Marfil',
-            price_cop=120000,
+            price_usd_cents=120000,
             is_active=False,
         )
         StockLevel.objects.update_or_create(variant=self.active_variant, defaults={'available': 3})
@@ -60,3 +61,90 @@ class ActiveVariantsVisibilityTest(TestCase):
         variant_ids = {variant['id'] for variant in payload['variants']}
         self.assertIn(self.active_variant.id, variant_ids)
         self.assertNotIn(self.inactive_variant.id, variant_ids)
+        active_variant_payload = next(variant for variant in payload['variants'] if variant['id'] == self.active_variant.id)
+        self.assertIn('price_usd_cents', active_variant_payload)
+        self.assertIn('compare_at_price_usd_cents', active_variant_payload)
+        self.assertIn('price_usd', active_variant_payload)
+        self.assertIn('price_cop', active_variant_payload)
+        self.assertEqual(active_variant_payload['price_usd_cents'], active_variant_payload['price_cop'])
+
+
+class TemplateRegressionTest(TestCase):
+    def test_base_template_references_new_logo_and_favicon_png_assets(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "brand/perle-wordmark.png")
+        self.assertContains(response, "brand/favicon.png")
+
+    def test_home_currency_labels_are_usd(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'USD')
+        self.assertNotContains(response, 'COP')
+
+    def test_checkout_template_renders_expected_controls(self):
+        response = self.client.get('/checkout/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-testid="checkout-page"')
+        self.assertContains(response, 'id="checkout-form"')
+        self.assertContains(response, 'id="checkout-result"')
+        self.assertContains(response, 'name="coupon_code"')
+
+    def test_cart_template_renders_cart_data_hooks(self):
+        response = self.client.get('/cart/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-cart-page')
+        self.assertContains(response, 'data-testid="go-checkout"')
+        self.assertContains(response, 'id="cart-items"')
+
+
+class WebSecurityHeadersTest(TestCase):
+    def test_storefront_responses_include_report_only_csp_in_monitor_phase(self):
+        for path in ('/', '/checkout/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('Content-Security-Policy-Report-Only', response)
+            self.assertNotIn('Content-Security-Policy', response)
+            self.assertIn("default-src 'self'", response['Content-Security-Policy-Report-Only'])
+            self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
+            self.assertEqual(response['X-Frame-Options'], 'DENY')
+            self.assertIn('strict-origin-when-cross-origin', response['Referrer-Policy'])
+
+    @override_settings(SECURITY_PHASE='enforce')
+    def test_storefront_responses_include_enforced_csp_in_enforce_phase(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Content-Security-Policy', response)
+        self.assertNotIn('Content-Security-Policy-Report-Only', response)
+        self.assertIn("default-src 'self'", response['Content-Security-Policy'])
+
+    @override_settings(WHATSAPP_PHONE='573001112233')
+    def test_external_blank_links_include_noopener_noreferrer(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'rel="noopener noreferrer"')
+        self.assertContains(response, 'href="https://wa.me/573001112233"')
+
+
+class ProductVariantPricingFormTest(TestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name='Form', slug='form')
+        self.product = Product.objects.create(name='Producto Form', slug='producto-form', category=self.category, description='x')
+
+    def test_admin_form_converts_decimal_usd_to_cents(self):
+        form = ProductVariantPricingForm(
+            data={
+                'product': self.product.id,
+                'sku': 'SKU-FORM-1',
+                'size': 'M',
+                'color': 'Aqua',
+                'price_usd': '49.14',
+                'compare_at_price_usd': '56.94',
+                'is_default': 'on',
+                'is_active': 'on',
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        variant = form.save()
+        self.assertEqual(variant.price_usd_cents, 4914)
+        self.assertEqual(variant.compare_at_price_usd_cents, 5694)

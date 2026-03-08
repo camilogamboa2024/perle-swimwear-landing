@@ -1,0 +1,1 @@
+DAST auth/csrf -> critical=1 high=2 medium=0 low=0 passed_checks=0/3

@@ -1,9 +1,56 @@
 {% extends 'base.html' %}
+{% load money %}
+{% block title %}Confirmación de pedido | Perle{% endblock %}
 {% block content %}
-<section class="container">
-  <h1>Pedido confirmado</h1>
-  <p>ID público: <strong>{{ order.public_id }}</strong></p>
-  <p>Total: ${{ order.grand_total }} COP</p>
-  {% if whatsapp_url %}<a class="btn" href="{{ whatsapp_url }}">Finalizar por WhatsApp</a>{% endif %}
+<section class="container section-space" data-testid="confirmation-page">
+  <article class="card confirmation-card">
+    <p class="eyebrow">Compra exitosa</p>
+    <h1>Pedido confirmado</h1>
+    <p class="muted">Gracias por comprar en Perle Panamá. Guarda este resumen para seguimiento y soporte.</p>
+
+    <div class="summary-row">
+      <span>Número público</span>
+      <strong>{{ order.public_id }}</strong>
+    </div>
+    <div class="summary-row">
+      <span>Estado</span>
+      <strong>{{ order.get_status_display }}</strong>
+    </div>
+    <div class="summary-row total">
+      <span>Total</span>
+      <strong>{{ order.grand_total|usd }}</strong>
+    </div>
+
+    <h2>Dirección de entrega</h2>
+    <p>
+      {{ order.address.line1 }}<br>
+      {{ order.address.city }}, {{ order.address.state }}<br>
+      {{ order.address.country }}
+    </p>
+
+    <h2>Items</h2>
+    <ul class="confirmation-items">
+      {% for item in order.items.all %}
+      <li>
+        <span>{{ item.variant.product.name }} · {{ item.variant.size }}/{{ item.variant.color }} · x{{ item.quantity }}</span>
+        <strong>{{ item.line_total|usd }}</strong>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <div class="alert alert-info">
+      <strong>Siguiente paso:</strong>
+      revisa tu correo y conserva este número para atención posventa.
+    </div>
+
+    <div class="confirmation-actions">
+      <a class="btn btn-outline" href="{% url 'home' %}#catalogo-section">Seguir comprando</a>
+      {% if whatsapp_url %}
+      <a class="btn btn-primary" href="{{ whatsapp_url }}" rel="noopener noreferrer" target="_blank" data-testid="confirmation-wa">
+        Continuar por WhatsApp
+      </a>
+      {% endif %}
+    </div>
+  </article>
 </section>
 {% endblock %}
