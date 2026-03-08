@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load money %}
-{% block title %}Perle Panamá | Luxury Aqua Swimwear{% endblock %}
+{% block title %}Perle {{ MARKET_COUNTRY_LABEL }} | Luxury Aqua Swimwear{% endblock %}
 {% block content %}
 <section class="hero hero-editorial">
   <div class="container hero-editorial-grid">
@@ -8,7 +8,7 @@
       <p class="eyebrow">Marea Editorial 2026</p>
       <h1>Bikinis que se sienten como portada de verano.</h1>
       <p class="hero-copy">
-        Selección premium de Perle Panamá con siluetas limpias, ajuste real y acabados de confección fina.
+        Selección premium de Perle {{ MARKET_COUNTRY_LABEL }} con siluetas limpias, ajuste real y acabados de confección fina.
         Una experiencia de compra más ágil, clara y con personalidad.
       </p>
       <div class="hero-editorial-actions">
@@ -39,7 +39,7 @@
   </article>
   <article class="metric-card">
     <strong>$180</strong>
-    <span>Umbral para envío gratis en Panamá</span>
+    <span>Umbral para envío gratis en {{ MARKET_COUNTRY_LABEL }}</span>
   </article>
 </section>
 
@@ -120,11 +120,15 @@
     <p class="eyebrow">Perle Insiders</p>
     <h2>Nuevos drops antes que nadie</h2>
     <p>Recibe alertas de stock, guía de fit y preventas de colecciones editoriales.</p>
-    <form class="insiders-form" action="#" method="post">
+    <div class="insiders-form" role="group" aria-label="Canales de novedades de Perle">
       <label class="sr-only" for="insiders-email">Correo para novedades</label>
-      <input id="insiders-email" type="email" class="input" placeholder="tu@email.com" autocomplete="email">
-      <button type="submit" class="btn btn-primary">Suscribirme</button>
-    </form>
+      <input id="insiders-email" type="email" class="input" placeholder="tu@email.com" autocomplete="email" disabled aria-disabled="true">
+      {% if WHATSAPP_PHONE %}
+      <a href="https://wa.me/{{ WHATSAPP_PHONE }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Recibir novedades por WhatsApp</a>
+      {% else %}
+      <p class="helper">Novedades y asesoría disponibles por nuestros canales oficiales.</p>
+      {% endif %}
+    </div>
   </article>
 </section>
 

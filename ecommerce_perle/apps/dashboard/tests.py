@@ -39,7 +39,13 @@ class AdminDashboardFeatureTest(TestCase):
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 2})
         customer = Customer.objects.create(email='dashboard-admin@example.com', full_name='Cliente Dashboard')
-        address = Address.objects.create(customer=customer, line1='Calle 100', city='Bogotá', state='DC')
+        address = Address.objects.create(
+            customer=customer,
+            line1='Calle 100',
+            city='Ciudad de Panamá',
+            state='Panamá',
+            country='Panama',
+        )
         order = Order.objects.create(
             customer=customer,
             address=address,

@@ -1,6 +1,9 @@
-# Perle E-commerce (Production-Ready + Premium UI)
+# Perle E-commerce Runtime
 
 Aplicación Django + DRF para catálogo, carrito, checkout y operación interna con panel admin premium.
+
+Este directorio es el runtime canónico del producto. La raíz del repo documenta qué se despliega y qué quedó archivado como legacy.
+Mercado canónico actual: Panamá-first, con moneda USD y persistencia nueva en `country='Panama'`.
 
 Branding activo: wordmark temporal limpio (`static/brand/perle-wordmark.png`) y favicon monograma (`static/brand/favicon.png`) en storefront + admin.
 Cuando se reciba el logo oficial transparente final, se reemplaza este asset sin cambios de lógica.
@@ -63,7 +66,7 @@ Variables clave:
 - `AXES_FAILURE_LIMIT`
 - `AXES_COOLOFF_HOURS`
 
-## Seguridad robusta por fases
+## Seguridad práctica por fases
 - Fase monitor:
   - `SECURITY_PHASE=monitor`
   - `ADMIN_MFA_REQUIRED=0`
@@ -78,6 +81,7 @@ Variables clave:
 MFA admin:
 - Se habilita flujo TOTP en rutas ` /account/... ` (two-factor).
 - Cuando `ADMIN_MFA_REQUIRED=1`, usuarios `staff/superuser` son redirigidos al flujo MFA antes de entrar a `/admin/`.
+- El objetivo es hardening entendible para staging serio y producción pequeña/mediana, no claims enterprise.
 
 ### Nota CSRF
 `storefront.js` usa cookie `csrftoken` para enviar `X-CSRFToken`, por eso `CSRF_COOKIE_HTTPONLY` permanece en `0` por defecto.  
@@ -85,6 +89,15 @@ Si cambias a `1`, debes migrar a estrategia con token en DOM/meta.
 
 ## Render (Blueprint)
 En la raíz del repo existe `render.yaml` con `rootDir: ecommerce_perle`.
+- `preDeployCommand`: ejecuta migraciones fuera del proceso web.
+- `startCommand`: inicia solo Gunicorn.
+- `healthCheckPath`: `/healthz/`.
+- `autoDeployTrigger: checksPass`: evita auto deploys cuando la CI falla.
+
+Estado de validación externa:
+- El blueprint está verificado por código y checks locales.
+- La validación externa sigue pendiente en GitHub/Render desde esta sesión.
+- La última verificación pública del dominio documentado respondió `404 no-server`, así que no se declara staging ni producción desde este repo todavía.
 
 Variables recomendadas en Render:
 - `DJANGO_SECRET_KEY` (generateValue)
@@ -97,7 +110,12 @@ Variables recomendadas en Render:
 - `WHATSAPP_PHONE` (opcional)
 - `SECURE_HSTS_PRELOAD=1`
 
+Nota de dominio:
+- El runtime nuevo persiste `country='Panama'`.
+- Direcciones históricas creadas antes de esta corrección deben revisarse manualmente en admin si se sospecha que quedaron con país incorrecto por el default anterior.
+
 ## Smoke test post deploy (10 min)
+0. `/healthz/` responde `200` con `{"status":"ok","service":"perle-ecommerce"}`.
 1. `/` carga estilos y cards premium.
 2. Agregar producto al carrito actualiza badge y total.
 3. `/cart/` permite subir/bajar cantidad, eliminar y vaciar.
@@ -118,6 +136,7 @@ python manage.py check
 DEBUG=0 DJANGO_SECRET_KEY='long-secret-50-plus-characters' ALLOWED_HOSTS='perle-ecommerce.onrender.com' CSRF_TRUSTED_ORIGINS='https://perle-ecommerce.onrender.com' DATABASE_URL='sqlite:///db.sqlite3' python manage.py check --deploy
 python manage.py makemigrations --check --dry-run
 python manage.py test
+coverage run manage.py test && coverage report
 python manage.py collectstatic --noinput
 ruff check .
 bandit -q -r apps core -lll
@@ -135,8 +154,11 @@ python scripts/security/gate_security.py --input-dir audit/security_round_local 
 
 Auditoria CVE:
 - Fuente canónica: job CI (`quality-and-security`) que genera `pip-audit.json` como artifact.
+- Coverage visible: el mismo job publica `coverage.txt` y `coverage.xml` como artifacts y resumen.
 - En local sin internet, `pip-audit` puede fallar por entorno (DNS/salida).
 - Opcional local corporativo: exportar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` para usar mirror interno.
+- `semgrep` usa `.semgrepignore` para excluir `.venv*`, `staticfiles/` y `audit/`.
+- Los dos templates admin con falso positivo de parsing Django/CSRF quedan suprimidos con `nosemgrep` puntual, no por aceptación de riesgo.
 
 ## E2E local
 ```bash
@@ -160,6 +182,12 @@ Checklist completa: `docs/QA_CHECKLIST.md`
 
 ## Runbook de operación
 `docs/RUNBOOK.md`
+
+## Criterio operativo honesto
+- Apto para demo: sí.
+- Listo para validación externa: sí.
+- Staging serio: pendiente de verificación externa en GitHub/Render.
+- Producción pequeña/mediana: no declarada.
 
 ## Screenshots
 - `docs/screenshots/home_desktop.png`

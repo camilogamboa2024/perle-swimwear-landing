@@ -30,8 +30,8 @@ async function completeCheckoutFlow(page: import("@playwright/test").Page) {
   await page.fill("#checkout-email", "cliente-e2e@example.com");
   await page.fill("#checkout-phone", "3001234567");
   await page.fill("#checkout-line1", "Calle E2E 123");
-  await page.fill("#checkout-city", "Bogota");
-  await page.fill("#checkout-state", "DC");
+  await page.fill("#checkout-city", "Ciudad de Panamá");
+  await page.fill("#checkout-state", "Panamá");
 
   await page.getByTestId("confirm-order").click();
   await expect(page.getByTestId("confirmation-page")).toBeVisible();
@@ -51,4 +51,31 @@ test("sin WHATSAPP_PHONE no se renderizan enlaces wa.me", async ({ page }) => {
   await completeCheckoutFlow(page);
   await expect(page.locator('a[href*="wa.me"]')).toHaveCount(0);
   await expect(page.locator("[data-testid='confirmation-wa']")).toHaveCount(0);
+});
+
+test("carrito vacío muestra estado claro antes de comprar", async ({ page }) => {
+  await page.goto("/cart/");
+  await expect(page.getByTestId("cart-page")).toBeVisible();
+  await expect(page.locator("#cart-empty")).toBeVisible();
+  await expect(page.locator("#cart-status")).toContainText("carrito");
+});
+
+test("cupón inválido muestra feedback estable y no rompe checkout", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("[data-add-cart]").first().click();
+  await page.getByTestId("nav-cart").click();
+  await page.getByTestId("go-checkout").click();
+
+  await page.fill("#checkout-full-name", "Cliente E2E");
+  await page.fill("#checkout-email", "cliente-cupon-e2e@example.com");
+  await page.fill("#checkout-phone", "+50760000000");
+  await page.fill("#checkout-line1", "Calle 50");
+  await page.fill("#checkout-city", "Ciudad de Panamá");
+  await page.fill("#checkout-state", "Panamá");
+  await page.fill("#checkout-coupon", "NOEXISTE");
+
+  await page.getByTestId("confirm-order").click();
+  await expect(page.getByTestId("checkout-page")).toBeVisible();
+  await expect(page.locator("#checkout-alert")).toContainText("Cupón inválido o expirado");
+  await expect(page.locator("#checkout-result")).toBeEmpty();
 });

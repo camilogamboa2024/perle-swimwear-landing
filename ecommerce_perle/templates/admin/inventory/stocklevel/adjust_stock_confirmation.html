@@ -45,6 +45,7 @@
     </div>
   </article>
 
+  {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- Django template includes csrf_token below; Semgrep partial parsing reports a false positive here. #}
   <form method="post" class="card">
     {% csrf_token %}
     <div class="card-body">

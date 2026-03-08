@@ -30,6 +30,7 @@
     </div>
     {% endif %}
 
+    {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- Django template includes csrf_token below; Semgrep partial parsing reports a false positive here. #}
     <form action="{{ app_path }}" method="post" id="login-form" novalidate>
       {% csrf_token %}
       <div class="form-row">

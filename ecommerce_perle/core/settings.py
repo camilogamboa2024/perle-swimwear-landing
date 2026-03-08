@@ -143,7 +143,7 @@ else:
 
 
 AUTHENTICATION_BACKENDS = [
-    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES and not RUNNING_TESTS else []),
+    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES else []),
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -157,7 +157,7 @@ LANGUAGE_CODE = 'es'
 LANGUAGES = [
     ('es', 'Español'),
 ]
-TIME_ZONE = 'America/Bogota'
+TIME_ZONE = 'America/Panama'
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = '/static/'
@@ -168,6 +168,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 WHATSAPP_PHONE = os.getenv('WHATSAPP_PHONE', '')
+MARKET_COUNTRY_NAME = 'Panama'
+MARKET_COUNTRY_LABEL = 'Panamá'
+MARKET_CITY = 'Ciudad de Panamá'
+MARKET_STATE = 'Panamá'
 
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
@@ -216,7 +220,6 @@ JAZZMIN_SETTINGS = {
 
 JAZZMIN_UI_TWEAKS = {
     'theme': 'flatly',
-    'dark_mode_theme': None,
     'accent': 'accent-info',
     'navbar': 'navbar-white navbar-light',
     'no_navbar_border': False,

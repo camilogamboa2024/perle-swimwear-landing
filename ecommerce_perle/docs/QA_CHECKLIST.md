@@ -18,11 +18,13 @@
 - Stepper `− / +` actualiza cantidad.
 - `Eliminar` borra item.
 - `Vaciar carrito` deja estado vacío visible.
+- Región `#cart-status` anuncia cambios del carrito.
 - Input de cupón guarda feedback visual.
 3. Checkout (`/checkout/`)
 - Labels y helpers visibles.
 - Botón muestra estado `Procesando...` con spinner.
 - Errores de validación/cupón aparecen en alert/toast.
+- `#checkout-alert` avisa errores con feedback persistente.
 4. Confirmación (`/orders/confirmation/<uuid>/`)
 - `public_id`, total e items visibles.
 - CTA WhatsApp solo aparece cuando hay teléfono configurado.
@@ -50,6 +52,10 @@
 1. Listados con `loading="lazy"` en imágenes.
 2. Cards y detalle reservan espacio con `aspect-ratio` (sin CLS notorio).
 3. JS sin dependencias externas ni bloqueos visibles en interacción base.
+
+## Evidencia automatizada
+- CI publica artifact de coverage (`coverage.txt`, `coverage.xml`).
+- E2E QA cubre flujo feliz, ausencia de WhatsApp, carrito vacío y cupón inválido.
 
 ## Admin Premium (es-ES)
 0. Tema visual claro profesional (Aqua)

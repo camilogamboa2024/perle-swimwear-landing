@@ -75,6 +75,7 @@ class TemplateRegressionTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "brand/perle-wordmark.png")
         self.assertContains(response, "brand/favicon.png")
+        self.assertContains(response, 'Saltar al contenido principal')
 
     def test_home_currency_labels_are_usd(self):
         response = self.client.get('/')
@@ -82,13 +83,22 @@ class TemplateRegressionTest(TestCase):
         self.assertContains(response, 'USD')
         self.assertNotContains(response, 'COP')
 
+    @override_settings(WHATSAPP_PHONE='')
+    def test_home_insiders_panel_does_not_fake_newsletter_submit_when_unavailable(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'action="#"')
+        self.assertContains(response, 'Novedades y asesoría disponibles por nuestros canales oficiales.')
+
     def test_checkout_template_renders_expected_controls(self):
         response = self.client.get('/checkout/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-testid="checkout-page"')
         self.assertContains(response, 'id="checkout-form"')
         self.assertContains(response, 'id="checkout-result"')
+        self.assertContains(response, 'id="checkout-alert"')
         self.assertContains(response, 'name="coupon_code"')
+        self.assertContains(response, 'Moneda de cobro: USD')
 
     def test_cart_template_renders_cart_data_hooks(self):
         response = self.client.get('/cart/')
@@ -96,6 +106,7 @@ class TemplateRegressionTest(TestCase):
         self.assertContains(response, 'data-cart-page')
         self.assertContains(response, 'data-testid="go-checkout"')
         self.assertContains(response, 'id="cart-items"')
+        self.assertContains(response, 'id="cart-status"')
 
 
 class WebSecurityHeadersTest(TestCase):
@@ -109,6 +120,7 @@ class WebSecurityHeadersTest(TestCase):
             self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
             self.assertEqual(response['X-Frame-Options'], 'DENY')
             self.assertIn('strict-origin-when-cross-origin', response['Referrer-Policy'])
+            self.assertEqual(response['Permissions-Policy'], 'geolocation=(), camera=(), microphone=()')
 
     @override_settings(SECURITY_PHASE='enforce')
     def test_storefront_responses_include_enforced_csp_in_enforce_phase(self):

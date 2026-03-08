@@ -4,9 +4,10 @@
 {% block content %}
 <section class="container section-space cart-page" data-cart-page data-testid="cart-page">
   <div class="section-head">
-    <p class="eyebrow">Carrito · Perle Swimwear</p>
+    <p class="eyebrow">Paso 1 de 3 · Carrito</p>
     <h1>Tu carrito</h1>
-    <p>Edita cantidades y cierra tu pedido con checkout directo y seguro.</p>
+    <p>Edita cantidades, revisa tu total en USD y continúa a un checkout directo y seguro en {{ MARKET_COUNTRY_LABEL }}.</p>
+    <p id="cart-status" class="helper" aria-live="polite">El carrito se sincroniza al instante.</p>
   </div>
 
   <div class="cart-layout fx-reveal">
@@ -91,14 +92,14 @@
           <span>Total</span>
           <strong id="cart-total-main">{{ totals.grand_total_cents|usd }}</strong>
         </div>
-        <p class="cart-shipping-note">Lista para envío gratis.</p>
+        <p class="cart-shipping-note">Envío gratis desde USD 180 dentro de {{ MARKET_COUNTRY_LABEL }}.</p>
         <div class="cart-progress-line" aria-hidden="true"></div>
 
         <div class="form-field">
           <label for="cart-coupon" class="form-label">Cupón</label>
           <input id="cart-coupon" class="input" type="text" maxlength="40" placeholder="Ej: PERLE10" />
           <button type="button" class="btn btn-outline" data-cart-apply-coupon>Aplicar cupón</button>
-          <p class="helper" id="cart-coupon-feedback">El cupón se validará al confirmar checkout.</p>
+          <p class="helper" id="cart-coupon-feedback" aria-live="polite">El cupón se validará al confirmar checkout.</p>
         </div>
 
         <a href="{% url 'checkout-page' %}" class="btn btn-primary full" data-testid="go-checkout">

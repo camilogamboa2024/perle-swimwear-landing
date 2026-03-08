@@ -72,6 +72,22 @@ body {
   line-height: var(--lh);
 }
 
+.skip-link {
+  position: absolute;
+  left: var(--s-3);
+  top: -48px;
+  z-index: 200;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--text);
+  color: #fff;
+  font-weight: 700;
+}
+
+.skip-link:focus-visible {
+  top: var(--s-3);
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -917,6 +933,13 @@ select {
   margin: 0;
   color: var(--muted);
   font-size: var(--fs-xs);
+}
+
+.input:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  background: color-mix(in srgb, var(--surface-2) 84%, #fff);
 }
 
 .checkout-form {

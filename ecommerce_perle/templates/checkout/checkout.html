@@ -3,14 +3,15 @@
 {% block content %}
 <section class="container section-space checkout-page fx-reveal" data-testid="checkout-page">
   <div class="section-head">
-    <p class="eyebrow">Checkout seguro · Perle</p>
+    <p class="eyebrow">Paso 2 de 3 · Checkout seguro</p>
     <h1>Confirma tu pedido</h1>
-    <p>Completa tus datos para reservar stock y generar confirmación inmediata.</p>
+    <p>Completa tus datos para reservar stock, dejar la dirección correcta en {{ MARKET_COUNTRY_LABEL }} y generar confirmación inmediata.</p>
   </div>
 
   <div class="checkout-grid">
     <form id="checkout-form" class="card checkout-form" novalidate>
-      <div id="checkout-alert" class="alert alert-info" hidden></div>
+      <div id="checkout-alert" class="alert alert-info" role="alert" aria-live="assertive" tabindex="-1" hidden></div>
+      <p class="helper">Moneda de cobro: USD. País de entrega actual: {{ MARKET_COUNTRY_LABEL }}.</p>
 
       <div class="form-grid">
         <div class="form-field">
@@ -39,13 +40,13 @@
 
         <div class="form-field">
           <label for="checkout-city" class="form-label">Ciudad</label>
-          <input id="checkout-city" class="input" name="city" placeholder="Ciudad de Panamá" required autocomplete="address-level2">
+          <input id="checkout-city" class="input" name="city" placeholder="{{ MARKET_CITY }}" required autocomplete="address-level2">
           <p class="helper" data-field-error="city"></p>
         </div>
 
         <div class="form-field">
           <label for="checkout-state" class="form-label">Provincia</label>
-          <input id="checkout-state" class="input" name="state" placeholder="Panamá" required autocomplete="address-level1">
+          <input id="checkout-state" class="input" name="state" placeholder="{{ MARKET_STATE }}" required autocomplete="address-level1">
           <p class="helper" data-field-error="state"></p>
         </div>
 
@@ -70,7 +71,7 @@
         <span data-button-label>Confirmar pedido</span>
         <span data-button-spinner aria-hidden="true" hidden>⏳</span>
       </button>
-      <p id="checkout-result" class="checkout-result" aria-live="polite"></p>
+      <p id="checkout-result" class="checkout-result" role="status" aria-live="polite"></p>
     </form>
 
     <div class="card checkout-help-card">
@@ -81,7 +82,7 @@
           <li>Si tienes cupón, aplícalo antes de enviar el formulario.</li>
           <li>Recibirás número de pedido al finalizar.</li>
         </ul>
-        <p class="helper">Atención humana para soporte de talla y postventa en Panamá.</p>
+        <p class="helper">Atención humana para soporte de talla y postventa en {{ MARKET_COUNTRY_LABEL }}.</p>
       </div>
     </div>
   </div>
