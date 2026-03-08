@@ -24,7 +24,7 @@ class InventoryAdminAdjustStockTest(TestCase):
             sku='SKU-INV-ADMIN',
             size='M',
             color='Negro',
-            price_cop=99000,
+            price_usd_cents=99000,
             is_active=True,
         )
         self.stock, _ = StockLevel.objects.update_or_create(variant=variant, defaults={'available': 1})

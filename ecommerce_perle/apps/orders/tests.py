@@ -21,7 +21,7 @@ class CartApiCsrfTest(TestCase):
             sku='SKU-CSRF-1',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
@@ -93,7 +93,7 @@ class CartStockValidationTest(TestCase):
             sku='SKU-STOCK-1',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 2})
@@ -127,7 +127,17 @@ class CartStockValidationTest(TestCase):
             **headers,
         )
         self.assertEqual(add_response.status_code, 201)
-        item_id = add_response.json()['items'][0]['id']
+        add_payload = add_response.json()
+        item_payload = add_payload['items'][0]
+        self.assertIn('unit_price_cents', item_payload)
+        self.assertIn('unit_price_usd', item_payload)
+        self.assertIn('unit_price', item_payload)
+        self.assertEqual(item_payload['unit_price_cents'], item_payload['unit_price'])
+        self.assertIn('subtotal_cents', add_payload['totals'])
+        self.assertIn('discount_total_cents', add_payload['totals'])
+        self.assertIn('grand_total_cents', add_payload['totals'])
+        self.assertIn('subtotal', add_payload['totals'])
+        item_id = item_payload['id']
 
         patch_response = self.client.patch(
             f'/api/cart/items/{item_id}/',
@@ -203,7 +213,7 @@ class CartCrudFlowTest(TestCase):
             sku='SKU-CRUD-1',
             size='M',
             color='Azul',
-            price_cop=89000,
+            price_usd_cents=89000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 6})
@@ -264,7 +274,7 @@ class OrderConfirmationSessionGuardTest(TestCase):
             sku='SKU-GUARD-1',
             size='S',
             color='Negro',
-            price_cop=120000,
+            price_usd_cents=120000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=variant, defaults={'available': 4})
@@ -334,7 +344,7 @@ class CartConcurrencyHandlingTest(TestCase):
             sku='SKU-CONC-1',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 10})

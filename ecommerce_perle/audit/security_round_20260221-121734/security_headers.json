@@ -1,0 +1,95 @@
+{
+  "tool": "verify_security_headers",
+  "phase": "monitor",
+  "base_url": "http://127.0.0.1:8014",
+  "checks": [
+    {
+      "path": "/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sat, 21 Feb 2026 17:17:52 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "11929",
+        "content-language": "es",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=vS1LwNpquPSmjLsMUHy7S33JyUetaqyI; expires=Sat, 20 Feb 2027 17:17:52 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": [
+        "content-security-policy-report-only"
+      ]
+    },
+    {
+      "path": "/admin/login/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sat, 21 Feb 2026 17:17:52 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "expires": "Sat, 21 Feb 2026 17:17:52 GMT",
+        "cache-control": "max-age=0, no-cache, no-store, must-revalidate, private",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "8231",
+        "content-language": "es",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=7pw5kdv8qh6ejDUcMzf1PbpbO24Dr43Q; expires=Sat, 20 Feb 2027 17:17:52 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": [
+        "content-security-policy-report-only"
+      ]
+    },
+    {
+      "path": "/checkout/",
+      "status_code": 200,
+      "headers": {
+        "date": "Sat, 21 Feb 2026 17:17:52 GMT",
+        "server": "WSGIServer/0.2 CPython/3.11.2",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "Cookie, Accept-Language",
+        "x-frame-options": "DENY",
+        "content-length": "7335",
+        "content-language": "es",
+        "strict-transport-security": "max-age=300; includeSubDomains; preload",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "cross-origin-opener-policy": "same-origin",
+        "set-cookie": "csrftoken=9Rt8AJ1kvYcTL3nO0N6Z9DaFDzWFJRwt; expires=Sat, 20 Feb 2027 17:17:52 GMT; Max-Age=31449600; Path=/; SameSite=Lax"
+      },
+      "missing": [
+        "content-security-policy-report-only"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "missing_content-security-policy-report-only_/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /."
+    },
+    {
+      "id": "missing_content-security-policy-report-only_/admin/login/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /admin/login/."
+    },
+    {
+      "id": "missing_content-security-policy-report-only_/checkout/",
+      "severity": "high",
+      "message": "Falta content-security-policy-report-only en /checkout/."
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  }
+}

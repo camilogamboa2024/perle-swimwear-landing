@@ -8,6 +8,8 @@ from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django.utils import timezone
 
+from apps.orders.money import format_usd
+
 from .models import Cart, CartItem, Coupon, Order, OrderItem, OrderStatusHistory
 
 
@@ -68,7 +70,16 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     can_delete = False
-    readonly_fields = ('variant', 'quantity', 'unit_price', 'line_total')
+    fields = ('variant', 'quantity', 'unit_price_usd', 'line_total_usd')
+    readonly_fields = ('variant', 'quantity', 'unit_price_usd', 'line_total_usd')
+
+    @admin.display(description='Precio unitario')
+    def unit_price_usd(self, obj):
+        return format_usd(obj.unit_price)
+
+    @admin.display(description='Total línea')
+    def line_total_usd(self, obj):
+        return format_usd(obj.line_total)
 
 
 @admin.register(Order)
@@ -78,7 +89,7 @@ class OrderAdmin(admin.ModelAdmin):
         'customer',
         'customer_email',
         'status_badge',
-        'grand_total_cop',
+        'grand_total_usd',
         'payment_method',
         'created_at',
     )
@@ -93,9 +104,9 @@ class OrderAdmin(admin.ModelAdmin):
         'address_snapshot',
         'coupon',
         'payment_method',
-        'subtotal',
-        'discount_total',
-        'grand_total',
+        'subtotal_usd',
+        'discount_total_usd',
+        'grand_total_usd',
         'created_at',
         'whatsapp_message',
         'paid_at',
@@ -129,9 +140,9 @@ class OrderAdmin(admin.ModelAdmin):
             'Montos',
             {
                 'fields': (
-                    'subtotal',
-                    'discount_total',
-                    'grand_total',
+                    'subtotal_usd',
+                    'discount_total_usd',
+                    'grand_total_usd',
                     'coupon',
                 )
             },
@@ -169,10 +180,17 @@ class OrderAdmin(admin.ModelAdmin):
             obj.get_status_display(),
         )
 
+    @admin.display(ordering='subtotal', description='Subtotal')
+    def subtotal_usd(self, obj):
+        return format_usd(obj.subtotal)
+
+    @admin.display(ordering='discount_total', description='Descuento')
+    def discount_total_usd(self, obj):
+        return format_usd(obj.discount_total)
+
     @admin.display(ordering='grand_total', description='Total')
-    def grand_total_cop(self, obj):
-        value = f'{obj.grand_total:,.0f}'.replace(',', '.')
-        return f'${value} COP'
+    def grand_total_usd(self, obj):
+        return format_usd(obj.grand_total)
 
     @admin.display(description='Cliente')
     def customer_snapshot(self, obj):
@@ -358,9 +376,17 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('order', 'variant', 'quantity', 'unit_price', 'line_total')
+    list_display = ('order', 'variant', 'quantity', 'unit_price_usd', 'line_total_usd')
     search_fields = ('variant__sku', 'order__public_id')
     list_filter = ('order__created_at',)
+
+    @admin.display(ordering='unit_price', description='Precio unitario')
+    def unit_price_usd(self, obj):
+        return format_usd(obj.unit_price)
+
+    @admin.display(ordering='line_total', description='Total línea')
+    def line_total_usd(self, obj):
+        return format_usd(obj.line_total)
 
 
 @admin.register(OrderStatusHistory)

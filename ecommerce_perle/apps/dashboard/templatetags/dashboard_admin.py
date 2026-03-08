@@ -43,7 +43,7 @@ def _line_series(*, today, days, billable_statuses):
     for row in revenue_rows:
         row_date = row['created_at__date']
         if row_date in revenue_map:
-            revenue_map[row_date] = row['total'] or 0
+            revenue_map[row_date] = round((row['total'] or 0) / 100, 2)
 
     labels = [day.strftime('%d/%m') for day in dates]
     return {

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}Carrito | Perle{% endblock %}
 {% block content %}
 <section class="container section-space cart-page" data-cart-page data-testid="cart-page">
@@ -52,7 +53,7 @@
                     <button type="button" class="btn btn-ghost" data-cart-increase="{{ item.id }}" aria-label="Aumentar cantidad">+</button>
                   </div>
                 </td>
-                <td>${{ item.variant.price_cop }} COP</td>
+                <td>{{ item.variant.price_usd_cents|usd }}</td>
                 <td>
                   <button type="button" class="btn btn-danger" data-cart-remove="{{ item.id }}">Eliminar</button>
                 </td>
@@ -80,15 +81,15 @@
         </div>
         <div class="summary-row">
           <span>Subtotal</span>
-          <strong id="cart-subtotal">${{ totals.subtotal }} COP</strong>
+          <strong id="cart-subtotal">{{ totals.subtotal_cents|usd }}</strong>
         </div>
         <div class="summary-row">
           <span>Descuento</span>
-          <strong id="cart-discount">$0 COP</strong>
+          <strong id="cart-discount">{{ totals.discount_total_cents|usd }}</strong>
         </div>
         <div class="summary-row total">
           <span>Total</span>
-          <strong id="cart-total-main">${{ totals.grand_total }} COP</strong>
+          <strong id="cart-total-main">{{ totals.grand_total_cents|usd }}</strong>
         </div>
         <p class="cart-shipping-note">Lista para envío gratis.</p>
         <div class="cart-progress-line" aria-hidden="true"></div>

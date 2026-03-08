@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}{{ product.name }} | Perle{% endblock %}
 {% block content %}
 <section class="container section-space product-detail-page" data-testid="product-detail">
@@ -51,7 +52,7 @@
         >
           <div>
             <h3>{{ v.size }} · {{ v.color }}</h3>
-            <p class="price"><strong>${{ v.price_cop }}</strong> COP</p>
+            <p class="price"><strong>{{ v.price_usd_cents|usd }}</strong></p>
             {% if v.stock_level.available > 2 %}
             <p class="stock-ok">En stock</p>
             {% elif v.stock_level.available > 0 %}

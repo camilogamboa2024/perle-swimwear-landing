@@ -19,6 +19,7 @@ python manage.py collectstatic --noinput
    - órdenes del día/semana
    - bajo stock
    - ingresos semanales
+   - todos los montos en USD (base interna en centavos)
 2. Procesar órdenes pendientes:
    - usar acciones masivas para pasar a `paid` / `shipped` / `delivered`.
 3. Inventario:

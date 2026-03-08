@@ -1,14 +1,68 @@
+from decimal import Decimal
+
 from django.contrib import admin
+from django import forms
 from django.db.models import Min
 from django.utils.html import format_html
+
+from apps.orders.money import cents_to_usd_decimal, format_usd, usd_to_cents
 
 from .models import Category, Product, ProductImage, ProductVariant
 
 
+class ProductVariantPricingForm(forms.ModelForm):
+    price_usd = forms.DecimalField(
+        label='Precio (USD)',
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal('0.00'),
+    )
+    compare_at_price_usd = forms.DecimalField(
+        label='Precio de referencia (USD)',
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal('0.00'),
+        required=False,
+    )
+
+    class Meta:
+        model = ProductVariant
+        exclude = ('price_usd_cents', 'compare_at_price_usd_cents')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        instance = self.instance
+        if not instance or not instance.pk:
+            return
+        self.fields['price_usd'].initial = cents_to_usd_decimal(instance.price_usd_cents)
+        if instance.compare_at_price_usd_cents is not None:
+            self.fields['compare_at_price_usd'].initial = cents_to_usd_decimal(instance.compare_at_price_usd_cents)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        price_usd = cleaned_data.get('price_usd')
+        compare_at_price_usd = cleaned_data.get('compare_at_price_usd')
+        cleaned_data['price_usd_cents'] = usd_to_cents(price_usd)
+        cleaned_data['compare_at_price_usd_cents'] = (
+            usd_to_cents(compare_at_price_usd) if compare_at_price_usd is not None else None
+        )
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.price_usd_cents = self.cleaned_data['price_usd_cents']
+        instance.compare_at_price_usd_cents = self.cleaned_data['compare_at_price_usd_cents']
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
+    form = ProductVariantPricingForm
     extra = 0
-    fields = ('sku', 'size', 'color', 'price_cop', 'compare_at_price_cop', 'is_default', 'is_active', 'stock_preview')
+    fields = ('sku', 'size', 'color', 'price_usd', 'compare_at_price_usd', 'is_default', 'is_active', 'stock_preview')
     readonly_fields = ('stock_preview',)
     classes = ('collapse',)
 
@@ -95,9 +149,10 @@ class ProductAdmin(admin.ModelAdmin):
     def variant_count(self, obj):
         return obj.variants.count()
 
-    @admin.display(description='Desde (COP)')
+    @admin.display(description='Desde (USD)')
     def from_price(self, obj):
-        return obj.variants.aggregate(v=Min('price_cop')).get('v') or 0
+        cents = obj.variants.aggregate(v=Min('price_usd_cents')).get('v') or 0
+        return format_usd(cents)
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -106,12 +161,13 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
+    form = ProductVariantPricingForm
     list_display = (
         'sku',
         'product',
         'size',
         'color',
-        'price_cop',
+        'price_display',
         'stock_available',
         'active_badge',
         'is_default',
@@ -129,7 +185,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
         (
             'Comercial',
             {
-                'fields': ('size', 'color', 'price_cop', 'compare_at_price_cop'),
+                'fields': ('size', 'color', 'price_usd', 'compare_at_price_usd'),
             },
         ),
         (
@@ -146,6 +202,10 @@ class ProductVariantAdmin(admin.ModelAdmin):
             return obj.stock_level.available
         except ProductVariant.stock_level.RelatedObjectDoesNotExist:
             return 'Sin stock'
+
+    @admin.display(ordering='price_usd_cents', description='Precio')
+    def price_display(self, obj):
+        return format_usd(obj.price_usd_cents)
 
     @admin.display(description='Estado')
     def active_badge(self, obj):

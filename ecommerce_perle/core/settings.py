@@ -168,7 +168,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 WHATSAPP_PHONE = os.getenv('WHATSAPP_PHONE', '')
-CURRENCY_USD_RATE = float(os.getenv('CURRENCY_USD_RATE', '0.00026'))
 
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {

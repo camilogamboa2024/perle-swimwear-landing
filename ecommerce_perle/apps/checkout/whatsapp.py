@@ -1,5 +1,7 @@
 from urllib.parse import quote_plus
 
+from apps.orders.money import format_usd
+
 
 def build_whatsapp_message(order):
     lines = [
@@ -10,13 +12,13 @@ def build_whatsapp_message(order):
     ]
     for item in order.items.select_related('variant__product').all():
         lines.append(
-            f"- {item.variant.product.name} | Talla {item.variant.size} | Color {item.variant.color} | x{item.quantity} | ${item.line_total:,} COP"
+            f"- {item.variant.product.name} | Talla {item.variant.size} | Color {item.variant.color} | x{item.quantity} | {format_usd(item.line_total)}"
         )
     lines += [
         '',
-        f'Subtotal: ${order.subtotal:,} COP',
-        f'Descuento: ${order.discount_total:,} COP',
-        f'Total: ${order.grand_total:,} COP',
+        f'Subtotal: {format_usd(order.subtotal)}',
+        f'Descuento: {format_usd(order.discount_total)}',
+        f'Total: {format_usd(order.grand_total)}',
         '',
         f'Entrega: {order.address.line1}, {order.address.city}, {order.address.state}',
         f'Contacto: {order.customer.phone or order.customer.email}',

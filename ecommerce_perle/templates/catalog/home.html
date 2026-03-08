@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}Perle Panamá | Luxury Aqua Swimwear{% endblock %}
 {% block content %}
 <section class="hero hero-editorial">
@@ -64,7 +65,7 @@
       {% with v=product.variants.all|first %}
       {% if v %}
       <div class="product-meta">
-        <p class="price"><strong>${{ v.price_cop }}</strong> COP</p>
+        <p class="price"><strong>{{ v.price_usd_cents|usd }}</strong></p>
         <div>
           <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-outline">Ver detalle</a>
           <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir</button>
@@ -99,7 +100,7 @@
       {% with v=product.variants.all|first %}
       {% if v %}
       <div class="product-meta">
-        <p class="price"><strong>${{ v.price_cop }}</strong> COP</p>
+        <p class="price"><strong>{{ v.price_usd_cents|usd }}</strong></p>
         <button class="btn btn-primary" type="button" data-add-cart="{{ v.id }}">Añadir a bolsa</button>
       </div>
       {% endif %}
@@ -158,5 +159,4 @@
   </div>
 </section>
 {{ products_payload|json_script:'products-data' }}
-<script id="fx-data" type="application/json">{"usdRate": {{ exchange_rate }}}</script>
 {% endblock %}

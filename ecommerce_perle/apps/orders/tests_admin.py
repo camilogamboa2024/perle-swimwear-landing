@@ -26,7 +26,7 @@ class OrderAdminActionsTest(TestCase):
             sku='SKU-ADMIN-ACT',
             size='L',
             color='Arena',
-            price_cop=145000,
+            price_usd_cents=145000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})

@@ -18,7 +18,7 @@ class CheckoutServiceTest(TestCase):
         category = Category.objects.create(name='Bikinis', slug='bikinis')
         product = Product.objects.create(name='Test', slug='test', category=category, description='x')
         self.variant = ProductVariant.objects.create(
-            product=product, sku='SKU-1', size='S', color='Negro', price_cop=100000
+            product=product, sku='SKU-1', size='S', color='Negro', price_usd_cents=100000
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 5})
         self.customer = Customer.objects.create(email='test@example.com', full_name='Cliente')
@@ -79,7 +79,7 @@ class CheckoutConfirmApiViewTest(TestCase):
         category = Category.objects.create(name='One Piece', slug='one-piece')
         product = Product.objects.create(name='Model', slug='model', category=category, description='x')
         self.variant = ProductVariant.objects.create(
-            product=product, sku='SKU-API-1', size='M', color='Negro', price_cop=150000
+            product=product, sku='SKU-API-1', size='M', color='Negro', price_usd_cents=150000
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 1})
 

@@ -9,12 +9,13 @@ function getCookie(name) {
   return "";
 }
 
-function formatCOP(value) {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-  }).format(Number(value) || 0);
+function formatUSDFromCents(value) {
+  const amount = (Number(value) || 0) / 100;
+  const formatted = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+  return `USD ${formatted}`;
 }
 
 function normalizeToastType(type) {
@@ -130,20 +131,22 @@ async function fetchCart() {
 function updateSummaryNodes(payload) {
   const items = Array.isArray(payload.items) ? payload.items : [];
   const count = items.reduce((acc, item) => acc + (Number(item.quantity) || 0), 0);
-  const total = payload.totals?.grand_total ?? 0;
+  const subtotalCents = payload.totals?.subtotal_cents ?? payload.totals?.subtotal ?? 0;
+  const discountCents = payload.totals?.discount_total_cents ?? payload.totals?.discount_total ?? 0;
+  const grandTotalCents = payload.totals?.grand_total_cents ?? payload.totals?.grand_total ?? 0;
 
   const countNode = document.getElementById("cart-count");
   const totalNode = document.getElementById("cart-total");
   if (countNode) countNode.textContent = String(count);
-  if (totalNode) totalNode.textContent = count > 0 ? formatCOP(total) : "";
+  if (totalNode) totalNode.textContent = count > 0 ? formatUSDFromCents(grandTotalCents) : "";
 
   const subtotalNode = document.getElementById("cart-subtotal");
   const discountNode = document.getElementById("cart-discount");
   const grandTotalNode = document.getElementById("cart-total-main");
 
-  if (subtotalNode) subtotalNode.textContent = formatCOP(payload.totals?.subtotal || 0);
-  if (discountNode) discountNode.textContent = formatCOP(payload.totals?.discount_total || 0);
-  if (grandTotalNode) grandTotalNode.textContent = formatCOP(total);
+  if (subtotalNode) subtotalNode.textContent = formatUSDFromCents(subtotalCents);
+  if (discountNode) discountNode.textContent = formatUSDFromCents(discountCents);
+  if (grandTotalNode) grandTotalNode.textContent = formatUSDFromCents(grandTotalCents);
 
   const itemsCountNode = document.getElementById("cart-items-count");
   if (itemsCountNode) {
@@ -256,7 +259,8 @@ function createCartRowNode(item, imageMap) {
   row.appendChild(qtyCell);
 
   const unitPriceCell = document.createElement("td");
-  unitPriceCell.textContent = formatCOP(item.unit_price);
+  const unitPriceCents = item.unit_price_cents ?? item.unit_price ?? 0;
+  unitPriceCell.textContent = formatUSDFromCents(unitPriceCents);
   row.appendChild(unitPriceCell);
 
   const actionsCell = document.createElement("td");

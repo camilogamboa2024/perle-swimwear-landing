@@ -1,0 +1,53 @@
+{
+  "tool": "dast_auth_csrf",
+  "base_url": "http://127.0.0.1:8014",
+  "checks": [
+    {
+      "id": "csrf_cart_mutation",
+      "passed": true,
+      "variant_id": 1,
+      "status_code": 403,
+      "details": "Mutacion de carrito rechazada sin CSRF."
+    },
+    {
+      "id": "csrf_checkout_confirm",
+      "passed": true,
+      "status_code": 403,
+      "details": "Checkout rechazo confirmacion sin CSRF."
+    },
+    {
+      "id": "admin_bruteforce_lockout",
+      "passed": false,
+      "failure_limit": 8,
+      "lockout_detected": false,
+      "lockout_attempt": null,
+      "details": "No hubo bloqueo progresivo observable."
+    },
+    {
+      "id": "order_confirmation_idor",
+      "passed": true,
+      "variant_id": 1,
+      "add_to_cart_status": 201,
+      "checkout_status": 201,
+      "confirmation_url": "/orders/confirmation/0e1b3efa-536b-486f-b94e-f36849e6a3ca/",
+      "owner_confirmation_status": 200,
+      "attacker_confirmation_status": 404,
+      "details": "IDOR bloqueado correctamente para sesion ajena."
+    }
+  ],
+  "findings": [
+    {
+      "id": "admin_bruteforce_no_lockout",
+      "severity": "high",
+      "message": "No se detecto lockout de admin tras 10 intentos fallidos."
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "total_checks": 4,
+    "passed_checks": 3
+  }
+}

@@ -35,8 +35,8 @@ class ProductVariant(models.Model):
     sku = models.CharField(max_length=40, unique=True)
     size = models.CharField(max_length=16, db_index=True)
     color = models.CharField(max_length=32, db_index=True)
-    price_cop = models.PositiveIntegerField()
-    compare_at_price_cop = models.PositiveIntegerField(null=True, blank=True)
+    price_usd_cents = models.PositiveIntegerField()
+    compare_at_price_usd_cents = models.PositiveIntegerField(null=True, blank=True)
     is_default = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True, db_index=True)
 

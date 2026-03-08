@@ -1,0 +1,54 @@
+{
+  "tool": "verify_security_headers",
+  "phase": "monitor",
+  "scope": "web",
+  "base_url": "http://127.0.0.1:8013",
+  "paths_checked": [
+    "/",
+    "/cart/",
+    "/checkout/"
+  ],
+  "checks": [
+    {
+      "path": "/",
+      "status_code": null,
+      "headers": {},
+      "missing": []
+    },
+    {
+      "path": "/cart/",
+      "status_code": null,
+      "headers": {},
+      "missing": []
+    },
+    {
+      "path": "/checkout/",
+      "status_code": null,
+      "headers": {},
+      "missing": []
+    }
+  ],
+  "findings": [
+    {
+      "id": "headers_unreachable_/",
+      "severity": "high",
+      "message": "No se pudo consultar /."
+    },
+    {
+      "id": "headers_unreachable_/cart/",
+      "severity": "high",
+      "message": "No se pudo consultar /cart/."
+    },
+    {
+      "id": "headers_unreachable_/checkout/",
+      "severity": "high",
+      "message": "No se pudo consultar /checkout/."
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  }
+}

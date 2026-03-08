@@ -75,7 +75,7 @@
         labels: series30d.labels,
         datasets: [
           {
-            label: "Ingresos",
+            label: "Ingresos (USD)",
             data: series30d.revenue || [],
             backgroundColor: palette.infoSoft,
             borderRadius: 7,

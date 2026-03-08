@@ -9,7 +9,7 @@ from apps.customers.models import Address, Customer
 class Cart(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True)
     session_key = models.CharField(max_length=50, db_index=True, blank=True)
-    currency = models.CharField(max_length=3, default='COP')
+    currency = models.CharField(max_length=3, default='USD')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -93,10 +93,11 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, db_index=True)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='whatsapp')
     whatsapp_message = models.TextField(blank=True)
+    # Monetary values are stored as integer cents in USD.
     subtotal = models.PositiveIntegerField(default=0)
     discount_total = models.PositiveIntegerField(default=0)
     grand_total = models.PositiveIntegerField(default=0)
-    currency = models.CharField(max_length=3, default='COP')
+    currency = models.CharField(max_length=3, default='USD')
     paid_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -110,6 +111,7 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
+    # Monetary values are stored as integer cents in USD.
     unit_price = models.PositiveIntegerField()
     line_total = models.PositiveIntegerField()
 

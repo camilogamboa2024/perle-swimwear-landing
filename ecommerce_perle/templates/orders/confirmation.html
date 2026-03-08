@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}Confirmación de pedido | Perle{% endblock %}
 {% block content %}
 <section class="container section-space" data-testid="confirmation-page">
@@ -17,7 +18,7 @@
     </div>
     <div class="summary-row total">
       <span>Total</span>
-      <strong>${{ order.grand_total }} COP</strong>
+      <strong>{{ order.grand_total|usd }}</strong>
     </div>
 
     <h2>Dirección de entrega</h2>
@@ -32,7 +33,7 @@
       {% for item in order.items.all %}
       <li>
         <span>{{ item.variant.product.name }} · {{ item.variant.size }}/{{ item.variant.color }} · x{{ item.quantity }}</span>
-        <strong>${{ item.line_total }} COP</strong>
+        <strong>{{ item.line_total|usd }}</strong>
       </li>
       {% endfor %}
     </ul>

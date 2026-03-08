@@ -1,0 +1,19 @@
+[21/Feb/2026 23:45:38] "GET / HTTP/1.1" 200 11886
+[21/Feb/2026 23:45:38] "GET /api/products/ HTTP/1.1" 200 3294
+Forbidden: /api/cart/items/
+[21/Feb/2026 23:45:38] "POST /api/cart/items/ HTTP/1.1" 403 46
+Forbidden: /checkout/api/checkout/confirm/
+[21/Feb/2026 23:45:38] "POST /checkout/api/checkout/confirm/ HTTP/1.1" 403 46
+[21/Feb/2026 23:45:38] "GET /api/products/ HTTP/1.1" 200 3294
+[21/Feb/2026 23:45:38] "GET / HTTP/1.1" 200 11886
+[21/Feb/2026 23:45:38] "POST /api/cart/items/ HTTP/1.1" 201 225
+[21/Feb/2026 23:45:38] "GET /checkout/ HTTP/1.1" 200 7292
+[21/Feb/2026 23:45:38] "POST /checkout/api/checkout/confirm/ HTTP/1.1" 201 169
+[21/Feb/2026 23:45:38] "GET /orders/confirmation/d3d17a29-988c-44c6-b008-b6051ac436dc/ HTTP/1.1" 200 4851
+Not Found: /orders/confirmation/d3d17a29-988c-44c6-b008-b6051ac436dc/
+[21/Feb/2026 23:45:38] "GET /orders/confirmation/d3d17a29-988c-44c6-b008-b6051ac436dc/ HTTP/1.1" 404 4161
+[21/Feb/2026 23:45:38] "GET / HTTP/1.1" 200 11886
+[21/Feb/2026 23:45:38] "GET /cart/ HTTP/1.1" 200 5994
+[21/Feb/2026 23:45:38] "GET /checkout/ HTTP/1.1" 200 7292
+Not Found: /orders/confirmation/d3d17a29-988c-44c6-b008-b6051ac436dc/
+[21/Feb/2026 23:45:38] "GET /orders/confirmation/d3d17a29-988c-44c6-b008-b6051ac436dc/ HTTP/1.1" 404 4162

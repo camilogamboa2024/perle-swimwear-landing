@@ -31,8 +31,6 @@ services:
         value: "8"
       - key: WHATSAPP_PHONE
         sync: false
-      - key: CURRENCY_USD_RATE
-        value: "0.00026"
 databases:
   - name: perle-db
     plan: free

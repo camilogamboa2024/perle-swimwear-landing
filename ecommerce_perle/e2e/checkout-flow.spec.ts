@@ -19,9 +19,12 @@ async function completeCheckoutFlow(page: import("@playwright/test").Page) {
   await expect(page.locator("#cart-count")).not.toHaveText("0");
   await page.getByTestId("nav-cart").click();
   await expect(page.getByTestId("cart-page")).toBeVisible();
+  await expect(page.locator("#cart-total-main")).toContainText("USD");
+  await expect(page.locator("main")).not.toContainText("COP");
 
   await page.getByTestId("go-checkout").click();
   await expect(page.getByTestId("checkout-page")).toBeVisible();
+  await expect(page.locator("#cart-total")).toContainText("USD");
 
   await page.fill("#checkout-full-name", "Cliente E2E");
   await page.fill("#checkout-email", "cliente-e2e@example.com");
@@ -32,6 +35,8 @@ async function completeCheckoutFlow(page: import("@playwright/test").Page) {
 
   await page.getByTestId("confirm-order").click();
   await expect(page.getByTestId("confirmation-page")).toBeVisible();
+  await expect(page.locator(".summary-row.total")).toContainText("USD");
+  await expect(page.locator("main")).not.toContainText("COP");
 }
 
 test("flujo completo: catálogo -> carrito -> checkout -> confirmación", async ({ page }) => {

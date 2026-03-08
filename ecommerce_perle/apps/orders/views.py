@@ -90,7 +90,7 @@ def _get_or_create_cart_with_locking(request, *, for_update=False):
 
     try:
         with transaction.atomic():
-            cart = Cart.objects.create(currency='COP', **lookup)
+            cart = Cart.objects.create(currency='USD', **lookup)
             if for_update:
                 return Cart.objects.select_for_update().get(pk=cart.pk)
             return cart

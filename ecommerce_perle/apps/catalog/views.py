@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -52,7 +51,6 @@ def home(request):
     return render(request, 'catalog/home.html', {
         'products': products,
         'products_payload': payload,
-        'exchange_rate': settings.CURRENCY_USD_RATE,
     })
 
 

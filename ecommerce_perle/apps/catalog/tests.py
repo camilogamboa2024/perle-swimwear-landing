@@ -1,5 +1,6 @@
 from django.test import TestCase, override_settings
 
+from apps.catalog.admin import ProductVariantPricingForm
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.inventory.models import StockLevel
 
@@ -27,7 +28,7 @@ class ActiveVariantsVisibilityTest(TestCase):
             sku='SKU-ACTIVA',
             size='M',
             color='Negro',
-            price_cop=100000,
+            price_usd_cents=100000,
             is_active=True,
         )
         self.inactive_variant = ProductVariant.objects.create(
@@ -35,7 +36,7 @@ class ActiveVariantsVisibilityTest(TestCase):
             sku='SKU-INACTIVA',
             size='L',
             color='Marfil',
-            price_cop=120000,
+            price_usd_cents=120000,
             is_active=False,
         )
         StockLevel.objects.update_or_create(variant=self.active_variant, defaults={'available': 3})
@@ -60,6 +61,12 @@ class ActiveVariantsVisibilityTest(TestCase):
         variant_ids = {variant['id'] for variant in payload['variants']}
         self.assertIn(self.active_variant.id, variant_ids)
         self.assertNotIn(self.inactive_variant.id, variant_ids)
+        active_variant_payload = next(variant for variant in payload['variants'] if variant['id'] == self.active_variant.id)
+        self.assertIn('price_usd_cents', active_variant_payload)
+        self.assertIn('compare_at_price_usd_cents', active_variant_payload)
+        self.assertIn('price_usd', active_variant_payload)
+        self.assertIn('price_cop', active_variant_payload)
+        self.assertEqual(active_variant_payload['price_usd_cents'], active_variant_payload['price_cop'])
 
 
 class TemplateRegressionTest(TestCase):
@@ -68,6 +75,12 @@ class TemplateRegressionTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "brand/perle-wordmark.png")
         self.assertContains(response, "brand/favicon.png")
+
+    def test_home_currency_labels_are_usd(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'USD')
+        self.assertNotContains(response, 'COP')
 
     def test_checkout_template_renders_expected_controls(self):
         response = self.client.get('/checkout/')
@@ -111,3 +124,27 @@ class WebSecurityHeadersTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'rel="noopener noreferrer"')
         self.assertContains(response, 'href="https://wa.me/573001112233"')
+
+
+class ProductVariantPricingFormTest(TestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name='Form', slug='form')
+        self.product = Product.objects.create(name='Producto Form', slug='producto-form', category=self.category, description='x')
+
+    def test_admin_form_converts_decimal_usd_to_cents(self):
+        form = ProductVariantPricingForm(
+            data={
+                'product': self.product.id,
+                'sku': 'SKU-FORM-1',
+                'size': 'M',
+                'color': 'Aqua',
+                'price_usd': '49.14',
+                'compare_at_price_usd': '56.94',
+                'is_default': 'on',
+                'is_active': 'on',
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        variant = form.save()
+        self.assertEqual(variant.price_usd_cents, 4914)
+        self.assertEqual(variant.compare_at_price_usd_cents, 5694)

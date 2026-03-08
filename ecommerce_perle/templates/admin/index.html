@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load static i18n dashboard_admin %}
+{% load static i18n dashboard_admin money %}
 
 {% block content %}
 {% admin_kpis as kpis %}
@@ -55,8 +55,8 @@
     </article>
     <article class="card perle-kpi-card">
       <div class="card-body">
-        <p class="perle-kpi-label">Ingresos semana (COP)</p>
-        <h2>${{ kpis.revenue_week }}</h2>
+        <p class="perle-kpi-label">Ingresos semana (USD)</p>
+        <h2>{{ kpis.revenue_week|usd }}</h2>
         <span class="perle-pill {% if kpis.revenue_week_delta >= 0 %}perle-pill-success{% else %}perle-pill-danger{% endif %}">
           {% if kpis.revenue_week_delta >= 0 %}+{% endif %}{{ kpis.revenue_week_delta }}% semana anterior
         </span>
@@ -65,7 +65,7 @@
     <article class="card perle-kpi-card">
       <div class="card-body">
         <p class="perle-kpi-label">Ticket promedio semana</p>
-        <h2>${{ kpis.ticket_avg_week }}</h2>
+        <h2>{{ kpis.ticket_avg_week|usd }}</h2>
         <span class="perle-pill perle-pill-info">Promedio por orden facturable</span>
       </div>
     </article>
@@ -125,7 +125,7 @@
               <tr>
                 <th>Orden</th>
                 <th>Cliente</th>
-                <th>Total (COP)</th>
+                <th>Total (USD)</th>
                 <th>Creada</th>
               </tr>
             </thead>
@@ -136,7 +136,7 @@
                   <a href="{% url 'admin:orders_order_change' order.id %}">{{ order.public_id }}</a>
                 </td>
                 <td>{{ order.customer.email }}</td>
-                <td>${{ order.grand_total }}</td>
+                <td>{{ order.grand_total|usd }}</td>
                 <td>{{ order.created_at|date:"d/m H:i" }}</td>
               </tr>
               {% endfor %}
@@ -179,7 +179,7 @@
           {% for row in kpis.top_products %}
           <li>
             <span>{{ row.variant__product__name }}</span>
-            <span class="perle-pill perle-pill-info">{{ row.units }} u. · ${{ row.revenue }}</span>
+            <span class="perle-pill perle-pill-info">{{ row.units }} u. · {{ row.revenue|usd }}</span>
           </li>
           {% endfor %}
         </ul>

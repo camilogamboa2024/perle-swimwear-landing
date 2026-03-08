@@ -34,7 +34,7 @@ class AdminDashboardFeatureTest(TestCase):
             sku='SKU-ADMIN-QA',
             size='M',
             color='Negro',
-            price_cop=120000,
+            price_usd_cents=120000,
             is_active=True,
         )
         StockLevel.objects.update_or_create(variant=self.variant, defaults={'available': 2})
@@ -61,6 +61,8 @@ class AdminDashboardFeatureTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Órdenes hoy')
         self.assertContains(response, 'Ingresos semana')
+        self.assertContains(response, 'Ingresos semana (USD)')
+        self.assertNotContains(response, 'COP')
         self.assertContains(response, 'Ticket promedio semana')
         self.assertContains(response, 'kpi-series-7d')
         self.assertContains(response, 'kpi-series-30d')

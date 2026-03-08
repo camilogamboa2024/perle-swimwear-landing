@@ -1,0 +1,6 @@
+Operations to perform:
+  Apply all migrations: admin, auth, catalog, contenttypes, customers, inventory, orders, sessions
+Running migrations:
+  Applying catalog.0004_rename_prices_to_usd_cents... OK
+  Applying orders.0005_cart_uniqueness_constraints... OK
+  Applying orders.0006_convert_monetary_values_to_usd_cents... OK

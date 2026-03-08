@@ -56,19 +56,19 @@ def create_order_from_cart(*, customer, address, cart, coupon=None, payment_meth
             quantity=-item.quantity,
             reason=f'Order #{order.id}',
         )
-        line_total = item.quantity * item.variant.price_cop
+        line_total = item.quantity * item.variant.price_usd_cents
         OrderItem.objects.create(
             order=order,
             variant=item.variant,
             quantity=item.quantity,
-            unit_price=item.variant.price_cop,
+            unit_price=item.variant.price_usd_cents,
             line_total=line_total,
         )
 
     totals = calculate_cart_totals(locked_cart, coupon)
-    order.subtotal = totals['subtotal']
-    order.discount_total = totals['discount_total']
-    order.grand_total = totals['grand_total']
+    order.subtotal = totals['subtotal_cents']
+    order.discount_total = totals['discount_total_cents']
+    order.grand_total = totals['grand_total_cents']
     order.whatsapp_message = build_whatsapp_message(order)
     order.save(update_fields=['subtotal', 'discount_total', 'grand_total', 'whatsapp_message'])
 

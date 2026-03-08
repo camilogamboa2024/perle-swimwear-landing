@@ -19,6 +19,7 @@ Cuando se reciba el logo oficial transparente final, se reemplaza este asset sin
 - Carrito API/SSR (add, update, delete, clear).
 - Checkout transaccional con lock de stock.
 - Confirmación protegida por `public_id + session_key`.
+- Precios y totales en USD (almacenados como centavos enteros para precisión).
 - WhatsApp opcional:
   - Si `WHATSAPP_PHONE` está vacío: no se renderiza `wa.me` ni FAB.
   - Si tiene valor: se renderizan enlaces seguros.
@@ -57,7 +58,6 @@ Variables clave:
 - `DATABASE_URL`
 - `WHATSAPP_PHONE` (opcional)
 - `LOW_STOCK_THRESHOLD`
-- `CURRENCY_USD_RATE`
 - `SECURITY_PHASE` (`monitor` o `enforce`)
 - `ADMIN_MFA_REQUIRED` (`0/1`, aplica a `staff/superusers`)
 - `AXES_FAILURE_LIMIT`

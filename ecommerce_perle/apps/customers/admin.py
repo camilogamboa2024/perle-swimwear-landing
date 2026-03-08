@@ -4,6 +4,7 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.html import format_html
 
+from apps.orders.money import format_usd
 from apps.orders.models import Order
 from .models import Address, Customer
 
@@ -21,13 +22,13 @@ class CustomerAdmin(admin.ModelAdmin):
         'full_name',
         'phone',
         'orders_count',
-        'total_spent_cop',
+        'total_spent_usd',
         'last_order_at',
         'orders_link',
         'created_at',
     )
     search_fields = ('email', 'full_name', 'phone')
-    readonly_fields = ('created_at', 'orders_link', 'total_spent_cop', 'last_order_at')
+    readonly_fields = ('created_at', 'orders_link', 'total_spent_usd', 'last_order_at')
     list_filter = ('created_at',)
     inlines = [AddressInline]
 
@@ -47,9 +48,8 @@ class CustomerAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">Ver {} pedido(s)</a>', url, count)
 
     @admin.display(ordering='total_spent', description='Total comprado')
-    def total_spent_cop(self, obj):
-        value = f'{obj.total_spent:,.0f}'.replace(',', '.')
-        return f'${value} COP'
+    def total_spent_usd(self, obj):
+        return format_usd(obj.total_spent)
 
     @admin.display(ordering='last_order', description='Último pedido')
     def last_order_at(self, obj):

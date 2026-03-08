@@ -1,0 +1,3 @@
+usage: gate_security.py [-h] --input-dir INPUT_DIR --out OUT
+                        [--markdown MARKDOWN] [--strict-critical-high]
+gate_security.py: error: the following arguments are required: --out
