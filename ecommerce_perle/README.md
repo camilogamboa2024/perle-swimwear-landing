@@ -1,6 +1,8 @@
-# Perle E-commerce (Production-Ready + Premium UI)
+# Perle E-commerce Runtime
 
 Aplicación Django + DRF para catálogo, carrito, checkout y operación interna con panel admin premium.
+
+Este directorio es el runtime canónico del producto. La raíz del repo documenta qué se despliega y qué quedó archivado como legacy.
 
 Branding activo: wordmark temporal limpio (`static/brand/perle-wordmark.png`) y favicon monograma (`static/brand/favicon.png`) en storefront + admin.
 Cuando se reciba el logo oficial transparente final, se reemplaza este asset sin cambios de lógica.
