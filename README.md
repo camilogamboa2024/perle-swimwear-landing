@@ -38,5 +38,8 @@ ruff check .
 - QA manual: [`ecommerce_perle/docs/QA_CHECKLIST.md`](./ecommerce_perle/docs/QA_CHECKLIST.md)
 
 ## Estado operativo
-- Staging-ready: sí, con CI visible, `healthz` y release flow separado del proceso web.
-- Producción pequeña/mediana: condicionada a configurar variables reales, revisar CVE desde CI y ejecutar smoke post-deploy.
+- Apto para demo: sí.
+- Listo para validación externa: sí, con CI local/documentada, `healthz` implementado y release flow separado del proceso web.
+- Staging serio: pendiente de verificación externa en GitHub/Render.
+- Producción pequeña/mediana: no declarada.
+- Última verificación externa conocida del dominio Render documentado: `404 no-server`.

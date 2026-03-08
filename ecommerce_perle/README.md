@@ -94,6 +94,11 @@ En la raíz del repo existe `render.yaml` con `rootDir: ecommerce_perle`.
 - `healthCheckPath`: `/healthz/`.
 - `autoDeployTrigger: checksPass`: evita auto deploys cuando la CI falla.
 
+Estado de validación externa:
+- El blueprint está verificado por código y checks locales.
+- La validación externa sigue pendiente en GitHub/Render desde esta sesión.
+- La última verificación pública del dominio documentado respondió `404 no-server`, así que no se declara staging ni producción desde este repo todavía.
+
 Variables recomendadas en Render:
 - `DJANGO_SECRET_KEY` (generateValue)
 - `DEBUG=0`
@@ -152,6 +157,8 @@ Auditoria CVE:
 - Coverage visible: el mismo job publica `coverage.txt` y `coverage.xml` como artifacts y resumen.
 - En local sin internet, `pip-audit` puede fallar por entorno (DNS/salida).
 - Opcional local corporativo: exportar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` para usar mirror interno.
+- `semgrep` usa `.semgrepignore` para excluir `.venv*`, `staticfiles/` y `audit/`.
+- Los dos templates admin con falso positivo de parsing Django/CSRF quedan suprimidos con `nosemgrep` puntual, no por aceptación de riesgo.
 
 ## E2E local
 ```bash
@@ -178,8 +185,9 @@ Checklist completa: `docs/QA_CHECKLIST.md`
 
 ## Criterio operativo honesto
 - Apto para demo: sí.
-- Apto para staging serio: sí, con el blueprint actual y CI verde.
-- Producción pequeña/mediana: viable si el equipo ejecuta smoke post-deploy, monitorea el gate de seguridad en CI y valida manualmente direcciones históricas previas al fix Panamá-first.
+- Listo para validación externa: sí.
+- Staging serio: pendiente de verificación externa en GitHub/Render.
+- Producción pequeña/mediana: no declarada.
 
 ## Screenshots
 - `docs/screenshots/home_desktop.png`

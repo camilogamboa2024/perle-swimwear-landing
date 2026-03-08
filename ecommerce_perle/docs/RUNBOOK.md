@@ -7,6 +7,9 @@ python manage.py migrate --noinput
 python manage.py runserver
 ```
 
+Nota operativa:
+- Si `runserver` avisa migraciones pendientes, la DB local persistente quedó atrasada; eso no implica inconsistencia del repo. Ejecuta `python manage.py migrate --noinput` sobre el entorno local antes del smoke manual.
+
 ## 2. Comandos de salud
 ```bash
 python manage.py check
@@ -80,6 +83,8 @@ Notas operativas:
 - En local sin salida a internet, `pip-audit` puede fallar por DNS/red.
 - Para redes corporativas, configurar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` hacia mirror interno.
 - Estrés PostgreSQL local reproducible: `bash scripts/qa/run_pg_stress.sh`.
+- `semgrep` excluye `.venv*`, `staticfiles/` y `audit/`.
+- Los dos templates admin con falso positivo documentado por parsing Django/CSRF usan `nosemgrep` puntual. Eso reduce ruido sin aceptar riesgo en el runtime canónico.
 
 ## 7. Deploy en Render
 - `buildCommand`: instala dependencias y corre `collectstatic`.
@@ -87,6 +92,8 @@ Notas operativas:
 - `startCommand`: arranca Gunicorn sin migrar en runtime.
 - `healthCheckPath`: `/healthz/`.
 - `autoDeployTrigger: checksPass`: el deploy automático espera CI verde.
+- Estado actual: release candidate listo para validación externa, pero staging y producción siguen sin declararse desde esta sesión.
+- Última verificación pública del dominio Render documentado: `404 no-server`.
 ## 8. Seguridad por fases (monitor -> enforce)
 Fase monitor (recomendada en arranque):
 ```bash
@@ -129,5 +136,6 @@ Resultado esperado de gate:
 
 ## 11. Criterio de entorno
 - Demo: apto.
-- Staging serio: apto con CI verde y variables completas.
-- Producción pequeña/mediana: apto solo con monitoreo activo, respaldo DB y revisión operativa de CVEs desde CI.
+- Listo para validación externa: sí.
+- Staging serio: pendiente de verificación externa en GitHub/Render.
+- Producción pequeña/mediana: no declarada.

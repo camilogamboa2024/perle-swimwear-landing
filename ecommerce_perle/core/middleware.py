@@ -75,4 +75,5 @@ class AdminMfaEnforcementMiddleware:
                 continue
 
         separator = '&' if '?' in resolved_path else '?'
-        return f"{resolved_path}{separator}{urlencode({'next': request.get_full_path()})}"
+        # Django middleware redirect to an internal MFA path; this is not a Flask route or HTML response.
+        return f"{resolved_path}{separator}{urlencode({'next': request.get_full_path()})}"  # nosemgrep: python.flask.security.audit.directly-returned-format-string.directly-returned-format-string
