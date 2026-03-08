@@ -155,6 +155,13 @@ function updateSummaryNodes(payload) {
   }
 }
 
+function setCartStatus(message) {
+  const node = document.getElementById("cart-status");
+  if (node && message) {
+    node.textContent = message;
+  }
+}
+
 function collectRenderedCartImages() {
   const map = {};
   document.querySelectorAll("#cart-items tr[data-item-id]").forEach((row) => {
@@ -298,6 +305,14 @@ function renderCartPage(payload) {
     fragment.appendChild(createCartRowNode(item, imageMap));
   });
   tbody.appendChild(fragment);
+
+  if (items.length < 1) {
+    setCartStatus("Tu carrito está vacío.");
+    return;
+  }
+
+  const label = items.length === 1 ? "referencia activa" : "referencias activas";
+  setCartStatus(`Tu carrito tiene ${items.length} ${label}.`);
 }
 
 async function refreshCartBadge({ render = false } = {}) {
@@ -456,6 +471,7 @@ function showCheckoutAlert(type, message) {
   alertNode.hidden = false;
   alertNode.className = getAlertClassByType(type);
   alertNode.textContent = message;
+  alertNode.focus();
 }
 
 function clearFieldErrors(form) {
@@ -553,6 +569,7 @@ function setupCartCouponInput() {
       if (feedback) {
         feedback.textContent = "Ingresa un cupón para guardarlo antes de checkout.";
       }
+      setCartStatus("No se guardó ningún cupón.");
       toast("info", "No se guardó cupón. Ingresa un código para aplicarlo.");
       return;
     }
@@ -561,6 +578,7 @@ function setupCartCouponInput() {
     if (feedback) {
       feedback.textContent = "Cupón guardado. Se validará al confirmar checkout.";
     }
+    setCartStatus(`Cupón ${code} guardado para checkout.`);
     toast("success", `Cupón ${code} guardado para checkout.`);
   });
 }
@@ -576,6 +594,20 @@ function setupMobileNavigation() {
   toggleButton.addEventListener("click", () => {
     const isOpen = nav.classList.toggle("is-open");
     toggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!nav.classList.contains("is-open")) return;
+    if (nav.contains(event.target) || toggleButton.contains(event.target)) return;
+    nav.classList.remove("is-open");
+    toggleButton.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !nav.classList.contains("is-open")) return;
+    nav.classList.remove("is-open");
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.focus();
   });
 
   nav.addEventListener("click", (event) => {
@@ -713,6 +745,7 @@ document.addEventListener("click", async (event) => {
     const variantId = Number(addCartButton.dataset.addCart);
     if (variantId) {
       await addToCart(variantId, addCartButton);
+      setCartStatus("Producto agregado al carrito.");
     }
     return;
   }
@@ -725,6 +758,7 @@ document.addEventListener("click", async (event) => {
     const payload = await updateCartItem(itemId, currentQty + 1, increaseButton);
     if (payload) {
       renderCartPage(payload);
+      setCartStatus("Cantidad actualizada en el carrito.");
       toast("success", "Cantidad actualizada.");
     }
     return;
@@ -740,6 +774,7 @@ document.addEventListener("click", async (event) => {
       const payload = await removeCartItem(itemId, decreaseButton);
       if (payload) {
         renderCartPage(payload);
+        setCartStatus("Producto eliminado del carrito.");
         toast("info", "Producto eliminado del carrito.");
       }
       return;
@@ -748,6 +783,7 @@ document.addEventListener("click", async (event) => {
     const payload = await updateCartItem(itemId, currentQty - 1, decreaseButton);
     if (payload) {
       renderCartPage(payload);
+      setCartStatus("Cantidad actualizada en el carrito.");
       toast("success", "Cantidad actualizada.");
     }
     return;
@@ -759,6 +795,7 @@ document.addEventListener("click", async (event) => {
     const payload = await removeCartItem(itemId, removeButton);
     if (payload) {
       renderCartPage(payload);
+      setCartStatus("Producto eliminado del carrito.");
       toast("info", "Producto eliminado del carrito.");
     }
     return;
@@ -769,6 +806,7 @@ document.addEventListener("click", async (event) => {
     const payload = await clearCart(clearButton);
     if (payload) {
       renderCartPage(payload);
+      setCartStatus("Carrito vaciado.");
       toast("info", "Carrito vaciado.");
     }
   }
