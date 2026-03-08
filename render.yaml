@@ -4,8 +4,11 @@ services:
     env: python
     plan: free
     rootDir: ecommerce_perle
+    autoDeployTrigger: checksPass
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "python manage.py migrate --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+    preDeployCommand: "python manage.py migrate --noinput"
+    startCommand: "gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+    healthCheckPath: /healthz/
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true

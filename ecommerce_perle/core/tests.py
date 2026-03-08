@@ -3,6 +3,13 @@ from datetime import timedelta
 from django.test import Client, TestCase, override_settings
 
 
+class HealthcheckTest(TestCase):
+    def test_healthcheck_returns_ok_payload(self):
+        response = self.client.get('/healthz/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok', 'service': 'perle-ecommerce'})
+
+
 @override_settings(
     AUTHENTICATION_BACKENDS=[
         'axes.backends.AxesStandaloneBackend',

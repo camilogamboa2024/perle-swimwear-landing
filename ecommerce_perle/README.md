@@ -89,6 +89,10 @@ Si cambias a `1`, debes migrar a estrategia con token en DOM/meta.
 
 ## Render (Blueprint)
 En la raíz del repo existe `render.yaml` con `rootDir: ecommerce_perle`.
+- `preDeployCommand`: ejecuta migraciones fuera del proceso web.
+- `startCommand`: inicia solo Gunicorn.
+- `healthCheckPath`: `/healthz/`.
+- `autoDeployTrigger: checksPass`: evita auto deploys cuando la CI falla.
 
 Variables recomendadas en Render:
 - `DJANGO_SECRET_KEY` (generateValue)
@@ -106,6 +110,7 @@ Nota de dominio:
 - Direcciones históricas creadas antes de esta corrección deben revisarse manualmente en admin si se sospecha que quedaron con país incorrecto por el default anterior.
 
 ## Smoke test post deploy (10 min)
+0. `/healthz/` responde `200` con `{"status":"ok","service":"perle-ecommerce"}`.
 1. `/` carga estilos y cards premium.
 2. Agregar producto al carrito actualiza badge y total.
 3. `/cart/` permite subir/bajar cantidad, eliminar y vaciar.
@@ -170,6 +175,11 @@ Checklist completa: `docs/QA_CHECKLIST.md`
 
 ## Runbook de operación
 `docs/RUNBOOK.md`
+
+## Criterio operativo honesto
+- Apto para demo: sí.
+- Apto para staging serio: sí, con el blueprint actual y CI verde.
+- Producción pequeña/mediana: viable si el equipo ejecuta smoke post-deploy, monitorea el gate de seguridad en CI y valida manualmente direcciones históricas previas al fix Panamá-first.
 
 ## Screenshots
 - `docs/screenshots/home_desktop.png`

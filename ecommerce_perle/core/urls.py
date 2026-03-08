@@ -3,7 +3,10 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+from .views import healthcheck
+
 urlpatterns = [
+    path('healthz/', healthcheck, name='healthz'),
     path('admin/', admin.site.urls),
     path('', include('apps.catalog.urls')),
     path('', include('apps.orders.urls')),

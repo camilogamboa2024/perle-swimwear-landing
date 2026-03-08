@@ -37,3 +37,6 @@ ruff check .
 - Operación: [`ecommerce_perle/docs/RUNBOOK.md`](./ecommerce_perle/docs/RUNBOOK.md)
 - QA manual: [`ecommerce_perle/docs/QA_CHECKLIST.md`](./ecommerce_perle/docs/QA_CHECKLIST.md)
 
+## Estado operativo
+- Staging-ready: sí, con CI visible, `healthz` y release flow separado del proceso web.
+- Producción pequeña/mediana: condicionada a configurar variables reales, revisar CVE desde CI y ejecutar smoke post-deploy.

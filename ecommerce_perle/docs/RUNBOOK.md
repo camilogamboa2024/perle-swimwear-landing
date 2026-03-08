@@ -14,6 +14,11 @@ python manage.py test
 python manage.py collectstatic --noinput
 ```
 
+Healthcheck HTTP:
+```bash
+curl -fsS http://127.0.0.1:8000/healthz/
+```
+
 ## 3. Operación diaria en admin
 1. Revisar dashboard (`/admin/`) para:
    - órdenes del día/semana
@@ -76,7 +81,13 @@ Notas operativas:
 - Para redes corporativas, configurar `PIP_INDEX_URL` y/o `PIP_EXTRA_INDEX_URL` hacia mirror interno.
 - Estrés PostgreSQL local reproducible: `bash scripts/qa/run_pg_stress.sh`.
 
-## 7. Seguridad por fases (monitor -> enforce)
+## 7. Deploy en Render
+- `buildCommand`: instala dependencias y corre `collectstatic`.
+- `preDeployCommand`: corre migraciones antes de arrancar el proceso web.
+- `startCommand`: arranca Gunicorn sin migrar en runtime.
+- `healthCheckPath`: `/healthz/`.
+- `autoDeployTrigger: checksPass`: el deploy automático espera CI verde.
+## 8. Seguridad por fases (monitor -> enforce)
 Fase monitor (recomendada en arranque):
 ```bash
 export SECURITY_PHASE=monitor
@@ -103,8 +114,20 @@ Resultado esperado de gate:
 - `critical = 0`
 - `high = 0`
 
-## 8. Rollback básico
+## 9. Smoke post-deploy
+1. `curl -fsS https://<tu-dominio>/healthz/`
+2. Cargar `/` y agregar un producto al carrito.
+3. Confirmar un checkout en staging.
+4. Verificar `/orders/confirmation/<uuid>/` en la misma sesión.
+5. Entrar a `/admin/` y validar KPIs + login.
+
+## 10. Rollback básico
 1. Revertir despliegue al release anterior en plataforma.
 2. Restaurar DB snapshot si hubo migración conflictiva.
 3. Ejecutar smoke test de 10 minutos.
 4. Registrar incidente y causa raíz.
+
+## 11. Criterio de entorno
+- Demo: apto.
+- Staging serio: apto con CI verde y variables completas.
+- Producción pequeña/mediana: apto solo con monitoreo activo, respaldo DB y revisión operativa de CVEs desde CI.
