@@ -143,7 +143,7 @@ else:
 
 
 AUTHENTICATION_BACKENDS = [
-    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES and not RUNNING_TESTS else []),
+    *(['axes.backends.AxesStandaloneBackend'] if HAS_AXES else []),
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -220,7 +220,6 @@ JAZZMIN_SETTINGS = {
 
 JAZZMIN_UI_TWEAKS = {
     'theme': 'flatly',
-    'dark_mode_theme': None,
     'accent': 'accent-info',
     'navbar': 'navbar-white navbar-light',
     'no_navbar_border': False,

@@ -66,7 +66,7 @@ Variables clave:
 - `AXES_FAILURE_LIMIT`
 - `AXES_COOLOFF_HOURS`
 
-## Seguridad robusta por fases
+## Seguridad práctica por fases
 - Fase monitor:
   - `SECURITY_PHASE=monitor`
   - `ADMIN_MFA_REQUIRED=0`
@@ -81,6 +81,7 @@ Variables clave:
 MFA admin:
 - Se habilita flujo TOTP en rutas ` /account/... ` (two-factor).
 - Cuando `ADMIN_MFA_REQUIRED=1`, usuarios `staff/superuser` son redirigidos al flujo MFA antes de entrar a `/admin/`.
+- El objetivo es hardening entendible para staging serio y producción pequeña/mediana, no claims enterprise.
 
 ### Nota CSRF
 `storefront.js` usa cookie `csrftoken` para enviar `X-CSRFToken`, por eso `CSRF_COOKIE_HTTPONLY` permanece en `0` por defecto.  

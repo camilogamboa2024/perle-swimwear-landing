@@ -120,6 +120,7 @@ class WebSecurityHeadersTest(TestCase):
             self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
             self.assertEqual(response['X-Frame-Options'], 'DENY')
             self.assertIn('strict-origin-when-cross-origin', response['Referrer-Policy'])
+            self.assertEqual(response['Permissions-Policy'], 'geolocation=(), camera=(), microphone=()')
 
     @override_settings(SECURITY_PHASE='enforce')
     def test_storefront_responses_include_enforced_csp_in_enforce_phase(self):
